@@ -288,6 +288,13 @@ def compile_frames(
         cached_pdf = cache.get_pdf_path(spec.content_hash)
         if cached_pdf is not None:
             bbox = cache.get_bbox(spec.content_hash)
+            if bbox is None:
+                # PDF cached but bbox missing — extract and persist it now.
+                try:
+                    bbox = extract_bbox_from_pdf(cached_pdf)
+                    cache.store_bbox(spec.content_hash, bbox)
+                except Exception:
+                    pass  # bbox stays None; will still count as cached
             results[spec.index] = FrameResult(
                 index=spec.index,
                 success=True,

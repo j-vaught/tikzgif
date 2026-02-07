@@ -129,7 +129,23 @@ def extract_bbox_from_pdf(pdf_path: Path) -> BoundingBox:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass  # Ghostscript not available; try fallback.
 
-    # --- Attempt 2: Parse MediaBox from raw PDF bytes ---------------------
+    # --- Attempt 2: PyMuPDF (fitz) ----------------------------------------
+    try:
+        import fitz  # type: ignore[import-untyped]
+        doc = fitz.open(str(pdf_path))
+        page = doc[0]
+        rect = page.mediabox
+        doc.close()
+        return BoundingBox(
+            x_min=float(rect.x0),
+            y_min=float(rect.y0),
+            x_max=float(rect.x1),
+            y_max=float(rect.y1),
+        )
+    except Exception:
+        pass  # PyMuPDF not available or failed; try raw parse.
+
+    # --- Attempt 3: Parse MediaBox from raw PDF bytes ---------------------
     try:
         raw = pdf_path.read_bytes()
         text = raw.decode("latin-1")
