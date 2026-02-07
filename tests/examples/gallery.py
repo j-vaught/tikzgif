@@ -4,7 +4,7 @@ Example Gallery Registry for tikzgif.
 Each entry describes one complete animation example with its source file,
 parameter configuration, CLI invocation, expected output, and metadata.
 Run individual examples with:
-    tikzgif render tests/examples/tex/<filename>.tex --param PARAM ...
+    tikzgif render examples/<filename>.tex --param PARAM ...
 
 Run all gallery examples:
     python -m pytest tests/examples/test_gallery.py -v
@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-EXAMPLES_DIR = Path(__file__).parent / "tex"
+EXAMPLES_DIR = Path(__file__).resolve().parent.parent.parent / "examples"
 
 
 @dataclass(frozen=True)
@@ -69,7 +69,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=360,
         frame_count=36,
         cli_command=(
-            "tikzgif render tests/examples/tex/01_rotating_square.tex "
+            "tikzgif render examples/01_rotating_square.tex "
             "--param PARAM --start 0 --end 360 --frames 36 "
             "--fps 12 -o rotating_square.gif"
         ),
@@ -100,7 +100,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=1,
         frame_count=40,
         cli_command=(
-            "tikzgif render tests/examples/tex/02_bouncing_ball.tex "
+            "tikzgif render examples/02_bouncing_ball.tex "
             "--param PARAM --start 0 --end 1 --frames 40 "
             "--fps 20 -o bouncing_ball.gif"
         ),
@@ -132,7 +132,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=360,
         frame_count=60,
         cli_command=(
-            "tikzgif render tests/examples/tex/03_sine_wave_phase.tex "
+            "tikzgif render examples/03_sine_wave_phase.tex "
             "--param PARAM --start 0 --end 360 --frames 60 "
             "--fps 30 -o sine_wave_phase.gif"
         ),
@@ -165,7 +165,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=2000,
         frame_count=200,
         cli_command=(
-            "tikzgif render tests/examples/tex/04_lorenz_attractor.tex "
+            "tikzgif render examples/04_lorenz_attractor.tex "
             "--param PARAM --start 0 --end 2000 --frames 200 "
             "--fps 30 -o lorenz_attractor.gif"
         ),
@@ -202,7 +202,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=255,
         frame_count=256,
         cli_command=(
-            "tikzgif render tests/examples/tex/05_binary_counter.tex "
+            "tikzgif render examples/05_binary_counter.tex "
             "--param PARAM --start 0 --end 255 --frames 256 "
             "--fps 24 -o binary_counter.gif"
         ),
@@ -235,7 +235,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=1,
         frame_count=30,
         cli_command=(
-            "tikzgif render tests/examples/tex/06_sorting_visualization.tex "
+            "tikzgif render examples/06_sorting_visualization.tex "
             "--param PARAM --start 0 --end 1 --frames 30 "
             "--fps 12 -o sorting.gif"
         ),
@@ -267,7 +267,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=1,
         frame_count=60,
         cli_command=(
-            "tikzgif render tests/examples/tex/07_mandelbrot_zoom.tex "
+            "tikzgif render examples/07_mandelbrot_zoom.tex "
             "--param PARAM --start 0 --end 1 --frames 60 "
             "--fps 10 --timeout 120 -o mandelbrot_zoom.gif"
         ),
@@ -305,7 +305,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=1.0,
         frame_count=40,
         cli_command=(
-            "tikzgif render tests/examples/tex/08_step_response.tex "
+            "tikzgif render examples/08_step_response.tex "
             "--param PARAM --start 0.05 --end 1.0 --frames 40 "
             "--fps 10 -o step_response.gif"
         ),
@@ -339,7 +339,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=360,
         frame_count=60,
         cli_command=(
-            "tikzgif render tests/examples/tex/09_em_wave.tex "
+            "tikzgif render examples/09_em_wave.tex "
             "--param PARAM --start 0 --end 360 --frames 60 "
             "--fps 24 -o em_wave.gif"
         ),
@@ -372,7 +372,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=5,
         frame_count=50,
         cli_command=(
-            "tikzgif render tests/examples/tex/10_rc_circuit.tex "
+            "tikzgif render examples/10_rc_circuit.tex "
             "--param PARAM --start 0 --end 5 --frames 50 "
             "--fps 15 -o rc_circuit.gif"
         ),
@@ -406,7 +406,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=6.28,
         frame_count=60,
         cli_command=(
-            "tikzgif render tests/examples/tex/11_pendulum.tex "
+            "tikzgif render examples/11_pendulum.tex "
             "--param PARAM --start 0 --end 6.28 --frames 60 "
             "--fps 24 -o pendulum.gif"
         ),
@@ -439,7 +439,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=360,
         frame_count=72,
         cli_command=(
-            "tikzgif render tests/examples/tex/12_gear_train.tex "
+            "tikzgif render examples/12_gear_train.tex "
             "--param PARAM --start 0 --end 360 --frames 72 "
             "--fps 24 -o gear_train.gif"
         ),
@@ -472,7 +472,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=4,
         frame_count=60,
         cli_command=(
-            "tikzgif render tests/examples/tex/13_signal_convolution.tex "
+            "tikzgif render examples/13_signal_convolution.tex "
             "--param PARAM --start -2 --end 4 --frames 60 "
             "--fps 15 -o convolution.gif"
         ),
@@ -507,7 +507,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=0.5,
         frame_count=50,
         cli_command=(
-            "tikzgif render tests/examples/tex/14_heat_equation.tex "
+            "tikzgif render examples/14_heat_equation.tex "
             "--param PARAM --start 0 --end 0.5 --frames 50 "
             "--fps 15 -o heat_equation.gif"
         ),
@@ -541,7 +541,7 @@ GALLERY: list[ExampleSpec] = [
         param_end=1,
         frame_count=60,
         cli_command=(
-            "tikzgif render tests/examples/tex/15_fractal_tree.tex "
+            "tikzgif render examples/15_fractal_tree.tex "
             "--param PARAM --start 0 --end 1 --frames 60 "
             "--fps 12 -o fractal_tree.gif"
         ),

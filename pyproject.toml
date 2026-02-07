@@ -78,10 +78,8 @@ all = [
 # --- URLs ---------------------------------------------------------------------
 [project.urls]
 Homepage = "https://github.com/j-vaught/tikzgif"
-Documentation = "https://tikzgif.readthedocs.io"
 Repository = "https://github.com/j-vaught/tikzgif"
 Issues = "https://github.com/j-vaught/tikzgif/issues"
-Changelog = "https://github.com/j-vaught/tikzgif/blob/main/CHANGELOG.md"
 
 # --- CLI entry points ---------------------------------------------------------
 [project.scripts]
@@ -97,9 +95,9 @@ packages = ["tikzgif"]
 include = [
     "tikzgif/**",
     "tests/**",
+    "examples/**",
     "LICENSE",
     "README.md",
-    "CHANGELOG.md",
     "pyproject.toml",
 ]
 

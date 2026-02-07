@@ -290,7 +290,7 @@ Entry Point → Config Resolver → Template Engine → Cache Lookup
 | `assembly.py` | Final GIF/MP4/WebP/APNG/SVG assembly |
 | `engine.py` | LaTeX engine detection and auto-selection |
 
-Full details: [ARCHITECTURE.md](ARCHITECTURE.md) and [DESIGN.md](DESIGN.md).
+Full module source is in the `tikzgif/` package directory.
 
 ---
 
