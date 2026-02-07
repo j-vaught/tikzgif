@@ -1,0 +1,97 @@
+% Example 06a: Bubble Sort Visualization
+% Bars showing values being sorted via bubble sort, pass by pass.
+% Pre-computed states interpolated smoothly between passes.
+% Initial array: [6, 2, 8, 4, 1, 7, 3, 5]
+% Parameter: \PARAM (progress 0 to 1, maps across 4 passes)
+% Range: 0 to 1, recommended 50 frames
+% Difficulty: intermediate
+% Features demonstrated: array encoding, interpolation, algorithm visualization
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\usepackage{xcolor}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
+\begin{document}
+\begin{tikzpicture}
+  \useasboundingbox (-1,-2) rectangle (10,8);
+
+  \pgfmathsetmacro{\progress}{\PARAM}
+
+  % 5 states (initial + 4 passes), indexed 0..4
+  \pgfmathsetmacro{\nstates}{5}
+  \pgfmathsetmacro{\state}{\progress * (\nstates - 1)}
+  \pgfmathtruncatemacro{\sLo}{floor(\state)}
+  \pgfmathtruncatemacro{\sHi}{min(\nstates - 1, ceil(\state))}
+  \pgfmathsetmacro{\interp}{\state - \sLo}
+
+  % Bubble sort of [6,2,8,4,1,7,3,5]:
+  % State 0: [6,2,8,4,1,7,3,5]  (initial)
+  % State 1: [2,6,4,1,7,3,5,8]  (after pass 1)
+  % State 2: [2,4,1,6,3,5,7,8]  (after pass 2)
+  % State 3: [2,1,4,3,5,6,7,8]  (after pass 3)
+  % State 4: [1,2,3,4,5,6,7,8]  (sorted)
+  %
+  % Slot of each value at each state:
+  % val -> {state0, state1, state2, state3, state4}
+
+  % Sorted boundary: after pass k, rightmost k elements are sorted
+  \pgfmathtruncatemacro{\sortedFrom}{8 - \sLo}
+  \ifnum\sLo>0
+    \fill[horseshoe!8] ({\sortedFrom * 1.15 + 0.05}, -0.15)
+      rectangle (9.5, 6.6);
+  \fi
+
+  % Draw each bar with interpolated position
+  \foreach \val/\slots in {
+    1/{4,3,2,1,0},
+    2/{1,0,0,0,1},
+    3/{6,5,4,3,2},
+    4/{3,2,1,2,3},
+    5/{7,6,5,4,4},
+    6/{0,1,3,5,5},
+    7/{5,4,6,6,6},
+    8/{2,7,7,7,7}%
+  } {
+    \pgfmathparse{array({\slots}, \sLo)}
+    \pgfmathsetmacro{\posLo}{\pgfmathresult}
+    \pgfmathparse{array({\slots}, \sHi)}
+    \pgfmathsetmacro{\posHi}{\pgfmathresult}
+    \pgfmathsetmacro{\xpos}{(\posLo * (1 - \interp) + \posHi * \interp) * 1.15 + 0.5}
+    \pgfmathsetmacro{\barht}{\val * 0.75}
+
+    % Color gradient: low values atlantic, high values garnet
+    \pgfmathtruncatemacro{\cpct}{min(100, max(0, \val * 12.5))}
+    \fill[garnet!\cpct!atlantic] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
+    \draw[black!70, thick] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
+    \node[above, font=\small\bfseries] at (\xpos, \barht) {\val};
+  }
+
+  % Ground line
+  \draw[thick] (-0.3, 0) -- (9.3, 0);
+
+  % Title
+  \node[font=\large\bfseries, garnet] at (4.5, 7.2) {Bubble Sort};
+
+  % Pass indicator
+  \pgfmathtruncatemacro{\passnum}{\sLo}
+  \ifnum\passnum=0
+    \node[font=\small] at (4.5, -1) {Initial array};
+  \else
+    \ifnum\passnum>3
+      \node[font=\small, horseshoe] at (4.5, -1) {Sorted!};
+    \else
+      \node[font=\small] at (4.5, -1) {Pass \passnum\ of 4};
+    \fi
+  \fi
+\end{tikzpicture}
+\end{document}

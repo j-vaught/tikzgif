@@ -1,0 +1,93 @@
+% Example 06c: Insertion Sort Visualization
+% Bars showing values being sorted via insertion sort, step by step.
+% At each step, the next element is inserted into its correct position.
+% Initial array: [6, 2, 8, 4, 1, 7, 3, 5]
+% Parameter: \PARAM (progress 0 to 1, maps across 7 insertion steps)
+% Range: 0 to 1, recommended 50 frames
+% Difficulty: intermediate
+% Features demonstrated: array encoding, interpolation, algorithm visualization
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\usepackage{xcolor}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
+\begin{document}
+\begin{tikzpicture}
+  \useasboundingbox (-1,-2) rectangle (10,8);
+
+  \pgfmathsetmacro{\progress}{\PARAM}
+
+  % 8 states (initial + 7 insertion steps), indexed 0..7
+  \pgfmathsetmacro{\nstates}{8}
+  \pgfmathsetmacro{\state}{\progress * (\nstates - 1)}
+  \pgfmathtruncatemacro{\sLo}{floor(\state)}
+  \pgfmathtruncatemacro{\sHi}{min(\nstates - 1, ceil(\state))}
+  \pgfmathsetmacro{\interp}{\state - \sLo}
+
+  % Insertion sort of [6,2,8,4,1,7,3,5]:
+  % State 0: [6,2,8,4,1,7,3,5]  (initial, sorted region = [6])
+  % State 1: [2,6,8,4,1,7,3,5]  (insert 2 before 6)
+  % State 2: [2,6,8,4,1,7,3,5]  (insert 8, stays in place)
+  % State 3: [2,4,6,8,1,7,3,5]  (insert 4 between 2 and 6)
+  % State 4: [1,2,4,6,8,7,3,5]  (insert 1 at front)
+  % State 5: [1,2,4,6,7,8,3,5]  (insert 7 between 6 and 8)
+  % State 6: [1,2,3,4,6,7,8,5]  (insert 3 between 2 and 4)
+  % State 7: [1,2,3,4,5,6,7,8]  (insert 5 between 4 and 6)
+
+  % Sorted boundary: after step k, leftmost k+1 elements are sorted
+  \pgfmathtruncatemacro{\sortedCount}{\sLo + 1}
+  \fill[horseshoe!8] (-0.3, -0.15) rectangle ({\sortedCount * 1.15 + 0.05}, 6.6);
+
+  % Draw each bar
+  \foreach \val/\slots in {
+    1/{4,4,4,4,0,0,0,0},
+    2/{1,0,0,0,1,1,1,1},
+    3/{6,6,6,6,6,6,2,2},
+    4/{3,3,3,1,2,2,3,3},
+    5/{7,7,7,7,7,7,7,4},
+    6/{0,1,1,2,3,3,4,5},
+    7/{5,5,5,5,5,4,5,6},
+    8/{2,2,2,3,4,5,6,7}%
+  } {
+    \pgfmathparse{array({\slots}, \sLo)}
+    \pgfmathsetmacro{\posLo}{\pgfmathresult}
+    \pgfmathparse{array({\slots}, \sHi)}
+    \pgfmathsetmacro{\posHi}{\pgfmathresult}
+    \pgfmathsetmacro{\xpos}{(\posLo * (1 - \interp) + \posHi * \interp) * 1.15 + 0.5}
+    \pgfmathsetmacro{\barht}{\val * 0.75}
+
+    \pgfmathtruncatemacro{\cpct}{min(100, max(0, \val * 12.5))}
+    \fill[garnet!\cpct!atlantic] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
+    \draw[black!70, thick] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
+    \node[above, font=\small\bfseries] at (\xpos, \barht) {\val};
+  }
+
+  % Ground line
+  \draw[thick] (-0.3, 0) -- (9.3, 0);
+
+  % Title
+  \node[font=\large\bfseries, garnet] at (4.5, 7.2) {Insertion Sort};
+
+  % Step indicator
+  \pgfmathtruncatemacro{\stepnum}{\sLo}
+  \ifnum\stepnum=0
+    \node[font=\small] at (4.5, -1) {Initial array};
+  \else
+    \ifnum\stepnum>6
+      \node[font=\small, horseshoe] at (4.5, -1) {Sorted!};
+    \else
+      \node[font=\small] at (4.5, -1) {Step \stepnum\ of 7 --- insert next element};
+    \fi
+  \fi
+\end{tikzpicture}
+\end{document}

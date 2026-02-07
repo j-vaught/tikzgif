@@ -23,60 +23,67 @@
 \begin{tikzpicture}
   \useasboundingbox (-7,-1.5) rectangle (7,11);
 
-  \pgfmathsetmacro{\progress}{\PARAM}  % 0 to 1
+  % Fixed seed so every frame produces the same tree structure
+  \pgfmathsetseed{42}
+
+  \pgfmathsetmacro{\progress}{\PARAM}
 
   % Total depth levels
-  \pgfmathtruncatemacro{\maxdepth}{8}
+  \pgfmathtruncatemacro{\maxdepth}{7}
 
-  % Which depth level are we at?
-  % progress 0..1 maps to depth 0..maxdepth (with smooth interpolation)
+  % Current depth (continuous for smooth growth)
   \pgfmathsetmacro{\currentdepth}{\progress * \maxdepth}
 
   % Recursive tree-drawing command
-  % #1 = start x, #2 = start y, #3 = angle, #4 = length, #5 = depth, #6 = thickness
+  % #1=startX, #2=startY, #3=angle, #4=length, #5=depth, #6=thickness
   \newcommand{\branch}[6]{%
     \pgfmathtruncatemacro{\dep}{#5}%
     \ifnum\dep<\maxdepth
-      % Should this branch be drawn based on progress?
-      \pgfmathsetmacro{\branchvisible}{\dep < \currentdepth ? 1 : 0}
+      \pgfmathsetmacro{\branchvisible}{\dep < \currentdepth ? 1 : 0}%
       \ifdim\branchvisible pt>0.5pt
-        % Compute end point
+        % Growth factor for partial depth levels
+        \pgfmathsetmacro{\growfactor}{min(1, \currentdepth - \dep)}%
+        %
+        % Compute full end point
         \pgfmathsetmacro{\ex}{#1 + #4 * sin(#3)}%
         \pgfmathsetmacro{\ey}{#2 + #4 * cos(#3)}%
-
-        % Growth factor for partial depth levels
-        \pgfmathsetmacro{\growfactor}{min(1, \currentdepth - \dep)}
-
-        % Interpolated end point
-        \pgfmathsetmacro{\ix}{#1 + \growfactor * (#4) * sin(#3)}%
-        \pgfmathsetmacro{\iy}{#2 + \growfactor * (#4) * cos(#3)}%
-
-        % Color: trunk is warmgrey, tips are horseshoe
-        \pgfmathtruncatemacro{\greenpct}{min(100, max(0, \dep * 15))}
-
-        % Draw the branch
-        \draw[line width=#6 pt, line cap=round,
-              horseshoe!\greenpct!warmgrey]
-          (#1, #2) -- (\ix, \iy);
-
-        % Leaves at the tips (only for deeper branches)
-        \ifnum\dep>5
+        %
+        % Interpolated end point (partial growth)
+        \pgfmathsetmacro{\ix}{#1 + \growfactor * #4 * sin(#3)}%
+        \pgfmathsetmacro{\iy}{#2 + \growfactor * #4 * cos(#3)}%
+        %
+        % Color: trunk=warmgrey, branches=horseshoe
+        \pgfmathtruncatemacro{\greenpct}{min(100, max(0, \dep * 18))}%
+        %
+        % Draw this branch
+        \draw[line width=#6 pt, line cap=round, horseshoe!\greenpct!warmgrey]
+          (#1, #2) -- (\ix, \iy);%
+        %
+        % Leaves at deep tips
+        \ifnum\dep>4
           \ifdim\growfactor pt>0.8pt
-            \fill[horseshoe, opacity=0.6]
-              (\ix, \iy) circle ({0.08 * (1 + \dep/\maxdepth)});
+            \pgfmathsetmacro{\leafsz}{0.06 * (1 + \dep/\maxdepth)}%
+            \fill[horseshoe, opacity=0.7] (\ix, \iy) circle (\leafsz);%
           \fi
         \fi
-
+        %
         % Recurse if fully grown
         \ifdim\growfactor pt>0.99pt
-          \pgfmathsetmacro{\newlen}{#4 * 0.72}%
-          \pgfmathsetmacro{\newthick}{max(0.3, #6 * 0.65)}%
+          \pgfmathsetmacro{\newlen}{#4 * 0.7}%
+          \pgfmathsetmacro{\newthick}{max(0.4, #6 * 0.6)}%
           \pgfmathtruncatemacro{\newdep}{\dep + 1}%
-          % Left branch
-          \pgfmathsetmacro{\angleL}{#3 - 25 - 5 * rand}%
-          \branch{\ex}{\ey}{\angleL}{\newlen}{\newdep}{\newthick}%
-          % Right branch
-          \pgfmathsetmacro{\angleR}{#3 + 25 + 5 * rand}%
+          %
+          % Deterministic splay with slight asymmetry per depth
+          \pgfmathsetmacro{\splay}{28 - \dep * 1.5}%
+          \pgfmathsetmacro{\skew}{3 * (-1)^\dep}%
+          %
+          % Left branch (grouped to protect parent scope variables)
+          \pgfmathsetmacro{\angleL}{#3 - \splay + \skew}%
+          \begingroup
+            \branch{\ex}{\ey}{\angleL}{\newlen}{\newdep}{\newthick}%
+          \endgroup
+          % Right branch (parent \ex, \ey restored by endgroup)
+          \pgfmathsetmacro{\angleR}{#3 + \splay + \skew}%
           \branch{\ex}{\ey}{\angleR}{\newlen}{\newdep}{\newthick}%
         \fi
       \fi
@@ -84,14 +91,14 @@
   }
 
   % Ground
-  \fill[horseshoe!30!warmgrey!20] (-6, -0.5) rectangle (6, 0);
-  \draw[warmgrey, thick] (-6, 0) -- (6, 0);
+  \fill[horseshoe!30!warmgrey!20] (-7, -0.5) rectangle (7, 0);
+  \draw[warmgrey, thick] (-7, 0) -- (7, 0);
 
-  % Start the tree
-  \branch{0}{0}{0}{2.5}{0}{4}
+  % Start the tree: rooted at (0,0), growing upward (angle=0)
+  \branch{0}{0}{0}{2.8}{0}{5}
 
   % Label
-  \node[below, font=\small] at (0, -0.7)
+  \node[below, font=\small] at (0, -0.8)
     {Growth: $\pgfmathparse{\progress * 100}\pgfmathprintnumber[fixed, precision=0]{\pgfmathresult}\%$};
 \end{tikzpicture}
 \end{document}

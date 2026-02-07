@@ -1,0 +1,94 @@
+% Example 06b: Selection Sort Visualization
+% Bars showing values being sorted via selection sort, step by step.
+% At each step, the minimum unsorted element is selected and placed.
+% Initial array: [6, 2, 8, 4, 1, 7, 3, 5]
+% Parameter: \PARAM (progress 0 to 1, maps across 7 selection steps)
+% Range: 0 to 1, recommended 50 frames
+% Difficulty: intermediate
+% Features demonstrated: array encoding, interpolation, algorithm visualization
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\usepackage{xcolor}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
+\begin{document}
+\begin{tikzpicture}
+  \useasboundingbox (-1,-2) rectangle (10,8);
+
+  \pgfmathsetmacro{\progress}{\PARAM}
+
+  % 8 states (initial + 7 selection steps), indexed 0..7
+  \pgfmathsetmacro{\nstates}{8}
+  \pgfmathsetmacro{\state}{\progress * (\nstates - 1)}
+  \pgfmathtruncatemacro{\sLo}{floor(\state)}
+  \pgfmathtruncatemacro{\sHi}{min(\nstates - 1, ceil(\state))}
+  \pgfmathsetmacro{\interp}{\state - \sLo}
+
+  % Selection sort of [6,2,8,4,1,7,3,5]:
+  % State 0: [6,2,8,4,1,7,3,5]  (initial)
+  % State 1: [1,2,8,4,6,7,3,5]  (select min=1, swap pos 0,4)
+  % State 2: [1,2,8,4,6,7,3,5]  (select min=2, already at pos 1)
+  % State 3: [1,2,3,4,6,7,8,5]  (select min=3, swap pos 2,6)
+  % State 4: [1,2,3,4,6,7,8,5]  (select min=4, already at pos 3)
+  % State 5: [1,2,3,4,5,7,8,6]  (select min=5, swap pos 4,7)
+  % State 6: [1,2,3,4,5,6,8,7]  (select min=6, swap pos 5,7)
+  % State 7: [1,2,3,4,5,6,7,8]  (select min=7, swap pos 6,7)
+
+  % Sorted boundary: after step k, leftmost k elements are sorted
+  \ifnum\sLo>0
+    \fill[horseshoe!8] (-0.3, -0.15) rectangle ({\sLo * 1.15 + 0.05}, 6.6);
+  \fi
+
+  % Draw each bar
+  \foreach \val/\slots in {
+    1/{4,0,0,0,0,0,0,0},
+    2/{1,1,1,1,1,1,1,1},
+    3/{6,6,6,2,2,2,2,2},
+    4/{3,3,3,3,3,3,3,3},
+    5/{7,7,7,7,7,4,4,4},
+    6/{0,4,4,4,4,7,5,5},
+    7/{5,5,5,5,5,5,7,6},
+    8/{2,2,2,6,6,6,6,7}%
+  } {
+    \pgfmathparse{array({\slots}, \sLo)}
+    \pgfmathsetmacro{\posLo}{\pgfmathresult}
+    \pgfmathparse{array({\slots}, \sHi)}
+    \pgfmathsetmacro{\posHi}{\pgfmathresult}
+    \pgfmathsetmacro{\xpos}{(\posLo * (1 - \interp) + \posHi * \interp) * 1.15 + 0.5}
+    \pgfmathsetmacro{\barht}{\val * 0.75}
+
+    \pgfmathtruncatemacro{\cpct}{min(100, max(0, \val * 12.5))}
+    \fill[garnet!\cpct!atlantic] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
+    \draw[black!70, thick] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
+    \node[above, font=\small\bfseries] at (\xpos, \barht) {\val};
+  }
+
+  % Ground line
+  \draw[thick] (-0.3, 0) -- (9.3, 0);
+
+  % Title
+  \node[font=\large\bfseries, garnet] at (4.5, 7.2) {Selection Sort};
+
+  % Step indicator
+  \pgfmathtruncatemacro{\stepnum}{\sLo}
+  \ifnum\stepnum=0
+    \node[font=\small] at (4.5, -1) {Initial array};
+  \else
+    \ifnum\stepnum>6
+      \node[font=\small, horseshoe] at (4.5, -1) {Sorted!};
+    \else
+      \node[font=\small] at (4.5, -1) {Step \stepnum\ of 7 --- select minimum};
+    \fi
+  \fi
+\end{tikzpicture}
+\end{document}
