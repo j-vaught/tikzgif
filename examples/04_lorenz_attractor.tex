@@ -1,15 +1,16 @@
-% Example 04: Lorenz Attractor Trace
-% A point traces the Lorenz attractor using Euler integration in pgfmath.
-% We draw only the last N trail points plus the current position.
-% Parameter: \PARAM (integer step count, 0 to 2000)
-% Range: 0 to 2000, recommended 200 frames (step by 10)
+% Example 04: Lorenz Attractor — Sensitive Dependence on Initial Conditions
+% Two trajectories with nearly identical starting points (x0=1.000 vs x0=1.001)
+% diverge chaotically, demonstrating the butterfly effect.
+% Full paths are drawn using pgf path accumulation in a \loop (no group boundaries).
+% Parameter: \PARAM (integer step count, 0 to 1500)
+% Range: 0 to 1500, recommended 150 frames (step by 10)
 % Difficulty: advanced
-% Features demonstrated: Euler integration in pgfmath, 3D projection, trail
+% Features demonstrated: Euler integration, 3D projection, pgf path accumulation
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
 
-% USC Brand Colors
+% Brand Colors
 \definecolor{garnet}{HTML}{73000A}
 \definecolor{rose}{HTML}{CC2E40}
 \definecolor{atlantic}{HTML}{466A9F}
@@ -20,63 +21,105 @@
 \definecolor{warmgrey}{HTML}{676156}
 \definecolor{sandstorm}{HTML}{FFF2E3}
 
+\newcount\stepcount
+
 \begin{document}
 \begin{tikzpicture}
-  \useasboundingbox (-7,-6) rectangle (7,7);
+  \useasboundingbox (-5.5,-6.5) rectangle (5.5,7.5);
 
   % Lorenz parameters
   \pgfmathsetmacro{\sig}{10}
   \pgfmathsetmacro{\rh}{28}
   \pgfmathsetmacro{\bet}{2.667}
-  \pgfmathsetmacro{\dt}{0.005}
+  \pgfmathsetmacro{\dt}{0.008}
   \pgfmathtruncatemacro{\nsteps}{\PARAM}
 
-  % Initial conditions
-  \pgfmathsetmacro{\lx}{1}
-  \pgfmathsetmacro{\ly}{1}
-  \pgfmathsetmacro{\lz}{1}
+  % Projection: 3D oblique to 2D
+  \pgfmathsetmacro{\sx}{0.11}
+  \pgfmathsetmacro{\sy}{-0.05}
+  \pgfmathsetmacro{\sz}{0.16}
+  \pgfmathsetmacro{\zoff}{-4.0}
 
-  % 3D to 2D projection (simple oblique)
-  \newcommand{\projx}[3]{\pgfmathsetmacro{\projresultx}{(#1)*0.12 + (#2)*(-0.06)}}
-  \newcommand{\projy}[3]{\pgfmathsetmacro{\projresulty}{(#3)*0.18 - 4.5}}
+  % Background z-axis
+  \draw[->, warmgrey!30, thin] (0,\zoff) -- (0,5.8)
+    node[above, font=\tiny, warmgrey] {$z$};
 
-  % Axes
-  \draw[->, warmgrey!40, thin] (0,-4.5) -- (0,5.5) node[above, font=\tiny] {$z$};
+  %% ========== TRAJECTORY A: x0 = 1.000 (garnet) ==========
+  \pgfmathsetmacro{\ax}{1.0}
+  \pgfmathsetmacro{\ay}{1.0}
+  \pgfmathsetmacro{\az}{1.0}
+  \pgfmathsetmacro{\apx}{\ax*\sx + \ay*\sy}
+  \pgfmathsetmacro{\apy}{\az*\sz + \zoff}
+  \pgfpathmoveto{\pgfpointxy{\apx}{\apy}}
 
-  % Run Euler integration, storing the last 30 positions for the trail
-  \pgfmathtruncatemacro{\traillen}{30}
-  \pgfmathtruncatemacro{\maxstep}{min(\nsteps, 2000)}
+  \stepcount=0
+  \ifnum\nsteps>0\relax
+    \loop
+      \advance\stepcount by 1
+      \pgfmathsetmacro{\dx}{\sig * (\ay - \ax) * \dt}
+      \pgfmathsetmacro{\dy}{(\ax * (\rh - \az) - \ay) * \dt}
+      \pgfmathsetmacro{\dz}{(\ax * \ay - \bet * \az) * \dt}
+      \pgfmathsetmacro{\ax}{\ax + \dx}
+      \pgfmathsetmacro{\ay}{\ay + \dy}
+      \pgfmathsetmacro{\az}{\az + \dz}
+      \pgfmathsetmacro{\apx}{\ax*\sx + \ay*\sy}
+      \pgfmathsetmacro{\apy}{\az*\sz + \zoff}
+      \pgfpathlineto{\pgfpointxy{\apx}{\apy}}
+    \ifnum\stepcount<\nsteps\relax \repeat
+  \fi
 
-  % We only draw trail dots, not a continuous curve, for reliability
-  \foreach \step in {1,...,\maxstep} {
-    \pgfmathsetmacro{\dx}{\sig * (\ly - \lx) * \dt}
-    \pgfmathsetmacro{\dy}{(\lx * (\rh - \lz) - \ly) * \dt}
-    \pgfmathsetmacro{\dz}{(\lx * \ly - \bet * \lz) * \dt}
-    \pgfmathsetmacro{\lx}{\lx + \dx}
-    \pgfmathsetmacro{\ly}{\ly + \dy}
-    \pgfmathsetmacro{\lz}{\lz + \dz}
-    \global\let\lx\lx
-    \global\let\ly\ly
-    \global\let\lz\lz
+  \pgfsetlinewidth{0.6pt}
+  \pgfsetstrokecolor{garnet}
+  \pgfsetstrokeopacity{0.75}
+  \pgfusepath{stroke}
 
-    % Draw trail dot for the last 'traillen' steps
-    \pgfmathtruncatemacro{\remaining}{\maxstep - \step}
-    \ifnum\remaining<\traillen\relax
-      \pgfmathsetmacro{\opac}{1.0 - \remaining / \traillen}
-      \projx{\lx}{\ly}{\lz}
-      \projy{\lx}{\ly}{\lz}
-      \pgfmathtruncatemacro{\rcolor}{min(100, max(0, \opac * 100))}
-      \fill[garnet!\rcolor!atlantic, opacity=\opac]
-        (\projresultx, \projresulty) circle (1pt);
-    \fi
-  }
+  % Endpoint dot
+  \fill[white] (\apx, \apy) circle (3.5pt);
+  \fill[garnet] (\apx, \apy) circle (2.5pt);
 
-  % Current point (bright dot)
-  \projx{\lx}{\ly}{\lz}
-  \projy{\lx}{\ly}{\lz}
-  \fill[white] (\projresultx, \projresulty) circle (3pt);
-  \fill[garnet] (\projresultx, \projresulty) circle (2pt);
+  %% ========== TRAJECTORY B: x0 = 1.001 (atlantic) ==========
+  \pgfmathsetmacro{\bx}{1.001}
+  \pgfmathsetmacro{\by}{1.0}
+  \pgfmathsetmacro{\bz}{1.0}
+  \pgfmathsetmacro{\bpx}{\bx*\sx + \by*\sy}
+  \pgfmathsetmacro{\bpy}{\bz*\sz + \zoff}
+  \pgfpathmoveto{\pgfpointxy{\bpx}{\bpy}}
 
-  \node[below, font=\small] at (0,-4.8) {Step \maxstep};
+  \stepcount=0
+  \ifnum\nsteps>0\relax
+    \loop
+      \advance\stepcount by 1
+      \pgfmathsetmacro{\dx}{\sig * (\by - \bx) * \dt}
+      \pgfmathsetmacro{\dy}{(\bx * (\rh - \bz) - \by) * \dt}
+      \pgfmathsetmacro{\dz}{(\bx * \by - \bet * \bz) * \dt}
+      \pgfmathsetmacro{\bx}{\bx + \dx}
+      \pgfmathsetmacro{\by}{\by + \dy}
+      \pgfmathsetmacro{\bz}{\bz + \dz}
+      \pgfmathsetmacro{\bpx}{\bx*\sx + \by*\sy}
+      \pgfmathsetmacro{\bpy}{\bz*\sz + \zoff}
+      \pgfpathlineto{\pgfpointxy{\bpx}{\bpy}}
+    \ifnum\stepcount<\nsteps\relax \repeat
+  \fi
+
+  \pgfsetlinewidth{0.6pt}
+  \pgfsetstrokecolor{atlantic}
+  \pgfsetstrokeopacity{0.75}
+  \pgfusepath{stroke}
+
+  % Endpoint dot
+  \fill[white] (\bpx, \bpy) circle (3.5pt);
+  \fill[atlantic] (\bpx, \bpy) circle (2.5pt);
+
+  %% ========== LEGEND ==========
+  \fill[garnet] (-4.5, 6.8) circle (2.5pt);
+  \node[right, font=\footnotesize] at (-4.2, 6.8) {$x_0 = 1.000$};
+  \fill[atlantic] (-4.5, 6.2) circle (2.5pt);
+  \node[right, font=\footnotesize] at (-4.2, 6.2) {$x_0 = 1.001$};
+
+  %% ========== TIME DISPLAY ==========
+  \pgfmathsetmacro{\tval}{\nsteps * \dt}
+  \node[font=\small, warmgrey] at (0,-5.8)
+    {$t = \pgfmathprintnumber[fixed, precision=1]{\tval}$};
+
 \end{tikzpicture}
 \end{document}
