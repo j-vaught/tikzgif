@@ -97,29 +97,25 @@
     % Analytical convolution of rect[0,2] * triangle[-1,1]:
     % Piecewise function computed analytically:
     % t in [-1, 0]:  0.5*(t+1)^2
-    % t in [0, 1]:   -t^2 + t + 0.5
-    % t in [1, 2]:   t^2 - 3*t + 2.5
-    % ... simplified: we approximate numerically
+    % t in [0, 2]:   -0.5*t^2 + t + 0.5  (peak of 1 at t=1)
+    % t in [2, 3]:   0.5*(3-t)^2
     \addplot[warmgrey!60, very thick, smooth] {
       (x >= -1 && x < 0) * (0.5*(x+1)^2) +
-      (x >= 0  && x < 1) * (-x^2 + x + 0.5) +
-      (x >= 1  && x < 2) * (x^2 - 3*x + 2.5) +
+      (x >= 0  && x < 2) * (-0.5*x*x + x + 0.5) +
       (x >= 2  && x < 3) * (0.5*(3 - x)^2)
     };
 
     % Traced portion up to current t
     \addplot[garnet, very thick, smooth, domain=-3:\tshift] {
       (x >= -1 && x < 0) * (0.5*(x+1)^2) +
-      (x >= 0  && x < 1) * (-x^2 + x + 0.5) +
-      (x >= 1  && x < 2) * (x^2 - 3*x + 2.5) +
+      (x >= 0  && x < 2) * (-0.5*x*x + x + 0.5) +
       (x >= 2  && x < 3) * (0.5*(3 - x)^2)
     };
 
     % Current point marker
     \pgfmathsetmacro{\convval}{%
       (\tshift >= -1 && \tshift < 0) * (0.5*(\tshift+1)^2) +
-      (\tshift >= 0  && \tshift < 1) * (-\tshift*\tshift + \tshift + 0.5) +
-      (\tshift >= 1  && \tshift < 2) * (\tshift*\tshift - 3*\tshift + 2.5) +
+      (\tshift >= 0  && \tshift < 2) * (-0.5*\tshift*\tshift + \tshift + 0.5) +
       (\tshift >= 2  && \tshift < 3) * (0.5*(3 - \tshift)^2)
     }
     \addplot[only marks, mark=*, mark size=3pt, garnet]
