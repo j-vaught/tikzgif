@@ -110,11 +110,11 @@
   \drawgear{(cB)}{\pitchB}{\outerB}{\rootB}{\teethB}{\angleB + \meshOffset}{atlantic}
   \drawgear{(cA)}{\pitchA}{\outerA}{\rootA}{\teethA}{\angleA}{garnet}
 
-  % Rotation arrows
+  % Rotation arrows (A = CCW, B = CW)
   \draw[->, garnet, thick]
-    ([shift={(130:{\outerA + 0.35})}]cA) arc (130:50:{\outerA + 0.35});
+    ([shift={(50:{\outerA + 0.35})}]cA) arc (50:130:{\outerA + 0.35});
   \draw[->, atlantic, thick]
-    ([shift={(50:{\outerB + 0.35})}]cB) arc (50:130:{\outerB + 0.35});
+    ([shift={(130:{\outerB + 0.35})}]cB) arc (130:50:{\outerB + 0.35});
 
   % Labels
   \node[below, font=\small\bfseries, garnet!80!black] at ([yshift={-\outerA cm - 0.5cm}]cA)
