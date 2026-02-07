@@ -1,5 +1,5 @@
 % Example 04: Lorenz Attractor — Sensitive Dependence on Initial Conditions
-% Two side-by-side panels with nearly identical starting points (x0=1.000 vs x0=1.001)
+% Two side-by-side panels with nearly identical starting points (x0=1.000 vs x0=1.01)
 % diverge chaotically, demonstrating the butterfly effect.
 % Full paths drawn via pgf path accumulation in \loop (no group boundaries).
 % Parameter: \PARAM (integer step count, 0 to 2000)
@@ -100,7 +100,7 @@
     \draw[->, warmgrey!30, thin] (0,\zoff) -- (0,5.5)
       node[above, font=\tiny, warmgrey] {$z$};
 
-    \pgfmathsetmacro{\bx}{1.001}
+    \pgfmathsetmacro{\bx}{1.01}
     \pgfmathsetmacro{\by}{1.0}
     \pgfmathsetmacro{\bz}{1.0}
     \pgfmathsetmacro{\bpx}{\bx*\sx + \by*\sy}
@@ -136,7 +136,7 @@
     \fill[atlantic] (\bpx, \bpy) circle (2.5pt);
 
     % Label
-    \node[font=\footnotesize, atlantic] at (0,-5.0) {$x_0 = 1.001$};
+    \node[font=\footnotesize, atlantic] at (0,-5.0) {$x_0 = 1.01$};
   \end{scope}
 
 \end{tikzpicture}
