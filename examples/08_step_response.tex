@@ -25,7 +25,7 @@
 \begin{document}
 \begin{tikzpicture}
 
-\useasboundingbox (-0.8, -6.8) rectangle (15.2, 4.2);
+\useasboundingbox (-0.8, -3.6) rectangle (15.2, 4.2);
 
 % ── Global time parameter ──
 \pgfmathsetmacro{\tNow}{\PARAM}
@@ -73,6 +73,9 @@
 \def\colAx{0.5}
 \def\colBx{5.5}
 \def\colCx{10.5}
+\def\plotAx{1.4}
+\def\plotBx{6.4}
+\def\plotCx{11.4}
 \pgfmathsetmacro{\colW}{4.2}
 
 % ── Diagram scale: 1 unit of y(t) = 1.2cm displacement ──
@@ -80,9 +83,10 @@
 
 % ════════════════════════════════════════════════════════════════
 %  MACRO: Draw one spring-mass-damper diagram
-%  #1 = x-offset, #2 = color, #3 = y(t) value, #4 = label, #5 = params text
+%  #1 = x-offset, #2 = color, #3 = y(t) value, #4 = label,
+%  #5 = params text, #6 = yMax (for piston interpolation)
 % ════════════════════════════════════════════════════════════════
-\newcommand{\drawSMD}[5]{%
+\newcommand{\drawSMD}[6]{%
   \begin{scope}[shift={(#1, 0)}]
     % Column label
     \node[font=\bfseries\small, #2] at (2.1, 4.0) {#4};
@@ -94,11 +98,15 @@
     \pgfmathsetmacro{\massDisp}{#3 * \dispScale}
     \pgfmathsetmacro{\massX}{\eqX + \massDisp}
     \pgfmathsetmacro{\massW}{0.6}
-    \pgfmathsetmacro{\massH}{0.9}
+    \pgfmathsetmacro{\massH}{1.2}
+    \pgfmathsetmacro{\massCY}{2.2}
 
     % Heights for spring and damper
-    \pgfmathsetmacro{\springY}{2.7}
-    \pgfmathsetmacro{\damperY}{1.7}
+    \pgfmathsetmacro{\springY}{\massCY + 0.35}
+    \pgfmathsetmacro{\damperY}{\massCY - 0.35}
+
+    % Mass left edge
+    \pgfmathsetmacro{\massLeft}{\massX - \massW/2}
 
     % ── Wall (hatched) ──
     \draw[very thick, black!80] (\wallX, 1.2) -- (\wallX, 3.2);
@@ -106,55 +114,63 @@
       \draw[thin, warmgrey] (\wallX, \yy) -- ({\wallX - 0.25}, {\yy + 0.2});
     }
 
-    % ── Equilibrium dashed line ──
-    \draw[dashed, warmgrey!60, thin] (\eqX, 1.2) -- (\eqX, 3.2);
-
     % ── Spring (zigzag from wall to mass) ──
-    \pgfmathsetmacro{\springLen}{\massX - \wallX - \massW/2}
+    \pgfmathsetmacro{\springLen}{\massLeft - \wallX}
     \pgfmathsetmacro{\segLen}{max(\springLen/6*28.3465, 4)}
     \draw[thick, black!70, decorate, decoration={zigzag, segment length=\segLen pt, amplitude=2.5pt}]
-      (\wallX, \springY) -- ({\massX - \massW/2}, \springY);
+      (\wallX, \springY) -- (\massLeft, \springY);
 
-    % ── Damper (two-rail piston) ──
-    \pgfmathsetmacro{\damperEnd}{\massX - \massW/2}
-    \pgfmathsetmacro{\damperMid}{(\wallX + \damperEnd)/2}
-    % Cylinder body (from wall)
-    \draw[thick, black!70] (\wallX, \damperY) -- (\damperMid, \damperY);
-    \draw[thick, black!70] ({\damperMid - 0.05}, {\damperY - 0.15}) rectangle ({\damperMid + 0.35}, {\damperY + 0.15});
-    % Piston rod (from mass side)
-    \draw[thick, black!70] (\damperEnd, \damperY) -- ({\damperMid + 0.15}, \damperY);
+    % ── Damper (proper dashpot with cylinder and piston) ──
+    \pgfmathsetmacro{\cylW}{0.6}
+    \pgfmathsetmacro{\cylH}{0.15}
+    \pgfmathsetmacro{\rodLen}{0.45}
+    \pgfmathsetmacro{\margin}{0.04}
+
+    % Cylinder position (fixed to wall side)
+    \pgfmathsetmacro{\cylLeft}{\wallX + \rodLen}
+    \pgfmathsetmacro{\cylRight}{\cylLeft + \cylW}
+
+    % Rod from wall to cylinder closed end
+    \draw[thick, black!70] (\wallX, \damperY) -- (\cylLeft, \damperY);
+
+    % Cylinder body (closed on left, open on right)
+    \draw[thick, black!70]
+      (\cylLeft, {\damperY - \cylH}) -- (\cylLeft, {\damperY + \cylH})
+      (\cylLeft, {\damperY + \cylH}) -- (\cylRight, {\damperY + \cylH})
+      (\cylLeft, {\damperY - \cylH}) -- (\cylRight, {\damperY - \cylH});
+
+    % Piston head position: interpolates inside cylinder based on y/yMax
+    \pgfmathsetmacro{\pistonFrac}{#3 / #6}
+    \pgfmathsetmacro{\pistonX}{\cylLeft + \margin + \pistonFrac * (\cylW - 2*\margin)}
+
+    % Piston head (vertical bar inside cylinder)
+    \draw[very thick, black!80]
+      (\pistonX, {\damperY - \cylH + 0.02}) -- (\pistonX, {\damperY + \cylH - 0.02});
+
+    % Piston rod from piston head to mass
+    \draw[thick, black!70] (\pistonX, \damperY) -- (\massLeft, \damperY);
 
     % ── Mass block ──
     \fill[#2, opacity=0.85]
-      ({\massX - \massW/2}, {\springY - \massH/2 - 0.15})
+      (\massLeft, {\massCY - \massH/2})
       rectangle
-      ({\massX + \massW/2}, {\springY + \massH/2 - 0.15});
+      ({\massX + \massW/2}, {\massCY + \massH/2});
     \draw[thick, black!80]
-      ({\massX - \massW/2}, {\springY - \massH/2 - 0.15})
+      (\massLeft, {\massCY - \massH/2})
       rectangle
-      ({\massX + \massW/2}, {\springY + \massH/2 - 0.15});
-    \node[font=\bfseries\scriptsize, white] at (\massX, {\springY - 0.15}) {$m$};
+      ({\massX + \massW/2}, {\massCY + \massH/2});
+    \node[font=\bfseries\scriptsize, white] at (\massX, \massCY) {$m$};
 
-    % ── Connect damper to mass ──
-    \draw[thick, black!70]
-      ({\massX - \massW/2}, \damperY) -- ({\massX - \massW/2}, {\springY - \massH/2 - 0.15});
-
-    % ── Ground line ──
-    \draw[warmgrey, thin] ({\wallX - 0.3}, 1.1) -- ({\massX + \massW/2 + 0.6}, 1.1);
-
-    % ── Arrow showing displacement ──
-    \pgfmathsetmacro{\absMassDisp}{abs(\massDisp)}
-    \pgfmathparse{\absMassDisp > 0.08 ? 1 : 0}
-    \ifnum\pgfmathresult=1
-      \draw[->, thick, #2] (\eqX, 1.35) -- ({\massX}, 1.35);
-    \fi
+    % ── Spring/damper labels ──
+    \node[font=\tiny, black!60, above] at ({(\wallX + \massLeft)/2}, {\springY + 0.1}) {$k$};
+    \node[font=\tiny, black!60, below] at ({(\cylLeft + \cylRight)/2}, {\damperY - \cylH - 0.05}) {$c$};
   \end{scope}
 }%
 
 % ═══ Draw the three SMD diagrams ═══
-\drawSMD{\colAx}{garnet}{\yA}{Underdamped}{$k\!=\!25,\; m\!=\!1,\; c\!=\!2$}
-\drawSMD{\colBx}{atlantic}{\yB}{Critically Damped}{$k\!=\!25,\; m\!=\!1,\; c\!=\!10$}
-\drawSMD{\colCx}{congaree}{\yC}{Overdamped}{$k\!=\!25,\; m\!=\!1,\; c\!=\!20$}
+\drawSMD{\colAx}{garnet}{\yA}{Underdamped}{$k\!=\!25,\; m\!=\!1,\; c\!=\!2$}{1.53}
+\drawSMD{\colBx}{atlantic}{\yB}{Critically Damped}{$k\!=\!25,\; m\!=\!1,\; c\!=\!10$}{1.0}
+\drawSMD{\colCx}{congaree}{\yC}{Overdamped}{$k\!=\!25,\; m\!=\!1,\; c\!=\!20$}{1.0}
 
 % ════════════════════════════════════════════════════════════════
 %  BOTTOM ROW: Response plots
@@ -162,12 +178,12 @@
 
 % ── Plot 1: Underdamped ──
 \begin{axis}[
-  at={(\colAx cm, -5.6cm)}, anchor=south west,
+  at={(\plotAx cm, -2.4cm)}, anchor=south west,
   width=4.8cm, height=4.0cm,
   xmin=0, xmax=4, ymin=-0.05, ymax=1.65,
   xtick={0,1,2,3,4}, ytick={0,0.5,1.0,1.5},
   tick label style={font=\tiny},
-  ylabel={$y(t)$},
+  xlabel={$t$ (s)}, ylabel={$y(t)$},
   label style={font=\tiny},
   grid=major, grid style={warmgrey!20},
   axis line style={thin},
@@ -193,12 +209,12 @@
 
 % ── Plot 2: Critically Damped ──
 \begin{axis}[
-  at={(\colBx cm, -5.6cm)}, anchor=south west,
+  at={(\plotBx cm, -2.4cm)}, anchor=south west,
   width=4.8cm, height=4.0cm,
   xmin=0, xmax=4, ymin=-0.05, ymax=1.65,
   xtick={0,1,2,3,4}, ytick={0,0.5,1.0,1.5},
   tick label style={font=\tiny},
-  yticklabels={},
+  xlabel={$t$ (s)}, ylabel={$y(t)$},
   label style={font=\tiny},
   grid=major, grid style={warmgrey!20},
   axis line style={thin},
@@ -222,12 +238,12 @@
 
 % ── Plot 3: Overdamped ──
 \begin{axis}[
-  at={(\colCx cm, -5.6cm)}, anchor=south west,
+  at={(\plotCx cm, -2.4cm)}, anchor=south west,
   width=4.8cm, height=4.0cm,
   xmin=0, xmax=4, ymin=-0.05, ymax=1.65,
   xtick={0,1,2,3,4}, ytick={0,0.5,1.0,1.5},
   tick label style={font=\tiny},
-  yticklabels={},
+  xlabel={$t$ (s)}, ylabel={$y(t)$},
   label style={font=\tiny},
   grid=major, grid style={warmgrey!20},
   axis line style={thin},
@@ -249,12 +265,12 @@
   \fi
 \end{axis}
 
-% ── Shared x-axis label (bottom center) ──
-\node[font=\footnotesize, warmgrey] at (7.95, -6.45)
-  {$t$ (s)};
+% ── Vertical separator lines between columns ──
+\draw[warmgrey!40, thin] (5.25, -3.6) -- (5.25, 4.2);
+\draw[warmgrey!40, thin] (10.25, -3.6) -- (10.25, 4.2);
 
 % ── Time display (bottom right) ──
-\node[font=\footnotesize, anchor=east, warmgrey] at (15.0, -6.45)
+\node[font=\footnotesize, anchor=east, warmgrey] at (15.0, -3.25)
   {$t = \pgfmathprintnumber[fixed, precision=2]{\tNow}$ s};
 
 \end{tikzpicture}
