@@ -38,7 +38,8 @@
     \pgfmathsetmacro{\xpast}{\tpast * 10}
     % local time for bounce: frac(2*t)
     \pgfmathsetmacro{\tlocal}{2*\tpast - floor(2*\tpast)}
-    \pgfmathsetmacro{\ypast}{4 * 4 * \tlocal * (1 - \tlocal) + 0.35}
+    \pgfmathsetmacro{\trem}{max(0, min(1, (\tlocal - 0.05) / 0.9))}
+    \pgfmathsetmacro{\ypast}{4 * 4 * \trem * (1 - \trem) + 0.35}
     \pgfmathsetmacro{\opac}{0.35 * (1 - \k/16)}
     \pgfmathsetmacro{\sz}{0.28 * (1 - \k/20)}
     \fill[garnet, opacity=\opac] (\xpast, \ypast) circle (\sz);
@@ -48,7 +49,9 @@
   \pgfmathsetmacro{\xpos}{\PARAM * 10}
   % Two bounces: local time wraps twice in [0,1]
   \pgfmathsetmacro{\tlocal}{2*\PARAM - floor(2*\PARAM)}
-  \pgfmathsetmacro{\ypos}{4 * 4 * \tlocal * (1 - \tlocal) + 0.35}
+  % Dwell on ground: clamp first/last 5% of each bounce to ground level
+  \pgfmathsetmacro{\trem}{max(0, min(1, (\tlocal - 0.05) / 0.9))}
+  \pgfmathsetmacro{\ypos}{4 * 4 * \trem * (1 - \trem) + 0.35}
 
   % Ball
   \fill[garnet] (\xpos, \ypos) circle (0.35);
