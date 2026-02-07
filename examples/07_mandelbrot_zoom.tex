@@ -1,15 +1,17 @@
 % Example 07: Mandelbrot Zoom
 % Progressive zoom into the Mandelbrot set boundary near the Seahorse Valley.
-% Uses raw pgfmath iteration to compute escape-time for each pixel.
+% Uses LuaLaTeX for fast pixel-level computation (160x120, 200 iterations).
 % Parameter: \PARAM (zoom level, 0 to 1 representing log-scale zoom)
 % Range: 0 to 1, recommended 60 frames
+% Engine: lualatex
 % Difficulty: advanced
-% Features demonstrated: heavy computation, pixel-level rendering, pgfmath loops
+% Features demonstrated: Lua computation, pixel rendering, fractal zoom
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
+\usepackage{luacode}
 
-% USC Brand Colors
+% Brand Colors
 \definecolor{garnet}{HTML}{73000A}
 \definecolor{rose}{HTML}{CC2E40}
 \definecolor{atlantic}{HTML}{466A9F}
@@ -20,74 +22,140 @@
 \definecolor{warmgrey}{HTML}{676156}
 \definecolor{sandstorm}{HTML}{FFF2E3}
 
+\begin{luacode*}
+function mandelbrot_frame(param)
+    -- Zoom center: Seahorse Valley
+    local cx, cy = -0.745, 0.186
+
+    -- Exponential zoom: halfwidth goes from 2.0 to 0.002
+    local halfwidth = 2.0 * math.exp(-param * math.log(1000))
+
+    local xlo = cx - halfwidth
+    local xhi = cx + halfwidth
+    local ylo = cy - halfwidth * 0.75
+    local yhi = cy + halfwidth * 0.75
+
+    -- Resolution
+    local nx, ny = 160, 120
+    local maxiter = 200
+
+    -- TikZ canvas size
+    local canvas_w, canvas_h = 8.0, 6.0
+    local pw = canvas_w / nx
+    local ph = canvas_h / ny
+
+    local dx = (xhi - xlo) / nx
+    local dy = (yhi - ylo) / ny
+
+    -- Color palette: smooth gradient through brand colors
+    -- Map iteration count to RGB using a multi-stop gradient
+    local function iter_to_rgb(iter, maxiter_val)
+        if iter >= maxiter_val then
+            return 0, 0, 0  -- black for interior
+        end
+
+        -- Smooth coloring using normalized iteration
+        local t = iter / maxiter_val
+        -- Cycle through color stops multiple times for richness
+        local phase = t * 6.0
+        local seg = math.floor(phase) % 6
+        local frac = phase - math.floor(phase)
+
+        local r, g, b
+        if seg == 0 then
+            -- congaree -> atlantic
+            r = 31  + frac * (70 - 31)
+            g = 65  + frac * (106 - 65)
+            b = 77  + frac * (159 - 77)
+        elseif seg == 1 then
+            -- atlantic -> sandstorm
+            r = 70  + frac * (255 - 70)
+            g = 106 + frac * (242 - 106)
+            b = 159 + frac * (227 - 159)
+        elseif seg == 2 then
+            -- sandstorm -> honeycomb
+            r = 255 + frac * (164 - 255)
+            g = 242 + frac * (145 - 242)
+            b = 227 + frac * (55 - 227)
+        elseif seg == 3 then
+            -- honeycomb -> garnet
+            r = 164 + frac * (115 - 164)
+            g = 145 + frac * (0 - 145)
+            b = 55  + frac * (10 - 55)
+        elseif seg == 4 then
+            -- garnet -> rose
+            r = 115 + frac * (204 - 115)
+            g = 0   + frac * (46 - 0)
+            b = 10  + frac * (64 - 10)
+        else
+            -- rose -> congaree
+            r = 204 + frac * (31 - 204)
+            g = 46  + frac * (65 - 46)
+            b = 64  + frac * (77 - 64)
+        end
+
+        return math.floor(r + 0.5), math.floor(g + 0.5), math.floor(b + 0.5)
+    end
+
+    -- Collect pixels by color to batch fill commands
+    local color_buckets = {}
+
+    for px = 0, nx - 1 do
+        local cr = xlo + (px + 0.5) * dx
+        for py = 0, ny - 1 do
+            local ci = ylo + (py + 0.5) * dy
+
+            -- Mandelbrot iteration
+            local zr, zi = 0.0, 0.0
+            local iter = maxiter
+            for k = 1, maxiter do
+                local zr2 = zr * zr
+                local zi2 = zi * zi
+                if zr2 + zi2 > 4.0 then
+                    iter = k
+                    break
+                end
+                zi = 2.0 * zr * zi + ci
+                zr = zr2 - zi2 + cr
+            end
+
+            local r, g, b = iter_to_rgb(iter, maxiter)
+            local color_key = string.format("%d,%d,%d", r, g, b)
+
+            if not color_buckets[color_key] then
+                color_buckets[color_key] = {}
+            end
+            table.insert(color_buckets[color_key], {px, py})
+        end
+    end
+
+    -- Emit TikZ fill commands, one per unique color
+    for color_key, pixels in pairs(color_buckets) do
+        tex.sprint(string.format(
+            "\\definecolor{px}{RGB}{%s}", color_key))
+        tex.sprint("\\fill[px] ")
+        for _, p in ipairs(pixels) do
+            local x1 = p[1] * pw
+            local y1 = p[2] * ph
+            local x2 = (p[1] + 1) * pw
+            local y2 = (p[2] + 1) * ph
+            tex.sprint(string.format(
+                "(%.4f,%.4f) rectangle (%.4f,%.4f) ", x1, y1, x2, y2))
+        end
+        tex.sprint(";")
+    end
+
+    -- Store zoom level for label
+    _G.mandelbrot_zoom = string.format("%.0f", 1.0 / halfwidth)
+end
+\end{luacode*}
+
 \begin{document}
 \begin{tikzpicture}
-  % Zoom center: (-0.745, 0.186) -- Seahorse Valley
-  \pgfmathsetmacro{\cx}{-0.745}
-  \pgfmathsetmacro{\cy}{0.186}
+  \useasboundingbox (0,0) rectangle (8,6);
 
-  % Zoom factor: exponential in PARAM
-  % At PARAM=0, window half-width=2.0; at PARAM=1, half-width=0.002
-  \pgfmathsetmacro{\halfwidth}{2.0 * exp(-\PARAM * ln(1000))}
-
-  \pgfmathsetmacro{\xlo}{\cx - \halfwidth}
-  \pgfmathsetmacro{\xhi}{\cx + \halfwidth}
-  \pgfmathsetmacro{\ylo}{\cy - \halfwidth * 0.75}
-  \pgfmathsetmacro{\yhi}{\cy + \halfwidth * 0.75}
-
-  % Resolution: 40x30 pixels (kept small for compilation speed)
-  \pgfmathtruncatemacro{\nx}{40}
-  \pgfmathtruncatemacro{\ny}{30}
-  \pgfmathsetmacro{\dx}{(\xhi - \xlo) / \nx}
-  \pgfmathsetmacro{\dy}{(\yhi - \ylo) / \ny}
-
-  \pgfmathtruncatemacro{\maxiter}{30}
-
-  % Pixel size in TikZ coordinates
-  \pgfmathsetmacro{\pw}{8.0 / \nx}
-  \pgfmathsetmacro{\ph}{6.0 / \ny}
-
-  \foreach \px in {0,...,\numexpr\nx-1} {
-    \foreach \py in {0,...,\numexpr\ny-1} {
-      % Map pixel to complex plane
-      \pgfmathsetmacro{\cr}{\xlo + \px * \dx}
-      \pgfmathsetmacro{\ci}{\ylo + \py * \dy}
-
-      % Mandelbrot iteration
-      \pgfmathsetmacro{\zr}{0}
-      \pgfmathsetmacro{\zi}{0}
-      \pgfmathtruncatemacro{\iter}{0}
-      \pgfmathtruncatemacro{\escaped}{0}
-
-      \foreach \k in {1,...,\maxiter} {
-        \ifnum\escaped=0
-          \pgfmathsetmacro{\zrnew}{\zr*\zr - \zi*\zi + \cr}
-          \pgfmathsetmacro{\zinew}{2*\zr*\zi + \ci}
-          \pgfmathsetmacro{\zr}{\zrnew}
-          \pgfmathsetmacro{\zi}{\zinew}
-          \global\let\zr\zr
-          \global\let\zi\zi
-          \pgfmathsetmacro{\mag}{\zr*\zr + \zi*\zi}
-          \ifdim\mag pt>4pt
-            \pgfmathtruncatemacro{\iter}{\k}
-            \global\let\iter\iter
-            \pgfmathtruncatemacro{\escaped}{1}
-            \global\let\escaped\escaped
-          \fi
-        \fi
-      }
-
-      % Color mapping
-      \ifnum\escaped=0
-        \fill[black]
-          ({\px * \pw}, {\py * \ph}) rectangle ({(\px+1) * \pw}, {(\py+1) * \ph});
-      \else
-        \pgfmathtruncatemacro{\hue}{mod(\iter * 12, 100)}
-        \fill[garnet!\hue!atlantic]
-          ({\px * \pw}, {\py * \ph}) rectangle ({(\px+1) * \pw}, {(\py+1) * \ph});
-      \fi
-    }
-  }
+  % Render Mandelbrot via Lua
+  \directlua{mandelbrot_frame(\PARAM)}
 
   % Border
   \draw[white, thick] (0,0) rectangle (8,6);
@@ -95,7 +163,6 @@
   % Zoom level label
   \node[white, fill=black, fill opacity=0.6, text opacity=1, font=\small,
         inner sep=2pt, anchor=north west] at (0.1, 5.9)
-    {Zoom: $\times\pgfmathparse{1/\halfwidth}\pgfmathprintnumber[
-      fixed, precision=0]{\pgfmathresult}$};
+    {Zoom: $\times\directlua{tex.sprint(_G.mandelbrot_zoom)}$};
 \end{tikzpicture}
 \end{document}
