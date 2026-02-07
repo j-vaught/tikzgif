@@ -1,16 +1,17 @@
-% Example 08: Control System Step Response
-% Second-order underdamped system step response with varying damping ratio.
-% Transfer function: G(s) = wn^2 / (s^2 + 2*zeta*wn*s + wn^2)
-% Parameter: \PARAM (damping ratio zeta, 0.05 to 1.0)
-% Range: 0.05 to 1.0, recommended 40 frames
-% Difficulty: intermediate
-% Features demonstrated: pgfplots, mathematical modeling, engineering visualization
+% Example 08: Spring-Mass-Damper Step Response Comparison
+% Three SMD systems side by side: underdamped, critically damped, overdamped.
+% Each column has a physical diagram (top) and progressive response plot (bottom).
+% Parameter: \PARAM (time in seconds, 0 to 4)
+% Range: 0 to 4, recommended 60 frames at 30fps
+% Difficulty: advanced
+% Features demonstrated: mechanical diagrams, decorations, pgfplots, step response
 \documentclass[tikz]{standalone}
 \usepackage{pgfplots}
-\usepackage{xcolor}
+\usepackage{amsmath}
 \pgfplotsset{compat=1.18}
+\usetikzlibrary{decorations.pathmorphing, decorations.markings, calc}
 
-% USC Brand Colors
+% Brand Colors
 \definecolor{garnet}{HTML}{73000A}
 \definecolor{rose}{HTML}{CC2E40}
 \definecolor{atlantic}{HTML}{466A9F}
@@ -23,55 +24,238 @@
 
 \begin{document}
 \begin{tikzpicture}
-  \pgfmathsetmacro{\zeta}{\PARAM}
-  \pgfmathsetmacro{\wn}{5}
-  \pgfmathsetmacro{\wdamp}{\wn * sqrt(max(1 - \zeta*\zeta, 0.001))}
-  \pgfmathsetmacro{\overshoot}{exp(-\zeta * 3.14159 / sqrt(max(1-\zeta*\zeta, 0.001)))}
-  \pgfmathsetmacro{\ospct}{\overshoot * 100}
-  \pgfmathsetmacro{\osline}{1 + \overshoot}
 
-  \begin{axis}[
-    width=11cm, height=6.5cm,
-    domain=0:5,
-    samples=300,
-    axis lines=left,
-    xlabel={Time (s)},
-    ylabel={$y(t)$},
-    ymin=-0.1, ymax=2.0,
-    xmin=0, xmax=5,
-    grid=major,
-    grid style={warmgrey!25},
-    title={Step Response: $\zeta = \pgfmathprintnumber[fixed, precision=2]{\zeta}$},
-    every axis title/.style={at={(0.5,1.05)}, font=\large},
-    legend pos=south east,
-    legend style={font=\small},
-  ]
-    % Step response of second-order system
-    \addplot[garnet, very thick] {
-      1 - exp(-\zeta * \wn * x) / sqrt(max(1 - \zeta*\zeta, 0.001))
-        * sin(deg(\wdamp * x) + acos(\zeta))
-    };
-    \addlegendentry{$y(t)$}
+\useasboundingbox (-0.8, -6.8) rectangle (15.2, 4.2);
 
-    % Reference line at y=1
-    \addplot[dashed, atlantic, thin] {1};
-    \addlegendentry{Setpoint}
+% ── Global time parameter ──
+\pgfmathsetmacro{\tNow}{\PARAM}
+\pgfmathsetmacro{\wn}{5}
 
-    % Overshoot line
-    \addplot[dotted, black!40, thin] {\osline};
+% Precompute clamped time for domain endpoint (min of tNow and 4, but at least 0.01)
+\pgfmathsetmacro{\tEnd}{max(min(\tNow, 4), 0.01)}
+% Clamp for dot position
+\pgfmathsetmacro{\tDot}{min(\tNow, 4)}
 
-    % 2% settling band
-    \fill[horseshoe!10, opacity=0.3] (axis cs:0, 0.98) rectangle (axis cs:5, 1.02);
-  \end{axis}
+% ── System parameters ──
+% System 1: Underdamped  (zeta=0.2)
+\pgfmathsetmacro{\zetaA}{0.2}
+\pgfmathsetmacro{\wdA}{\wn * sqrt(1 - \zetaA*\zetaA)}
+\pgfmathsetmacro{\phiA}{acos(\zetaA)}
 
-  % Info box
-  \node[draw, fill=white, inner sep=4pt, font=\footnotesize, anchor=north west]
-    at (1.2, 3.8) {%
-      \begin{tabular}{ll}
-        $\zeta$ & $= \pgfmathprintnumber[fixed, precision=3]{\zeta}$ \\
-        $\omega_n$ & $= \pgfmathprintnumber[fixed, precision=1]{\wn}$ rad/s \\
-        OS & $= \pgfmathprintnumber[fixed, precision=1]{\ospct}\%$
-      \end{tabular}
-    };
+% System 2: Critically damped (zeta=1.0)
+\pgfmathsetmacro{\zetaB}{1.0}
+
+% System 3: Overdamped (zeta=2.0)
+\pgfmathsetmacro{\zetaC}{2.0}
+\pgfmathsetmacro{\sqrtC}{sqrt(\zetaC*\zetaC - 1)}
+\pgfmathsetmacro{\sOneC}{-\zetaC*\wn + \wn*\sqrtC}
+\pgfmathsetmacro{\sTwoC}{-\zetaC*\wn - \wn*\sqrtC}
+
+% ── Compute current displacements (y = step response value) ──
+% Underdamped
+\pgfmathsetmacro{\yA}{%
+  \tNow < 0.001 ? 0 :
+  1 - (exp(-\zetaA*\wn*\tNow) / sqrt(1 - \zetaA*\zetaA))
+    * sin(\wdA*\tNow * 180/3.14159 + \phiA)}
+
+% Critically damped
+\pgfmathsetmacro{\yB}{%
+  \tNow < 0.001 ? 0 :
+  1 - (1 + \wn*\tNow) * exp(-\wn*\tNow)}
+
+% Overdamped
+\pgfmathsetmacro{\yC}{%
+  \tNow < 0.001 ? 0 :
+  1 - (\sTwoC * exp(\sOneC*\tNow) - \sOneC * exp(\sTwoC*\tNow))
+    / (\sTwoC - \sOneC)}
+
+% ── Column positions ──
+\def\colAx{0.5}
+\def\colBx{5.5}
+\def\colCx{10.5}
+\pgfmathsetmacro{\colW}{4.2}
+
+% ── Diagram scale: 1 unit of y(t) = 1.2cm displacement ──
+\pgfmathsetmacro{\dispScale}{1.2}
+
+% ════════════════════════════════════════════════════════════════
+%  MACRO: Draw one spring-mass-damper diagram
+%  #1 = x-offset, #2 = color, #3 = y(t) value, #4 = label, #5 = params text
+% ════════════════════════════════════════════════════════════════
+\newcommand{\drawSMD}[5]{%
+  \begin{scope}[shift={(#1, 0)}]
+    % Column label
+    \node[font=\bfseries\small, #2] at (2.1, 4.0) {#4};
+    \node[font=\scriptsize, warmgrey] at (2.1, 3.55) {#5};
+
+    % Coordinates
+    \pgfmathsetmacro{\wallX}{0.0}
+    \pgfmathsetmacro{\eqX}{2.4}
+    \pgfmathsetmacro{\massDisp}{#3 * \dispScale}
+    \pgfmathsetmacro{\massX}{\eqX + \massDisp}
+    \pgfmathsetmacro{\massW}{0.6}
+    \pgfmathsetmacro{\massH}{0.9}
+
+    % Heights for spring and damper
+    \pgfmathsetmacro{\springY}{2.7}
+    \pgfmathsetmacro{\damperY}{1.7}
+
+    % ── Wall (hatched) ──
+    \draw[very thick, black!80] (\wallX, 1.2) -- (\wallX, 3.2);
+    \foreach \yy in {1.3, 1.6, 1.9, 2.2, 2.5, 2.8, 3.1} {
+      \draw[thin, warmgrey] (\wallX, \yy) -- ({\wallX - 0.25}, {\yy + 0.2});
+    }
+
+    % ── Equilibrium dashed line ──
+    \draw[dashed, warmgrey!60, thin] (\eqX, 1.2) -- (\eqX, 3.2);
+
+    % ── Spring (zigzag from wall to mass) ──
+    \pgfmathsetmacro{\springLen}{\massX - \wallX - \massW/2}
+    \pgfmathsetmacro{\segLen}{max(\springLen/6*28.3465, 4)}
+    \draw[thick, black!70, decorate, decoration={zigzag, segment length=\segLen pt, amplitude=2.5pt}]
+      (\wallX, \springY) -- ({\massX - \massW/2}, \springY);
+
+    % ── Damper (two-rail piston) ──
+    \pgfmathsetmacro{\damperEnd}{\massX - \massW/2}
+    \pgfmathsetmacro{\damperMid}{(\wallX + \damperEnd)/2}
+    % Cylinder body (from wall)
+    \draw[thick, black!70] (\wallX, \damperY) -- (\damperMid, \damperY);
+    \draw[thick, black!70] ({\damperMid - 0.05}, {\damperY - 0.15}) rectangle ({\damperMid + 0.35}, {\damperY + 0.15});
+    % Piston rod (from mass side)
+    \draw[thick, black!70] (\damperEnd, \damperY) -- ({\damperMid + 0.15}, \damperY);
+
+    % ── Mass block ──
+    \fill[#2, opacity=0.85]
+      ({\massX - \massW/2}, {\springY - \massH/2 - 0.15})
+      rectangle
+      ({\massX + \massW/2}, {\springY + \massH/2 - 0.15});
+    \draw[thick, black!80]
+      ({\massX - \massW/2}, {\springY - \massH/2 - 0.15})
+      rectangle
+      ({\massX + \massW/2}, {\springY + \massH/2 - 0.15});
+    \node[font=\bfseries\scriptsize, white] at (\massX, {\springY - 0.15}) {$m$};
+
+    % ── Connect damper to mass ──
+    \draw[thick, black!70]
+      ({\massX - \massW/2}, \damperY) -- ({\massX - \massW/2}, {\springY - \massH/2 - 0.15});
+
+    % ── Ground line ──
+    \draw[warmgrey, thin] ({\wallX - 0.3}, 1.1) -- ({\massX + \massW/2 + 0.6}, 1.1);
+
+    % ── Arrow showing displacement ──
+    \pgfmathsetmacro{\absMassDisp}{abs(\massDisp)}
+    \pgfmathparse{\absMassDisp > 0.08 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+      \draw[->, thick, #2] (\eqX, 1.35) -- ({\massX}, 1.35);
+    \fi
+  \end{scope}
+}%
+
+% ═══ Draw the three SMD diagrams ═══
+\drawSMD{\colAx}{garnet}{\yA}{Underdamped}{$k\!=\!25,\; m\!=\!1,\; c\!=\!2$}
+\drawSMD{\colBx}{atlantic}{\yB}{Critically Damped}{$k\!=\!25,\; m\!=\!1,\; c\!=\!10$}
+\drawSMD{\colCx}{congaree}{\yC}{Overdamped}{$k\!=\!25,\; m\!=\!1,\; c\!=\!20$}
+
+% ════════════════════════════════════════════════════════════════
+%  BOTTOM ROW: Response plots
+% ════════════════════════════════════════════════════════════════
+
+% ── Plot 1: Underdamped ──
+\begin{axis}[
+  at={(\colAx cm, -5.6cm)}, anchor=south west,
+  width=4.8cm, height=4.0cm,
+  xmin=0, xmax=4, ymin=-0.05, ymax=1.65,
+  xtick={0,1,2,3,4}, ytick={0,0.5,1.0,1.5},
+  tick label style={font=\tiny},
+  ylabel={$y(t)$},
+  label style={font=\tiny},
+  grid=major, grid style={warmgrey!20},
+  axis line style={thin},
+  clip=true,
+]
+  % Setpoint
+  \addplot[dashed, warmgrey, thin, domain=0:4, samples=2] {1};
+  % Ghost (full curve)
+  \addplot[garnet, opacity=0.15, thin, domain=0:4, samples=200]
+    {1 - (exp(-\zetaA*\wn*x) / sqrt(1 - \zetaA*\zetaA))
+      * sin(\wdA*x*180/3.14159 + \phiA)};
+  % Active trace up to tNow
+  \addplot[garnet, very thick, domain=0:\tEnd, samples=200]
+    {1 - (exp(-\zetaA*\wn*x) / sqrt(1 - \zetaA*\zetaA))
+      * sin(\wdA*x*180/3.14159 + \phiA)};
+  % Current dot
+  \pgfmathparse{\tNow > 0.01 ? 1 : 0}
+  \ifnum\pgfmathresult=1
+    \addplot[only marks, mark=*, mark size=2pt, garnet]
+      coordinates {(\tDot, \yA)};
+  \fi
+\end{axis}
+
+% ── Plot 2: Critically Damped ──
+\begin{axis}[
+  at={(\colBx cm, -5.6cm)}, anchor=south west,
+  width=4.8cm, height=4.0cm,
+  xmin=0, xmax=4, ymin=-0.05, ymax=1.65,
+  xtick={0,1,2,3,4}, ytick={0,0.5,1.0,1.5},
+  tick label style={font=\tiny},
+  yticklabels={},
+  label style={font=\tiny},
+  grid=major, grid style={warmgrey!20},
+  axis line style={thin},
+  clip=true,
+]
+  % Setpoint
+  \addplot[dashed, warmgrey, thin, domain=0:4, samples=2] {1};
+  % Ghost
+  \addplot[atlantic, opacity=0.15, thin, domain=0:4, samples=200]
+    {1 - (1 + \wn*x) * exp(-\wn*x)};
+  % Active trace
+  \addplot[atlantic, very thick, domain=0:\tEnd, samples=200]
+    {1 - (1 + \wn*x) * exp(-\wn*x)};
+  % Current dot
+  \pgfmathparse{\tNow > 0.01 ? 1 : 0}
+  \ifnum\pgfmathresult=1
+    \addplot[only marks, mark=*, mark size=2pt, atlantic]
+      coordinates {(\tDot, \yB)};
+  \fi
+\end{axis}
+
+% ── Plot 3: Overdamped ──
+\begin{axis}[
+  at={(\colCx cm, -5.6cm)}, anchor=south west,
+  width=4.8cm, height=4.0cm,
+  xmin=0, xmax=4, ymin=-0.05, ymax=1.65,
+  xtick={0,1,2,3,4}, ytick={0,0.5,1.0,1.5},
+  tick label style={font=\tiny},
+  yticklabels={},
+  label style={font=\tiny},
+  grid=major, grid style={warmgrey!20},
+  axis line style={thin},
+  clip=true,
+]
+  % Setpoint
+  \addplot[dashed, warmgrey, thin, domain=0:4, samples=2] {1};
+  % Ghost
+  \addplot[congaree, opacity=0.15, thin, domain=0:4, samples=200]
+    {1 - (\sTwoC * exp(\sOneC*x) - \sOneC * exp(\sTwoC*x)) / (\sTwoC - \sOneC)};
+  % Active trace
+  \addplot[congaree, very thick, domain=0:\tEnd, samples=200]
+    {1 - (\sTwoC * exp(\sOneC*x) - \sOneC * exp(\sTwoC*x)) / (\sTwoC - \sOneC)};
+  % Current dot
+  \pgfmathparse{\tNow > 0.01 ? 1 : 0}
+  \ifnum\pgfmathresult=1
+    \addplot[only marks, mark=*, mark size=2pt, congaree]
+      coordinates {(\tDot, \yC)};
+  \fi
+\end{axis}
+
+% ── Shared x-axis label (bottom center) ──
+\node[font=\footnotesize, warmgrey] at (7.95, -6.45)
+  {$t$ (s)};
+
+% ── Time display (bottom right) ──
+\node[font=\footnotesize, anchor=east, warmgrey] at (15.0, -6.45)
+  {$t = \pgfmathprintnumber[fixed, precision=2]{\tNow}$ s};
+
 \end{tikzpicture}
 \end{document}
