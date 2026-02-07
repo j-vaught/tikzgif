@@ -1172,17 +1172,25 @@ class MetadataWriter:
         containing arbitrary UTF-8 text.
         """
         img = Image.open(str(gif_path))
-        img.info["comment"] = self._build_comment_string().encode("utf-8")
-        # Re-save preserving all frames.
-        frames = list(ImageSequence.Iterator(img))
+        # Load all frames into memory before overwriting the source file.
+        frames: list[Image.Image] = []
+        durations: list[int] = []
+        for frame in ImageSequence.Iterator(img):
+            f = frame.copy()
+            frames.append(f)
+            durations.append(frame.info.get("duration", 100))
+        loop = img.info.get("loop", 0)
+        comment = self._build_comment_string().encode("utf-8")
+        img.close()
+
         frames[0].save(
             str(gif_path),
             format="GIF",
             save_all=True,
             append_images=frames[1:],
-            loop=img.info.get("loop", 0),
-            duration=img.info.get("duration", 100),
-            comment=img.info["comment"],
+            loop=loop,
+            duration=durations,
+            comment=comment,
         )
 
     def write_mp4_metadata(self, mp4_path: Path) -> None:

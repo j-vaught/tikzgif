@@ -1,0 +1,178 @@
+% Example 31: Four-Bar Linkage
+% A Grashof crank-rocker mechanism with joint path trails.
+% Parameter: \PARAM (crank angle in degrees, 0 to 360)
+% Range: 0 to 360, recommended 72 frames (5-degree steps)
+% Difficulty: intermediate
+% Features demonstrated: kinematics, loop closure, trail paths, mechanical linkage
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\usepackage{xcolor}
+
+% Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
+\begin{document}
+\begin{tikzpicture}
+  \useasboundingbox (-6,-4.5) rectangle (6,4.5);
+
+  % ====== Linkage dimensions (Grashof crank-rocker: s+l < p+q) ======
+  \pgfmathsetmacro{\a}{2}       % crank length
+  \pgfmathsetmacro{\b}{4.5}     % coupler length
+  \pgfmathsetmacro{\cc}{3.5}    % rocker length
+  \pgfmathsetmacro{\d}{5}       % ground link length
+
+  % Ground pivot positions
+  \pgfmathsetmacro{\Oax}{-\d/2}
+  \pgfmathsetmacro{\Oay}{-1}
+  \pgfmathsetmacro{\Obx}{\d/2}
+  \pgfmathsetmacro{\Oby}{-1}
+
+  % Current crank angle from animation parameter
+  \pgfmathsetmacro{\crankAng}{\PARAM}
+
+  % ====== Forward kinematics ======
+  % Point A: crank-coupler joint
+  \pgfmathsetmacro{\Ax}{\Oax + \a * cos(\crankAng)}
+  \pgfmathsetmacro{\Ay}{\Oay + \a * sin(\crankAng)}
+
+  % Point B: coupler-rocker joint (solved via loop closure)
+  \pgfmathsetmacro{\dxv}{\Ax - \Obx}
+  \pgfmathsetmacro{\dyv}{\Ay - \Oby}
+  \pgfmathsetmacro{\LAO}{sqrt(\dxv*\dxv + \dyv*\dyv)}
+  \pgfmathsetmacro{\betA}{atan2(\dyv, \dxv)}
+  \pgfmathsetmacro{\cosG}{min(1, max(-1, (\LAO*\LAO + \cc*\cc - \b*\b) / (2*\LAO*\cc)))}
+  \pgfmathsetmacro{\gamA}{acos(\cosG)}
+  \pgfmathsetmacro{\thR}{\betA - \gamA}
+  \pgfmathsetmacro{\Bx}{\Obx + \cc * cos(\thR)}
+  \pgfmathsetmacro{\By}{\Oby + \cc * sin(\thR)}
+
+  % Named coordinates
+  \coordinate (O2) at (\Oax, \Oay);
+  \coordinate (O4) at (\Obx, \Oby);
+  \coordinate (A) at (\Ax, \Ay);
+  \coordinate (B) at (\Bx, \By);
+
+  % ====== Trail paths (accumulated from angle 0 to current) ======
+  \def\trailA{}
+  \def\trailB{}
+  \pgfmathtruncatemacro{\paramInt}{\crankAng}
+  \ifnum\paramInt>4
+    \foreach \ang in {0, 3, ..., \paramInt} {
+      % Point A at this angle
+      \pgfmathsetmacro{\tAx}{\Oax + \a * cos(\ang)}
+      \pgfmathsetmacro{\tAy}{\Oay + \a * sin(\ang)}
+      % Point B at this angle (loop closure)
+      \pgfmathsetmacro{\tdx}{\tAx - \Obx}
+      \pgfmathsetmacro{\tdy}{\tAy - \Oby}
+      \pgfmathsetmacro{\tL}{sqrt(\tdx*\tdx + \tdy*\tdy)}
+      \pgfmathsetmacro{\tBet}{atan2(\tdy, \tdx)}
+      \pgfmathsetmacro{\tCG}{min(1, max(-1, (\tL*\tL + \cc*\cc - \b*\b) / (2*\tL*\cc)))}
+      \pgfmathsetmacro{\tGam}{acos(\tCG)}
+      \pgfmathsetmacro{\tThR}{\tBet - \tGam}
+      \pgfmathsetmacro{\tBx}{\Obx + \cc * cos(\tThR)}
+      \pgfmathsetmacro{\tBy}{\Oby + \cc * sin(\tThR)}
+      \xdef\trailA{\trailA (\tAx, \tAy)}
+      \xdef\trailB{\trailB (\tBx, \tBy)}
+    }
+    % Ensure trail ends at current position
+    \xdef\trailA{\trailA (\Ax, \Ay)}
+    \xdef\trailB{\trailB (\Bx, \By)}
+
+    % Draw trail for joint A (traces a circle)
+    \draw[garnet, line width=2pt, opacity=0.3]
+      plot[smooth, tension=0.6] coordinates {\trailA};
+    % Draw trail for joint B (traces a rocker arc)
+    \draw[atlantic, line width=2pt, opacity=0.3]
+      plot[smooth, tension=0.6] coordinates {\trailB};
+  \fi
+
+  % ====== Ground foundation ======
+  \fill[warmgrey!12]
+    ({\Oax - 0.9}, {\Oay - 0.75}) rectangle ({\Obx + 0.9}, {\Oay - 0.32});
+  \draw[black!70, line width=1.5pt]
+    ({\Oax - 0.9}, {\Oay - 0.32}) -- ({\Obx + 0.9}, {\Oay - 0.32});
+  % Hatching lines
+  \foreach \hx in {-3.1, -2.75, ..., 3.7} {
+    \draw[warmgrey!45, line width=0.5pt]
+      (\hx, {\Oay - 0.32}) -- ({\hx - 0.35}, {\Oay - 0.75});
+  }
+
+  % Ground link reference (dashed)
+  \draw[black!20, line width=0.8pt, dashed] (O2) -- (O4);
+
+  % ====== Linkage bars ======
+  % Each bar: dark outline + lighter fill using two overlapping thick lines
+
+  % Rocker: O4 -> B (drawn first, behind coupler)
+  \draw[atlantic!45!black, line width=11pt, line cap=rect] (O4) -- (B);
+  \draw[atlantic!28, line width=7.5pt, line cap=rect] (O4) -- (B);
+
+  % Crank: O2 -> A
+  \draw[garnet!45!black, line width=11pt, line cap=rect] (O2) -- (A);
+  \draw[garnet!28, line width=7.5pt, line cap=rect] (O2) -- (A);
+
+  % Coupler: A -> B (drawn last, on top)
+  \draw[congaree!45!black, line width=11pt, line cap=rect] (A) -- (B);
+  \draw[congaree!22, line width=7.5pt, line cap=rect] (A) -- (B);
+
+  % ====== Ground pivot supports (triangular) ======
+  \fill[black!55]
+    (\Oax, \Oay) -- ({\Oax - 0.32}, {\Oay - 0.32}) -- ({\Oax + 0.32}, {\Oay - 0.32}) -- cycle;
+  \fill[black!55]
+    (\Obx, \Oby) -- ({\Obx - 0.32}, {\Oby - 0.32}) -- ({\Obx + 0.32}, {\Oby - 0.32}) -- cycle;
+
+  % ====== Joint pins (drawn on top of bars) ======
+  % O2 (fixed ground pivot)
+  \fill[white] (O2) circle (0.17);
+  \draw[black!75, line width=1.6pt] (O2) circle (0.17);
+  \fill[black!45] (O2) circle (0.055);
+
+  % O4 (fixed ground pivot)
+  \fill[white] (O4) circle (0.17);
+  \draw[black!75, line width=1.6pt] (O4) circle (0.17);
+  \fill[black!45] (O4) circle (0.055);
+
+  % A (moving joint - crank/coupler)
+  \fill[garnet!12] (A) circle (0.2);
+  \draw[garnet!65!black, line width=1.6pt] (A) circle (0.2);
+  \fill[garnet] (A) circle (0.065);
+
+  % B (moving joint - coupler/rocker)
+  \fill[atlantic!12] (B) circle (0.2);
+  \draw[atlantic!65!black, line width=1.6pt] (B) circle (0.2);
+  \fill[atlantic] (B) circle (0.065);
+
+  % ====== Labels ======
+  \node[font=\footnotesize\bfseries, black!60, anchor=north]
+    at (\Oax, {\Oay - 0.85}) {$O_2$};
+  \node[font=\footnotesize\bfseries, black!60, anchor=north]
+    at (\Obx, {\Oby - 0.85}) {$O_4$};
+  \node[font=\footnotesize\bfseries, garnet!85!black, anchor=south west]
+    at ([shift={(0.22cm, 0.18cm)}]A) {$A$};
+  \node[font=\footnotesize\bfseries, atlantic!85!black, anchor=south west]
+    at ([shift={(0.22cm, 0.18cm)}]B) {$B$};
+
+  % Title
+  \node[font=\large\bfseries, black!85] at (0, 3.8) {Four-Bar Linkage};
+
+  % Dimensions
+  \node[font=\tiny, warmgrey] at (0, -3.5)
+    {$a{=}\pgfmathprintnumber[fixed,precision=1]{\a}$\enspace
+     $b{=}\pgfmathprintnumber[fixed,precision=1]{\b}$\enspace
+     $c{=}\pgfmathprintnumber[fixed,precision=1]{\cc}$\enspace
+     $d{=}\pgfmathprintnumber[fixed,precision=1]{\d}$};
+
+  % Angle readout
+  \node[font=\small, black!75] at (0, -2.9)
+    {$\theta_2 = \pgfmathprintnumber[fixed, precision=0]{\crankAng}^\circ$};
+
+\end{tikzpicture}
+\end{document}

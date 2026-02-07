@@ -31,7 +31,7 @@ tikzgif render bouncing_ball.tex --frames 60 --fps 30 -o bouncing_ball.gif
 | Quality control | DPI presets (web/presentation/print), dithering algorithms, color quantization | Fixed `convert` flags |
 | Template system | Built-in template registry with metadata, scaffolding, and preview | Single template file |
 | Parameterization | Drop-in `\PARAM` token -- zero boilerplate | Requires `\foreach` loop, externalize library, shell-escape, manual file naming |
-| Examples | 15 ready-to-run examples spanning physics, math, CS, and engineering | 5 examples |
+| Examples | 30+ ready-to-run examples spanning physics, math, CS, and engineering | 5 examples |
 | Testing | Full test suite with CI (lint, type-check, unit, integration) | None |
 | Installation | `pip install tikzgif` | Clone repo + install ImageMagick |
 
@@ -115,6 +115,118 @@ Every GIF below was generated from a single `.tex` file using tikzgif.
 <img src="outputs/06c_insertion_sort.gif" alt="Insertion sort" width="280"/><br/>
 <b>Insertion Sort</b><br/>
 <sub>Algorithm step-through</sub>
+</td>
+</tr>
+</table>
+
+### Electrical & Control Engineering
+
+<table>
+<tr>
+<td align="center" width="33%">
+<img src="outputs/16_antenna_radiation.gif" alt="Antenna radiation" width="280"/><br/>
+<b>Antenna Radiation Pattern</b><br/>
+<sub>Directional gain visualization</sub>
+</td>
+<td align="center" width="33%">
+<img src="outputs/17_bode_plot.gif" alt="Bode plot" width="280"/><br/>
+<b>Bode Plot</b><br/>
+<sub>Frequency response with varying gain</sub>
+</td>
+<td align="center" width="33%">
+<img src="outputs/18_block_diagram_gain_sweep.gif" alt="Block diagram" width="280"/><br/>
+<b>Block Diagram Gain Sweep</b><br/>
+<sub>Feedback loop gain animation</sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%">
+<img src="outputs/26_pid_tuning.gif" alt="PID tuning" width="280"/><br/>
+<b>PID Tuning</b><br/>
+<sub>Controller response parameter sweep</sub>
+</td>
+<td align="center" width="33%">
+<img src="outputs/27_root_locus.gif" alt="Root locus" width="280"/><br/>
+<b>Root Locus</b><br/>
+<sub>Pole migration with varying gain</sub>
+</td>
+<td align="center" width="33%">
+<img src="outputs/29_step_response.gif" alt="Step response" width="280"/><br/>
+<b>Step Response (Damping Sweep)</b><br/>
+<sub>Varying damping ratio</sub>
+</td>
+</tr>
+</table>
+
+### Electromagnetics & Fields
+
+<table>
+<tr>
+<td align="center" width="33%">
+<img src="outputs/19_electric_field_lines.gif" alt="Electric field" width="280"/><br/>
+<b>Electric Field Lines</b><br/>
+<sub>Moving charge field visualization</sub>
+</td>
+<td align="center" width="33%">
+<img src="outputs/20_em_wave.gif" alt="EM wave 3D" width="280"/><br/>
+<b>EM Wave (3D)</b><br/>
+<sub>Propagating electromagnetic wave</sub>
+</td>
+<td align="center" width="33%">
+<img src="outputs/23_magnetic_field_loop.gif" alt="Magnetic field" width="280"/><br/>
+<b>Magnetic Field Loop</b><br/>
+<sub>Current loop field animation</sub>
+</td>
+</tr>
+</table>
+
+### Mathematics & Visualization
+
+<table>
+<tr>
+<td align="center" width="33%">
+<img src="outputs/21_fourier_series.gif" alt="Fourier series" width="280"/><br/>
+<b>Fourier Series</b><br/>
+<sub>Partial sum convergence</sub>
+</td>
+<td align="center" width="33%">
+<img src="outputs/22_function_family.gif" alt="Function family" width="280"/><br/>
+<b>Function Family</b><br/>
+<sub>Parameterized curve morphing</sub>
+</td>
+<td align="center" width="33%">
+<img src="outputs/24_parametric_curve.gif" alt="Parametric curve" width="280"/><br/>
+<b>Parametric Curve</b><br/>
+<sub>Lissajous-style path tracing</sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%">
+<img src="outputs/25_phase_portrait.gif" alt="Phase portrait" width="280"/><br/>
+<b>Phase Portrait</b><br/>
+<sub>Dynamical system trajectories</sub>
+</td>
+<td align="center" width="33%">
+<img src="outputs/28_rotation_3d.gif" alt="3D rotation" width="280"/><br/>
+<b>3D Rotation</b><br/>
+<sub>Rotating wireframe object</sub>
+</td>
+<td align="center" width="33%">
+<img src="outputs/30_wave_interference.gif" alt="Wave interference" width="280"/><br/>
+<b>Wave Interference</b><br/>
+<sub>Superposition of two waves</sub>
+</td>
+</tr>
+</table>
+
+### Mechanical Engineering
+
+<table>
+<tr>
+<td align="center" width="33%">
+<img src="outputs/31_four_bar_linkage.gif" alt="Four-bar linkage" width="280"/><br/>
+<b>Four-Bar Linkage</b><br/>
+<sub>Kinematic mechanism animation</sub>
 </td>
 </tr>
 </table>
@@ -324,7 +436,7 @@ mypy tikzgif
 pytest -m "not integration and not slow"
 ```
 
-The test suite includes unit tests, integration tests (require LaTeX), gallery smoke tests for all 15 examples, edge-case coverage, and performance benchmarks.
+The test suite includes unit tests, integration tests (require LaTeX), gallery smoke tests for all 31 examples, edge-case coverage, and performance benchmarks.
 
 ---
 

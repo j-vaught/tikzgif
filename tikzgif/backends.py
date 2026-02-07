@@ -186,9 +186,7 @@ class PdftoppmBackend(ConversionBackend):
             cmd += ["-r", str(effective_dpi)]
 
             if config.antialias:
-                cmd += ["-aaVector", "yes", "-aaText", "yes"]
-            else:
-                cmd += ["-aaVector", "no", "-aaText", "no"]
+                cmd += ["-aa", "yes"]
 
             if config.color_space == ColorSpace.GRAYSCALE:
                 cmd += ["-gray"]

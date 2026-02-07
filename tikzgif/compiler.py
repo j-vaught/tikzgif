@@ -304,7 +304,7 @@ def compile_frames(
     if not to_compile:
         progress.close()
         logger.info("All %d frames served from cache.", len(specs))
-        return [results[i] for i in range(len(specs))]
+        return [results[spec.index] for spec in specs]
 
     logger.info(
         "%d/%d frames cached, compiling %d.",
@@ -411,12 +411,12 @@ def compile_frames(
 
     # -- Assemble ordered results ------------------------------------------
     ordered: list[FrameResult] = []
-    for i in range(len(specs)):
-        if i in results:
-            ordered.append(results[i])
+    for spec in specs:
+        if spec.index in results:
+            ordered.append(results[spec.index])
         else:
             ordered.append(FrameResult(
-                index=i,
+                index=spec.index,
                 success=False,
                 error_message="Frame was not compiled (internal error).",
             ))
