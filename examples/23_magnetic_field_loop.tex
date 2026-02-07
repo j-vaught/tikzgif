@@ -1,30 +1,9 @@
-%%--- TIKZGIF META ---
-%% name: em.magnetic_field_loop
-%% title: Magnetic Field of a Current Loop
-%% description: >
-%%   Cross-section of a current loop with field lines scaling with current I.
-%% author: J.C. Vaught
-%% version: 1.0.0
-%% domain: electromagnetics
-%% tags: [EM, magnetic field, current loop, dipole]
-%% engine: pdflatex
-%% tikz_libraries: [arrows.meta, calc, decorations.markings]
-%% latex_packages: [tikz, amsmath]
-%% params:
-%%   - name: I
-%%     type: float
-%%     default: 2.0
-%%     min: 0.5
-%%     max: 5.0
-%%     step: 0.15
-%%     sweep: true
-%%     description: Current magnitude in amperes
-%%     unit: "A"
-%% fps: 12
-%% frames: 30
-%% loop: true
-%% bounce: true
-%%--- END META ---
+% Example 23: Magnetic Field of a Current Loop
+% Cross-section of a current loop with field lines scaling with current magnitude.
+% Parameter: \PARAM (current I in amperes, range 0.5..5.0)
+% Range: 0.5 to 5.0, recommended 30 frames
+% Difficulty: intermediate
+% Features demonstrated: magnetic field, current loop, dipole, field visualization
 \documentclass[border=8pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{amsmath}
@@ -44,7 +23,7 @@
 \begin{document}
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
-\pgfmathsetmacro{\Ival}{{{{ I }}}}
+\pgfmathsetmacro{\Ival}{\PARAM}
 \pgfmathsetmacro{\lineScale}{0.25 + 0.15 * \Ival}
 \pgfmathsetmacro{\nLines}{min(floor(\Ival * 2 + 1), 10)}
 

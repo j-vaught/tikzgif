@@ -1,39 +1,10 @@
-%%--- TIKZGIF META ---
-%% name: physics.rotation_3d
-%% title: 3D Object Rotation
-%% description: >
-%%   Rotates a wireframe cube using tikz-3dplot.
-%%   Sweep azimuthal angle phi from 0 to 360 degrees.
-%% author: J.C. Vaught
-%% version: 1.0.0
-%% domain: general_physics
-%% tags: [3D, rotation, cube, tikz-3dplot]
-%% engine: pdflatex
-%% tikz_libraries: [arrows.meta, calc]
-%% latex_packages: [tikz, tikz-3dplot, amsmath]
-%% params:
-%%   - name: phi
-%%     type: float
-%%     default: 45.0
-%%     min: 0.0
-%%     max: 360.0
-%%     step: 5.0
-%%     sweep: true
-%%     description: Azimuthal viewing angle (degrees)
-%%     unit: "deg"
-%%   - name: theta
-%%     type: float
-%%     default: 70.0
-%%     min: 30.0
-%%     max: 90.0
-%%     sweep: false
-%%     description: Polar viewing angle (degrees)
-%%     unit: "deg"
-%% fps: 20
-%% frames: 72
-%% loop: true
-%% bounce: false
-%%--- END META ---
+% Example 28: 3D Object Rotation
+% Rotates a wireframe cube using tikz-3dplot library.
+% Parameter: \PARAM (azimuthal viewing angle in degrees, range 0.0..360.0)
+% Range: 0.0 to 360.0, recommended 72 frames
+% Difficulty: intermediate
+% Features demonstrated: 3D rotation, cube wireframe, viewing angle variation
+
 \documentclass[border=10pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{tikz-3dplot}
@@ -53,8 +24,8 @@
 
 \begin{document}
 
-\pgfmathsetmacro{\viewPhi}{{{{ phi }}}}
-\pgfmathsetmacro{\viewTheta}{{{{ theta }}}}
+\pgfmathsetmacro{\viewPhi}{\PARAM}
+\pgfmathsetmacro{\viewTheta}{70.0}
 
 \tdplotsetmaincoords{\viewTheta}{\viewPhi}
 

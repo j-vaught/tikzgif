@@ -1,31 +1,9 @@
-%%--- TIKZGIF META ---
-%% name: physics.fourier_series
-%% title: Fourier Series Buildup
-%% description: >
-%%   Partial-sum convergence of a Fourier series to a square wave.
-%%   N odd harmonics are included, showing Gibbs phenomenon.
-%% author: J.C. Vaught
-%% version: 1.0.0
-%% domain: general_physics
-%% tags: [Fourier, series, convergence, square wave, Gibbs]
-%% engine: pdflatex
-%% tikz_libraries: []
-%% latex_packages: [tikz, pgfplots, amsmath]
-%% params:
-%%   - name: N
-%%     type: int
-%%     default: 5
-%%     min: 1
-%%     max: 41
-%%     step: 2
-%%     sweep: true
-%%     description: Number of odd harmonics in the partial sum
-%%     unit: ""
-%% fps: 4
-%% frames: 21
-%% loop: false
-%% bounce: false
-%%--- END META ---
+% Example 21: Fourier Series Buildup
+% Partial-sum convergence of a Fourier series to a square wave.
+% Parameter: \PARAM (number of odd harmonics, range 1..41)
+% Range: 1 to 41, recommended 21 frames
+% Difficulty: intermediate
+% Features demonstrated: Fourier series, convergence, square wave, Gibbs phenomenon
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \usepackage{pgfplots}
@@ -46,7 +24,7 @@
 \begin{document}
 \begin{tikzpicture}
 
-\pgfmathtruncatemacro{\Nterms}{{{{ N }}}}
+\pgfmathtruncatemacro{\Nterms}{\PARAM}
 
 \begin{axis}[
     width=12cm, height=7cm,

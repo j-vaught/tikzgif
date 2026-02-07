@@ -1,31 +1,10 @@
-%%--- TIKZGIF META ---
-%% name: control.root_locus
-%% title: Root Locus Animation
-%% description: >
-%%   Animates poles of 1 + K*G(s) = 0 where G(s) = 1/((s+1)(s+3)).
-%%   Poles move on real axis then break into a conjugate pair at K=1.
-%% author: J.C. Vaught
-%% version: 1.0.0
-%% domain: control_systems
-%% tags: [control, root locus, poles, stability]
-%% engine: pdflatex
-%% tikz_libraries: [arrows.meta, calc]
-%% latex_packages: [tikz, amsmath]
-%% params:
-%%   - name: K
-%%     type: float
-%%     default: 1.0
-%%     min: 0.0
-%%     max: 20.0
-%%     step: 0.5
-%%     sweep: true
-%%     description: Loop gain
-%%     unit: ""
-%% fps: 12
-%% frames: 41
-%% loop: false
-%% bounce: false
-%%--- END META ---
+% Example 27: Root Locus Animation
+% Animates poles of 1 + K*G(s) = 0 where G(s) = 1/((s+1)(s+3)).
+% Parameter: \PARAM (loop gain, range 0.0..20.0)
+% Range: 0.0 to 20.0, recommended 40 frames
+% Difficulty: advanced
+% Features demonstrated: control systems, root locus, pole movement, stability
+
 \documentclass[border=8pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{amsmath}
@@ -45,7 +24,7 @@
 \begin{document}
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
-\pgfmathsetmacro{\Kval}{{{{ K }}}}
+\pgfmathsetmacro{\Kval}{\PARAM}
 
 % Axes
 \draw[->, thick] (-5.5, 0) -- (1.5, 0) node[right] {$\mathrm{Re}$};

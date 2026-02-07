@@ -1,39 +1,10 @@
-%%--- TIKZGIF META ---
-%% name: em.wave_interference
-%% title: Two-Source Wave Interference
-%% description: >
-%%   Two coherent sources create an interference pattern.
-%%   Sweeping phase difference delta shifts the pattern.
-%% author: J.C. Vaught
-%% version: 1.0.0
-%% domain: electromagnetics
-%% tags: [EM, wave, interference, superposition, phase]
-%% engine: pdflatex
-%% tikz_libraries: [calc]
-%% latex_packages: [tikz, amsmath]
-%% params:
-%%   - name: delta
-%%     type: float
-%%     default: 0.0
-%%     min: 0.0
-%%     max: 6.283185
-%%     step: 0.20944
-%%     sweep: true
-%%     description: Phase difference between sources
-%%     unit: "rad"
-%%   - name: sep
-%%     type: float
-%%     default: 2.0
-%%     min: 0.5
-%%     max: 4.0
-%%     sweep: false
-%%     description: Source separation distance
-%%     unit: "cm"
-%% fps: 15
-%% frames: 30
-%% loop: true
-%% bounce: false
-%%--- END META ---
+% Example 30: Two-Source Wave Interference
+% Two coherent sources create an interference pattern with phase difference.
+% Parameter: \PARAM (phase difference in radians, range 0.0..6.283185)
+% Range: 0.0 to 6.283185, recommended 30 frames
+% Difficulty: advanced
+% Features demonstrated: wave interference, superposition, phase effects
+
 \documentclass[border=5pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{amsmath}
@@ -53,8 +24,8 @@
 \begin{document}
 \begin{tikzpicture}
 
-\pgfmathsetmacro{\deltaPhi}{{{{ delta }}}}
-\pgfmathsetmacro{\separation}{{{{ sep }}}}
+\pgfmathsetmacro{\deltaPhi}{\PARAM}
+\pgfmathsetmacro{\separation}{2.0}
 \pgfmathsetmacro{\halfSep}{\separation / 2}
 \pgfmathsetmacro{\waveK}{3.0}
 

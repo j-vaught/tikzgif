@@ -1,40 +1,10 @@
-%%--- TIKZGIF META ---
-%% name: em.electric_field_lines
-%% title: Electric Field Lines from Point Charges
-%% description: >
-%%   Field lines from two point charges via superposition.
-%%   One positive charge is fixed; the second moves along x-axis.
-%% author: J.C. Vaught
-%% version: 1.0.0
-%% domain: electromagnetics
-%% tags: [EM, electric field, Coulomb, point charge]
-%% engine: pdflatex
-%% tikz_libraries: [arrows.meta, calc]
-%% latex_packages: [tikz, amsmath]
-%% params:
-%%   - name: xpos
-%%     type: float
-%%     default: 1.5
-%%     min: 0.5
-%%     max: 3.5
-%%     step: 0.1
-%%     sweep: true
-%%     description: x-coordinate of the moving charge
-%%     unit: "cm"
-%%   - name: q2sign
-%%     type: float
-%%     default: -1.0
-%%     min: -1.0
-%%     max: 1.0
-%%     step: 2.0
-%%     sweep: false
-%%     description: Sign of the second charge (+1 or -1)
-%%     unit: ""
-%% fps: 12
-%% frames: 31
-%% loop: true
-%% bounce: true
-%%--- END META ---
+% Example 19: Electric Field Lines from Point Charges
+% Field lines from two point charges via superposition and Euler method.
+% Parameter: \PARAM (x-coordinate of moving charge, range 0.5..3.5)
+% Range: 0.5 to 3.5, recommended 30 frames
+% Difficulty: intermediate
+% Features demonstrated: electric fields, superposition, field line integration
+
 \documentclass[border=10pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{amsmath}
@@ -54,8 +24,8 @@
 \begin{document}
 \begin{tikzpicture}[>=Stealth]
 
-\pgfmathsetmacro{\xB}{{{{ xpos }}}}
-\pgfmathsetmacro{\qsign}{{{{ q2sign }}}}
+\pgfmathsetmacro{\xB}{\PARAM}
+\pgfmathsetmacro{\qsign}{-1.0}
 \pgfmathsetmacro{\xA}{-1.5}
 \pgfmathsetmacro{\yA}{0}
 

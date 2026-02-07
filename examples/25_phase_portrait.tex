@@ -1,39 +1,9 @@
-%%--- TIKZGIF META ---
-%% name: physics.phase_portrait
-%% title: Phase Portrait Animation
-%% description: >
-%%   Phase portrait of dx/dt = [[-a, b],[-b, -a]]*x.
-%%   Sweeping a shows stable spiral -> center -> unstable spiral.
-%% author: J.C. Vaught
-%% version: 1.0.0
-%% domain: general_physics
-%% tags: [phase portrait, ODE, dynamical system, spiral]
-%% engine: pdflatex
-%% tikz_libraries: [arrows.meta]
-%% latex_packages: [tikz, amsmath]
-%% params:
-%%   - name: a
-%%     type: float
-%%     default: 0.5
-%%     min: -1.0
-%%     max: 2.0
-%%     step: 0.1
-%%     sweep: true
-%%     description: Real part of eigenvalue (damping)
-%%     unit: ""
-%%   - name: b
-%%     type: float
-%%     default: 2.0
-%%     min: 0.5
-%%     max: 5.0
-%%     sweep: false
-%%     description: Imaginary part of eigenvalue (rotation)
-%%     unit: ""
-%% fps: 10
-%% frames: 31
-%% loop: true
-%% bounce: true
-%%--- END META ---
+% Example 25: Phase Portrait Animation
+% Phase portrait of dx/dt = [[-a, b], [-b, -a]]*x showing stable spiral to unstable spiral.
+% Parameter: \PARAM (real part of eigenvalue a, range -1.0..2.0)
+% Range: -1.0 to 2.0, recommended 30 frames
+% Difficulty: advanced
+% Features demonstrated: phase portrait, ODE, dynamical systems, spiral stability
 \documentclass[border=8pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{amsmath}
@@ -53,8 +23,8 @@
 \begin{document}
 \begin{tikzpicture}[>=Stealth]
 
-\pgfmathsetmacro{\aval}{{{{ a }}}}
-\pgfmathsetmacro{\bval}{{{{ b }}}}
+\pgfmathsetmacro{\aval}{\PARAM}
+\pgfmathsetmacro{\bval}{2.0}
 
 % Axes
 \draw[->, thick, black!60] (-4.2, 0) -- (4.2, 0) node[right, font=\small]{$x_1$};

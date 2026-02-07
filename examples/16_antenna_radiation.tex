@@ -1,40 +1,10 @@
-%%--- TIKZGIF META ---
-%% name: em.antenna_radiation
-%% title: Antenna Radiation Pattern
-%% description: >
-%%   Polar radiation pattern f(theta) = |sin(theta)|^n.
-%%   Sweeping n demonstrates how directivity narrows the beam.
-%% author: J.C. Vaught
-%% version: 1.0.0
-%% domain: electromagnetics
-%% tags: [EM, antenna, radiation pattern, directivity]
-%% engine: pdflatex
-%% tikz_libraries: [arrows.meta]
-%% latex_packages: [tikz, amsmath]
-%% params:
-%%   - name: n
-%%     type: float
-%%     default: 2.0
-%%     min: 1.0
-%%     max: 8.0
-%%     step: 0.25
-%%     sweep: true
-%%     description: Radiation pattern exponent
-%%     unit: ""
-%%   - name: rotAngle
-%%     type: float
-%%     default: 0.0
-%%     min: 0.0
-%%     max: 360.0
-%%     step: 10.0
-%%     sweep: false
-%%     description: Pattern rotation angle in degrees
-%%     unit: "deg"
-%% fps: 12
-%% frames: 29
-%% loop: true
-%% bounce: true
-%%--- END META ---
+% Example 16: Antenna Radiation Pattern
+% Polar radiation pattern f(theta) = |sin(theta)|^n with variable directivity.
+% Parameter: \PARAM (radiation pattern exponent, range 1.0..8.0)
+% Range: 1.0 to 8.0, recommended 30 frames
+% Difficulty: intermediate
+% Features demonstrated: polar plots, parametric curves, radiation patterns
+
 \documentclass[border=10pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{amsmath}
@@ -54,8 +24,8 @@
 \begin{document}
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
-\pgfmathsetmacro{\nExp}{{{{ n }}}}
-\pgfmathsetmacro{\rotA}{{{{ rotAngle }}}}
+\pgfmathsetmacro{\nExp}{\PARAM}
+\pgfmathsetmacro{\rotA}{0.0}
 \pgfmathsetmacro{\Rmax}{3.5}
 
 % Polar grid

@@ -1,40 +1,10 @@
-%%--- TIKZGIF META ---
-%% name: em.wave_propagation
-%% title: Electromagnetic Wave Propagation
-%% description: >
-%%   Plane EM wave in +z direction.  E (red, vertical) and B (blue,
-%%   horizontal) oscillate sinusoidally.  Sweeping temporal phase phi
-%%   creates the illusion of propagation.
-%% author: J.C. Vaught
-%% version: 1.0.0
-%% domain: electromagnetics
-%% tags: [EM, wave, propagation, E-field, B-field]
-%% engine: pdflatex
-%% tikz_libraries: [arrows.meta, calc]
-%% latex_packages: [tikz, amsmath]
-%% params:
-%%   - name: phi
-%%     type: float
-%%     default: 0.0
-%%     min: 0.0
-%%     max: 6.283185
-%%     step: 0.15708
-%%     sweep: true
-%%     description: Temporal phase (0 to 2*pi)
-%%     unit: "rad"
-%%   - name: amplitude
-%%     type: float
-%%     default: 1.5
-%%     min: 0.5
-%%     max: 2.5
-%%     sweep: false
-%%     description: Wave amplitude in cm
-%%     unit: "cm"
-%% fps: 20
-%% frames: 40
-%% loop: true
-%% bounce: false
-%%--- END META ---
+% Example 20: Electromagnetic Wave Propagation
+% Plane EM wave showing E and B field oscillation in time and space.
+% Parameter: \PARAM (temporal phase in radians, range 0.0..6.283185)
+% Range: 0.0 to 6.283185, recommended 40 frames
+% Difficulty: advanced
+% Features demonstrated: EM waves, 3D plotting, field visualization
+
 \documentclass[border=8pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{amsmath}
@@ -54,8 +24,8 @@
 \begin{document}
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
-\pgfmathsetmacro{\phase}{{{{ phi }}}}
-\pgfmathsetmacro{\amp}{{{{ amplitude }}}}
+\pgfmathsetmacro{\phase}{\PARAM}
+\pgfmathsetmacro{\amp}{1.5}
 \pgfmathsetmacro{\wavelen}{4}
 \pgfmathsetmacro{\zmax}{9}
 \pgfmathsetmacro{\kwave}{360/\wavelen}

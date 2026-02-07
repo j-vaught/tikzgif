@@ -1,43 +1,10 @@
-%%--- TIKZGIF META ---
-%% name: control.pid_tuning
-%% title: PID Tuning Visualization
-%% description: >
-%%   PID step response for G(s) = 1/(s+1), sweeping Kp.
-%% author: J.C. Vaught
-%% version: 1.0.0
-%% domain: control_systems
-%% tags: [control, PID, tuning]
-%% engine: pdflatex
-%% tikz_libraries: [arrows.meta, positioning]
-%% latex_packages: [tikz, pgfplots, amsmath]
-%% params:
-%%   - name: Kp
-%%     type: float
-%%     default: 2.0
-%%     min: 0.5
-%%     max: 15.0
-%%     step: 0.5
-%%     sweep: true
-%%     description: Proportional gain
-%%   - name: Ki
-%%     type: float
-%%     default: 1.0
-%%     min: 0.0
-%%     max: 10.0
-%%     sweep: false
-%%     description: Integral gain
-%%   - name: Kd
-%%     type: float
-%%     default: 0.3
-%%     min: 0.0
-%%     max: 5.0
-%%     sweep: false
-%%     description: Derivative gain
-%% fps: 10
-%% frames: 30
-%% loop: true
-%% bounce: true
-%%--- END META ---
+% Example 26: PID Tuning Visualization
+% PID step response for G(s) = 1/(s+1), sweeping proportional gain.
+% Parameter: \PARAM (proportional gain, range 0.5..15.0)
+% Range: 0.5 to 15.0, recommended 30 frames
+% Difficulty: advanced
+% Features demonstrated: control systems, PID dynamics, gain effects
+
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \usepackage{pgfplots}
@@ -59,9 +26,9 @@
 \begin{document}
 \begin{tikzpicture}
 
-\pgfmathsetmacro{\Kp}{{{{ Kp }}}}
-\pgfmathsetmacro{\Ki}{{{{ Ki }}}}
-\pgfmathsetmacro{\Kd}{{{{ Kd }}}}
+\pgfmathsetmacro{\Kp}{\PARAM}
+\pgfmathsetmacro{\Ki}{1.0}
+\pgfmathsetmacro{\Kd}{0.3}
 
 % Approximate dominant second-order model
 \pgfmathsetmacro{\wnSq}{\Kp / (1 + \Kd)}

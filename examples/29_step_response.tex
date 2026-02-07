@@ -1,42 +1,10 @@
-%%--- TIKZGIF META ---
-%% name: control.step_response
-%% title: Second-Order Step Response -- Damping Ratio Sweep
-%% description: >
-%%   Animates the unit step response of a standard second-order system
-%%   G(s) = wn^2 / (s^2 + 2*zeta*wn*s + wn^2) as the damping ratio
-%%   zeta sweeps from 0.1 (highly underdamped) through 1.0 (critically
-%%   damped) to 2.0 (overdamped).
-%% author: J.C. Vaught
-%% version: 1.0.0
-%% domain: control_systems
-%% tags: [control, step response, second-order, damping]
-%% engine: pdflatex
-%% tikz_libraries: []
-%% latex_packages: [tikz, pgfplots, amsmath]
-%% params:
-%%   - name: zeta
-%%     type: float
-%%     default: 0.5
-%%     min: 0.1
-%%     max: 2.0
-%%     step: 0.05
-%%     sweep: true
-%%     description: Damping ratio of the second-order system
-%%     unit: ""
-%%   - name: wn
-%%     type: float
-%%     default: 3.0
-%%     min: 1.0
-%%     max: 10.0
-%%     step: 1.0
-%%     sweep: false
-%%     description: Natural frequency (rad/s)
-%%     unit: "rad/s"
-%% fps: 12
-%% frames: 39
-%% loop: true
-%% bounce: true
-%%--- END META ---
+% Example 29: Second-Order Step Response
+% Animates unit step response as damping ratio sweeps from underdamped to overdamped.
+% Parameter: \PARAM (damping ratio, range 0.1..2.0)
+% Range: 0.1 to 2.0, recommended 39 frames
+% Difficulty: intermediate
+% Features demonstrated: control systems, step response, damping effects
+
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \usepackage{pgfplots}
@@ -57,8 +25,8 @@
 \begin{document}
 \begin{tikzpicture}
 
-\pgfmathsetmacro{\zeta}{{{{ zeta }}}}
-\pgfmathsetmacro{\wn}{{{{ wn }}}}
+\pgfmathsetmacro{\zeta}{\PARAM}
+\pgfmathsetmacro{\wn}{3.0}
 \pgfmathsetmacro{\wd}{\wn * sqrt(abs(1 - \zeta*\zeta))}
 \pgfmathsetmacro{\sigma}{\zeta * \wn}
 

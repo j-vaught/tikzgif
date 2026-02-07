@@ -1,52 +1,9 @@
-%%--- TIKZGIF META ---
-%% name: physics.parametric_curve
-%% title: Parametric Curve Tracing (Lissajous)
-%% description: >
-%%   A point traces a Lissajous figure as tmax sweeps from 0 to 2*pi.
-%% author: J.C. Vaught
-%% version: 1.0.0
-%% domain: general_physics
-%% tags: [parametric, Lissajous, curve tracing]
-%% engine: pdflatex
-%% tikz_libraries: [arrows.meta]
-%% latex_packages: [tikz, amsmath]
-%% params:
-%%   - name: tmax
-%%     type: float
-%%     default: 3.14159
-%%     min: 0.1
-%%     max: 6.283185
-%%     step: 0.1309
-%%     sweep: true
-%%     description: Current max parameter value (0 to 2*pi)
-%%     unit: "rad"
-%%   - name: freqA
-%%     type: float
-%%     default: 3.0
-%%     min: 1.0
-%%     max: 7.0
-%%     sweep: false
-%%     description: Frequency of x-component
-%%   - name: freqB
-%%     type: float
-%%     default: 2.0
-%%     min: 1.0
-%%     max: 7.0
-%%     sweep: false
-%%     description: Frequency of y-component
-%%   - name: phaseDelta
-%%     type: float
-%%     default: 1.5708
-%%     min: 0.0
-%%     max: 3.14159
-%%     sweep: false
-%%     description: Phase offset for x (rad)
-%%     unit: "rad"
-%% fps: 20
-%% frames: 48
-%% loop: false
-%% bounce: false
-%%--- END META ---
+% Example 24: Parametric Curve Tracing (Lissajous)
+% A point traces a Lissajous figure as the parameter sweeps from 0 to 2π.
+% Parameter: \PARAM (maximum t value, range 0.1..6.283185 rad)
+% Range: 0.1 to 6.283185, recommended 48 frames
+% Difficulty: intermediate
+% Features demonstrated: parametric curves, Lissajous figures, curve tracing
 \documentclass[border=10pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{amsmath}
@@ -66,10 +23,10 @@
 \begin{document}
 \begin{tikzpicture}[>=Stealth]
 
-\pgfmathsetmacro{\tmax}{{{{ tmax }}}}
-\pgfmathsetmacro{\fa}{{{{ freqA }}}}
-\pgfmathsetmacro{\fb}{{{{ freqB }}}}
-\pgfmathsetmacro{\phd}{{{{ phaseDelta }}}}
+\pgfmathsetmacro{\tmax}{\PARAM}
+\pgfmathsetmacro{\fa}{3.0}
+\pgfmathsetmacro{\fb}{2.0}
+\pgfmathsetmacro{\phd}{1.5708}
 \pgfmathsetmacro{\amp}{3.0}
 
 % Axes

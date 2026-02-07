@@ -1,30 +1,9 @@
-%%--- TIKZGIF META ---
-%% name: physics.function_family
-%% title: Function Family Animation
-%% description: >
-%%   Animates y = x^n as n sweeps from 0.3 to 5.0.
-%% author: J.C. Vaught
-%% version: 1.0.0
-%% domain: general_physics
-%% tags: [function family, power curve, exponent]
-%% engine: pdflatex
-%% tikz_libraries: []
-%% latex_packages: [tikz, pgfplots, amsmath]
-%% params:
-%%   - name: n
-%%     type: float
-%%     default: 2.0
-%%     min: 0.3
-%%     max: 5.0
-%%     step: 0.1
-%%     sweep: true
-%%     description: Exponent in y = x^n
-%%     unit: ""
-%% fps: 12
-%% frames: 48
-%% loop: true
-%% bounce: true
-%%--- END META ---
+% Example 22: Function Family Animation
+% Animates y = x^n as the exponent sweeps from 0.3 to 5.0.
+% Parameter: \PARAM (exponent n, range 0.3..5.0)
+% Range: 0.3 to 5.0, recommended 48 frames
+% Difficulty: beginner
+% Features demonstrated: power curves, function families, exponent variation
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \usepackage{pgfplots}
@@ -45,7 +24,7 @@
 \begin{document}
 \begin{tikzpicture}
 
-\pgfmathsetmacro{\nval}{{{{ n }}}}
+\pgfmathsetmacro{\nval}{\PARAM}
 
 \begin{axis}[
     width=10cm, height=8cm,

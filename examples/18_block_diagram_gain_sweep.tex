@@ -1,34 +1,10 @@
-%%--- TIKZGIF META ---
-%% name: control.block_diagram_gain
-%% title: Feedback Block Diagram with Gain Sweep
-%% description: >
-%%   A standard negative-feedback control loop with plant G(s) = 1/(s+1)
-%%   and proportional gain K.  As K sweeps from 0.1 to 10, the block
-%%   diagram redraws with the current gain value displayed inside the
-%%   gain block, and the closed-loop step response is plotted beside it
-%%   so viewers see how increasing K changes the output.
-%% author: J.C. Vaught
-%% version: 1.0.0
-%% domain: control_systems
-%% tags: [control, block diagram, gain, feedback]
-%% engine: pdflatex
-%% tikz_libraries: [arrows.meta, positioning, calc]
-%% latex_packages: [tikz, pgfplots, amsmath]
-%% params:
-%%   - name: K
-%%     type: float
-%%     default: 1.0
-%%     min: 0.1
-%%     max: 10.0
-%%     step: 0.33
-%%     sweep: true
-%%     description: Proportional gain in the forward path
-%%     unit: ""
-%% fps: 12
-%% frames: 30
-%% loop: true
-%% bounce: true
-%%--- END META ---
+% Example 18: Feedback Block Diagram with Gain Sweep
+% Negative-feedback control loop showing gain impact on step response.
+% Parameter: \PARAM (proportional gain K, range 0.1..10.0)
+% Range: 0.1 to 10.0, recommended 30 frames
+% Difficulty: intermediate
+% Features demonstrated: block diagrams, feedback control, step response
+
 \documentclass[border=5pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{pgfplots}
@@ -56,7 +32,7 @@
     every node/.style={font=\small}
 ]
 
-\pgfmathsetmacro{\K}{{{{ K }}}}
+\pgfmathsetmacro{\K}{\PARAM}
 
 % Block diagram
 \node[sumnode] (sum) at (0,0) {};
@@ -96,7 +72,7 @@
     tick label style={font=\tiny},
     label style={font=\footnotesize},
 ]
-    \pgfmathsetmacro{\KK}{{{{ K }}}}
+    \pgfmathsetmacro{\KK}{\PARAM}
     \pgfmathsetmacro{\dc}{\KK / (1 + \KK)}
     \pgfmathsetmacro{\tau}{1 + \KK}
     \addplot[domain=0:5, samples=100, atlantic, very thick]
