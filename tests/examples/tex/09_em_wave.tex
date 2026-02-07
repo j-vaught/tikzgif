@@ -1,0 +1,59 @@
+% Example 09: Electromagnetic Wave Propagation
+% 3D electromagnetic wave with E-field (vertical) and B-field (horizontal)
+% oscillating perpendicular to propagation direction.
+% Parameter: \PARAM (phase offset in degrees, 0 to 360)
+% Range: 0 to 360, recommended 60 frames
+% Difficulty: advanced
+% Features demonstrated: 3D drawing, coordinate transforms, physics visualization
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\usetikzlibrary{3d, arrows.meta}
+\begin{document}
+\begin{tikzpicture}[
+    x={(-0.4cm,-0.3cm)},
+    y={(1cm,0cm)},
+    z={(0cm,1cm)},
+    >=Stealth,
+  ]
+  \useasboundingbox (-2,-7) rectangle (5,4.5);
+
+  \pgfmathsetmacro{\phase}{\PARAM}
+  \pgfmathsetmacro{\wavelength}{3}
+  \pgfmathsetmacro{\amplitude}{2}
+  \pgfmathsetmacro{\npoints}{80}
+
+  % Propagation axis (y-axis)
+  \draw[->, thick, black!60] (0,-0.5,0) -- (0,11,0) node[right] {$\hat{k}$};
+  % E-field axis (z-axis)
+  \draw[->, thick, red!60] (0,0,-2.5) -- (0,0,3) node[above] {$\vec{E}$};
+  % B-field axis (x-axis)
+  \draw[->, thick, blue!60] (-2.5,0,0) -- (3,0,0) node[left] {$\vec{B}$};
+
+  % Draw E-field wave (in y-z plane)
+  \draw[red!70!black, thick]
+    plot[domain=0:10, samples=\npoints, variable=\yy, smooth]
+    (0, \yy, {\amplitude * sin(360/\wavelength * \yy + \phase)});
+
+  % Draw B-field wave (in x-y plane)
+  \draw[blue!70!black, thick]
+    plot[domain=0:10, samples=\npoints, variable=\yy, smooth]
+    ({\amplitude * sin(360/\wavelength * \yy + \phase)}, \yy, 0);
+
+  % Field vectors at sample points (every wavelength/4)
+  \foreach \yy in {0,0.5,...,10} {
+    \pgfmathsetmacro{\Eval}{\amplitude * sin(360/\wavelength * \yy + \phase)}
+    \pgfmathsetmacro{\Bval}{\amplitude * sin(360/\wavelength * \yy + \phase)}
+    % E-field arrows (red)
+    \draw[->, red!50, thin] (0, \yy, 0) -- (0, \yy, \Eval);
+    % B-field arrows (blue)
+    \draw[->, blue!50, thin] (0, \yy, 0) -- (\Bval, \yy, 0);
+  }
+
+  % Phase label
+  \node[font=\small, anchor=north west] at (-1, 0, -3)
+    {$\phi = \pgfmathprintnumber[fixed, precision=0]{\phase}^\circ$};
+
+  % Origin dot
+  \fill[black] (0,0,0) circle (1.5pt);
+\end{tikzpicture}
+\end{document}

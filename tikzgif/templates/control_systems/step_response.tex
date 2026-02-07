@@ -1,0 +1,114 @@
+%%--- TIKZGIF META ---
+%% name: control.step_response
+%% title: Second-Order Step Response -- Damping Ratio Sweep
+%% description: >
+%%   Animates the unit step response of a standard second-order system
+%%   G(s) = wn^2 / (s^2 + 2*zeta*wn*s + wn^2) as the damping ratio
+%%   zeta sweeps from 0.1 (highly underdamped) through 1.0 (critically
+%%   damped) to 2.0 (overdamped).
+%% author: J.C. Vaught
+%% version: 1.0.0
+%% domain: control_systems
+%% tags: [control, step response, second-order, damping]
+%% engine: pdflatex
+%% tikz_libraries: []
+%% latex_packages: [tikz, pgfplots, amsmath]
+%% params:
+%%   - name: zeta
+%%     type: float
+%%     default: 0.5
+%%     min: 0.1
+%%     max: 2.0
+%%     step: 0.05
+%%     sweep: true
+%%     description: Damping ratio of the second-order system
+%%     unit: ""
+%%   - name: wn
+%%     type: float
+%%     default: 3.0
+%%     min: 1.0
+%%     max: 10.0
+%%     step: 1.0
+%%     sweep: false
+%%     description: Natural frequency (rad/s)
+%%     unit: "rad/s"
+%% fps: 12
+%% frames: 39
+%% loop: true
+%% bounce: true
+%%--- END META ---
+\documentclass[border=5pt]{standalone}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{amsmath}
+\pgfplotsset{compat=1.18}
+
+\begin{document}
+\begin{tikzpicture}
+
+\pgfmathsetmacro{\zeta}{{{{ zeta }}}}
+\pgfmathsetmacro{\wn}{{{{ wn }}}}
+\pgfmathsetmacro{\wd}{\wn * sqrt(abs(1 - \zeta*\zeta))}
+\pgfmathsetmacro{\sigma}{\zeta * \wn}
+
+\begin{axis}[
+    width=10cm, height=6.5cm,
+    xmin=0, xmax=5, ymin=0, ymax=2.0,
+    xlabel={Time $t$ (s)},
+    ylabel={$y(t)$},
+    title={Step Response: $\zeta = \pgfmathprintnumber[fixed, precision=2]{\zeta}$,\;
+           $\omega_n = \pgfmathprintnumber[fixed, precision=1]{\wn}$ rad/s},
+    grid=major, grid style={gray!30}, thick,
+    every axis title/.style={font=\normalsize},
+    legend pos=south east,
+    legend style={font=\footnotesize},
+]
+    % Reference line
+    \addplot[domain=0:5, samples=2, dashed, black!50, thin] {1};
+
+    % Underdamped case (zeta < 1)
+    \pgfmathparse{\zeta < 0.999 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \pgfmathsetmacro{\phirad}{acos(\zeta)}
+        \addplot[domain=0:5, samples=200, blue!80!black, very thick]
+            {1 - (exp(-\sigma * x) / sqrt(1 - \zeta*\zeta))
+             * sin(\wd * x * 180/3.14159 + \phirad)};
+        \addlegendentry{Underdamped}
+    \fi
+
+    % Critically damped (zeta = 1)
+    \pgfmathparse{(\zeta >= 0.999) && (\zeta <= 1.001) ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \addplot[domain=0:5, samples=200, red!80!black, very thick]
+            {1 - (1 + \wn*x) * exp(-\wn * x)};
+        \addlegendentry{Critically damped}
+    \fi
+
+    % Overdamped (zeta > 1)
+    \pgfmathparse{\zeta > 1.001 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \pgfmathsetmacro{\sqrtterm}{sqrt(\zeta*\zeta - 1)}
+        \pgfmathsetmacro{\sone}{-\zeta*\wn + \wn*\sqrtterm}
+        \pgfmathsetmacro{\stwo}{-\zeta*\wn - \wn*\sqrtterm}
+        \pgfmathsetmacro{\coeffA}{\stwo / (\stwo - \sone)}
+        \pgfmathsetmacro{\coeffB}{\sone / (\sone - \stwo)}
+        \addplot[domain=0:5, samples=200, green!50!black, very thick]
+            {1 + \coeffA * exp(\sone * x) + \coeffB * exp(\stwo * x)};
+        \addlegendentry{Overdamped}
+    \fi
+
+    % Overshoot annotation (underdamped only)
+    \pgfmathparse{\zeta < 0.999 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \pgfmathsetmacro{\Mp}{exp(-3.14159*\zeta / sqrt(1-\zeta*\zeta))}
+        \pgfmathsetmacro{\tp}{3.14159 / \wd}
+        \pgfmathsetmacro{\yp}{1 + \Mp}
+        \draw[<-, thin, red!60!black]
+            (axis cs:\tp, \yp) -- ++(axis direction cs:0.3,0.15)
+            node[right, font=\tiny, text=red!60!black]
+            {$M_p = \pgfmathprintnumber[fixed, precision=1, multiply to=100]{\Mp}\%$};
+    \fi
+\end{axis}
+
+\end{tikzpicture}
+\end{document}

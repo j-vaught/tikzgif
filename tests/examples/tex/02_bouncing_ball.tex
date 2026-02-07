@@ -1,0 +1,34 @@
+% Example 02: Bouncing Ball
+% Parabolic trajectory with shadow on the ground plane.
+% Parameter: \PARAM (time in range 0..1, one full bounce cycle)
+% Range: 0 to 1, recommended 40 frames
+% Difficulty: beginner
+% Features demonstrated: mathematical expressions in coordinates, shadows
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\begin{document}
+\begin{tikzpicture}
+  \useasboundingbox (-0.5,-0.5) rectangle (8.5,5.5);
+  % Ground
+  \fill[black!10] (-0.5,-0.5) rectangle (8.5,0);
+  \draw[thick] (-0.5,0) -- (8.5,0);
+  % Horizontal position: linear in time
+  \pgfmathsetmacro{\xpos}{\PARAM * 8}
+  % Vertical position: parabolic (peak at t=0.5)
+  \pgfmathsetmacro{\ypos}{4 * 4 * \PARAM * (1 - \PARAM)}
+  % Shadow size inversely proportional to height
+  \pgfmathsetmacro{\shadowscale}{1 - 0.6 * 4 * \PARAM * (1 - \PARAM)}
+  \pgfmathsetmacro{\shadowalpha}{80 - 50 * 4 * \PARAM * (1 - \PARAM) / 4}
+  % Shadow on the ground
+  \fill[black!\shadowalpha, opacity=0.4]
+    (\xpos, 0) ellipse ({\shadowscale * 0.5} and 0.08);
+  % Ball
+  \shade[ball color=red!70!black] (\xpos, \ypos) circle (0.35);
+  % Trajectory guide (faint)
+  \draw[dashed, gray!50, thin]
+    plot[domain=0:1, samples=50, variable=\t]
+    ({\t * 8}, {4 * 4 * \t * (1 - \t)});
+  % Label
+  \node[below right] at (0.2,5.2) {\small $t = \PARAM$};
+\end{tikzpicture}
+\end{document}

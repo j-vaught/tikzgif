@@ -1,0 +1,64 @@
+% Example 08: Control System Step Response
+% Second-order underdamped system step response with varying damping ratio.
+% Transfer function: G(s) = wn^2 / (s^2 + 2*zeta*wn*s + wn^2)
+% Parameter: \PARAM (damping ratio zeta, 0.05 to 1.0)
+% Range: 0.05 to 1.0, recommended 40 frames
+% Difficulty: intermediate
+% Features demonstrated: pgfplots, mathematical modeling, engineering visualization
+\documentclass[tikz]{standalone}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\begin{document}
+\begin{tikzpicture}
+  \pgfmathsetmacro{\zeta}{\PARAM}
+  \pgfmathsetmacro{\wn}{5}
+  \pgfmathsetmacro{\wdamp}{\wn * sqrt(max(1 - \zeta*\zeta, 0.001))}
+  \pgfmathsetmacro{\overshoot}{exp(-\zeta * 3.14159 / sqrt(max(1-\zeta*\zeta, 0.001)))}
+  \pgfmathsetmacro{\ospct}{\overshoot * 100}
+  \pgfmathsetmacro{\osline}{1 + \overshoot}
+
+  \begin{axis}[
+    width=11cm, height=6.5cm,
+    domain=0:5,
+    samples=300,
+    axis lines=left,
+    xlabel={Time (s)},
+    ylabel={$y(t)$},
+    ymin=-0.1, ymax=2.0,
+    xmin=0, xmax=5,
+    grid=major,
+    grid style={gray!25},
+    title={Step Response: $\zeta = \pgfmathprintnumber[fixed, precision=2]{\zeta}$},
+    every axis title/.style={at={(0.5,1.05)}, font=\large},
+    legend pos=south east,
+    legend style={font=\small},
+  ]
+    % Step response of second-order system
+    \addplot[red!70!black, very thick] {
+      1 - exp(-\zeta * \wn * x) / sqrt(max(1 - \zeta*\zeta, 0.001))
+        * sin(deg(\wdamp * x) + acos(\zeta))
+    };
+    \addlegendentry{$y(t)$}
+
+    % Reference line at y=1
+    \addplot[dashed, blue!50!black, thin] {1};
+    \addlegendentry{Setpoint}
+
+    % Overshoot line
+    \addplot[dotted, black!40, thin] {\osline};
+
+    % 2% settling band
+    \fill[green!10, opacity=0.3] (axis cs:0, 0.98) rectangle (axis cs:5, 1.02);
+  \end{axis}
+
+  % Info box
+  \node[draw, fill=white, inner sep=4pt, font=\footnotesize, anchor=north west]
+    at (1.2, 3.8) {%
+      \begin{tabular}{ll}
+        $\zeta$ & $= \pgfmathprintnumber[fixed, precision=3]{\zeta}$ \\
+        $\omega_n$ & $= \pgfmathprintnumber[fixed, precision=1]{\wn}$ rad/s \\
+        OS & $= \pgfmathprintnumber[fixed, precision=1]{\ospct}\%$
+      \end{tabular}
+    };
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,80 @@
+%%--- TIKZGIF META ---
+%% name: em.antenna_radiation
+%% title: Antenna Radiation Pattern
+%% description: >
+%%   Polar radiation pattern f(theta) = |sin(theta)|^n.
+%%   Sweeping n demonstrates how directivity narrows the beam.
+%% author: J.C. Vaught
+%% version: 1.0.0
+%% domain: electromagnetics
+%% tags: [EM, antenna, radiation pattern, directivity]
+%% engine: pdflatex
+%% tikz_libraries: [arrows.meta]
+%% latex_packages: [tikz, amsmath]
+%% params:
+%%   - name: n
+%%     type: float
+%%     default: 2.0
+%%     min: 1.0
+%%     max: 8.0
+%%     step: 0.25
+%%     sweep: true
+%%     description: Radiation pattern exponent
+%%     unit: ""
+%%   - name: rotAngle
+%%     type: float
+%%     default: 0.0
+%%     min: 0.0
+%%     max: 360.0
+%%     step: 10.0
+%%     sweep: false
+%%     description: Pattern rotation angle in degrees
+%%     unit: "deg"
+%% fps: 12
+%% frames: 29
+%% loop: true
+%% bounce: true
+%%--- END META ---
+\documentclass[border=10pt,tikz]{standalone}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta}
+
+\begin{document}
+\begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
+
+\pgfmathsetmacro{\nExp}{{{{ n }}}}
+\pgfmathsetmacro{\rotA}{{{{ rotAngle }}}}
+\pgfmathsetmacro{\Rmax}{3.5}
+
+% Polar grid
+\foreach \r in {0.875, 1.75, 2.625, 3.5} {
+    \draw[gray!25, thin] (0,0) circle (\r);
+}
+\foreach \a in {0, 30, 60, ..., 330} {
+    \draw[gray!25, thin] (0,0) -- (\a:\Rmax+0.2);
+    \node[font=\tiny, gray!60] at (\a:\Rmax+0.5) {$\a^\circ$};
+}
+
+% Pattern
+\draw[red!80!black, very thick, samples=360, domain=0:360, variable=\t]
+    plot ({\t + \rotA}:
+          {\Rmax * (abs(sin(\t)) > 0.001 ? pow(abs(sin(\t)), \nExp) : 0)});
+
+\fill[red!20, opacity=0.3, samples=360, domain=0:360, variable=\t]
+    plot ({\t + \rotA}:
+          {\Rmax * (abs(sin(\t)) > 0.001 ? pow(abs(sin(\t)), \nExp) : 0)})
+    -- cycle;
+
+% Dipole
+\draw[black!80, line width=2pt] (0, -0.35) -- (0, 0.35);
+\filldraw[black] (0, 0.35) circle (1.5pt);
+\filldraw[black] (0, -0.35) circle (1.5pt);
+
+% Label
+\node[anchor=south west, font=\normalsize, fill=white, inner sep=3pt, draw=gray!40]
+    at (-\Rmax-0.8, \Rmax-0.2)
+    {$f(\theta) = |\sin\theta|^{\pgfmathprintnumber[fixed, precision=1]{\nExp}}$};
+
+\end{tikzpicture}
+\end{document}

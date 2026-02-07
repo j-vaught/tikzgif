@@ -1,0 +1,84 @@
+% Example 15: Fractal Tree Growth
+% A recursive tree that grows branch by branch over time.
+% Parameter: \PARAM (growth progress, 0 to 1)
+% Range: 0 to 1, recommended 60 frames
+% Difficulty: advanced
+% Features demonstrated: recursive macros, conditional drawing, organic shapes
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\begin{document}
+\begin{tikzpicture}
+  \useasboundingbox (-6,-1) rectangle (6,10);
+
+  \pgfmathsetmacro{\progress}{\PARAM}  % 0 to 1
+
+  % Total depth levels
+  \pgfmathtruncatemacro{\maxdepth}{8}
+
+  % Which depth level are we at?
+  % progress 0..1 maps to depth 0..maxdepth (with smooth interpolation)
+  \pgfmathsetmacro{\currentdepth}{\progress * \maxdepth}
+
+  % Recursive tree-drawing command
+  % #1 = start x, #2 = start y, #3 = angle, #4 = length, #5 = depth, #6 = thickness
+  \newcommand{\branch}[6]{%
+    \pgfmathtruncatemacro{\dep}{#5}%
+    \ifnum\dep<\maxdepth
+      % Should this branch be drawn based on progress?
+      \pgfmathsetmacro{\branchvisible}{\dep < \currentdepth ? 1 : 0}
+      \ifdim\branchvisible pt>0.5pt
+        % Compute end point
+        \pgfmathsetmacro{\ex}{#1 + #4 * sin(#3)}%
+        \pgfmathsetmacro{\ey}{#2 + #4 * cos(#3)}%
+
+        % Growth factor for partial depth levels
+        \pgfmathsetmacro{\growfactor}{min(1, \currentdepth - \dep)}
+
+        % Interpolated end point
+        \pgfmathsetmacro{\ix}{#1 + \growfactor * (#4) * sin(#3)}%
+        \pgfmathsetmacro{\iy}{#2 + \growfactor * (#4) * cos(#3)}%
+
+        % Color: trunk is brown, tips are green
+        \pgfmathtruncatemacro{\greenpct}{min(100, max(0, \dep * 15))}
+
+        % Draw the branch
+        \draw[line width=#6 pt, line cap=round,
+              green!\greenpct!brown!80!black]
+          (#1, #2) -- (\ix, \iy);
+
+        % Leaves at the tips (only for deeper branches)
+        \ifnum\dep>5
+          \ifdim\growfactor pt>0.8pt
+            \fill[green!60!black, opacity=0.6]
+              (\ix, \iy) circle ({0.08 * (1 + \dep/\maxdepth)});
+          \fi
+        \fi
+
+        % Recurse if fully grown
+        \ifdim\growfactor pt>0.99pt
+          \pgfmathsetmacro{\newlen}{#4 * 0.72}%
+          \pgfmathsetmacro{\newthick}{max(0.3, #6 * 0.65)}%
+          \pgfmathtruncatemacro{\newdep}{\dep + 1}%
+          % Left branch
+          \pgfmathsetmacro{\angleL}{#3 - 25 - 5 * rand}%
+          \branch{\ex}{\ey}{\angleL}{\newlen}{\newdep}{\newthick}%
+          % Right branch
+          \pgfmathsetmacro{\angleR}{#3 + 25 + 5 * rand}%
+          \branch{\ex}{\ey}{\angleR}{\newlen}{\newdep}{\newthick}%
+        \fi
+      \fi
+    \fi
+  }
+
+  % Ground
+  \fill[green!30!brown!20] (-6, -0.5) rectangle (6, 0);
+  \draw[brown!60!black, thick] (-6, 0) -- (6, 0);
+
+  % Start the tree
+  \branch{0}{0}{0}{2.5}{0}{4}
+
+  % Label
+  \node[below, font=\small] at (0, -0.7)
+    {Growth: $\pgfmathparse{\progress * 100}\pgfmathprintnumber[fixed, precision=0]{\pgfmathresult}\%$};
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,105 @@
+%%--- TIKZGIF META ---
+%% name: em.magnetic_field_loop
+%% title: Magnetic Field of a Current Loop
+%% description: >
+%%   Cross-section of a current loop with field lines scaling with current I.
+%% author: J.C. Vaught
+%% version: 1.0.0
+%% domain: electromagnetics
+%% tags: [EM, magnetic field, current loop, dipole]
+%% engine: pdflatex
+%% tikz_libraries: [arrows.meta, calc, decorations.markings]
+%% latex_packages: [tikz, amsmath]
+%% params:
+%%   - name: I
+%%     type: float
+%%     default: 2.0
+%%     min: 0.5
+%%     max: 5.0
+%%     step: 0.15
+%%     sweep: true
+%%     description: Current magnitude in amperes
+%%     unit: "A"
+%% fps: 12
+%% frames: 30
+%% loop: true
+%% bounce: true
+%%--- END META ---
+\documentclass[border=8pt,tikz]{standalone}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta, calc, decorations.markings}
+
+\begin{document}
+\begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
+
+\pgfmathsetmacro{\Ival}{{{{ I }}}}
+\pgfmathsetmacro{\lineScale}{0.25 + 0.15 * \Ival}
+\pgfmathsetmacro{\nLines}{min(floor(\Ival * 2 + 1), 10)}
+
+% Grid
+\draw[gray!15, very thin, step=0.5] (-4.5,-3.5) grid (4.5,3.5);
+
+% Right conductor (out of page)
+\filldraw[black!80] (1, 0) circle (6pt);
+\filldraw[white] (1, 0) circle (2pt);
+\node[below=5mm, font=\footnotesize] at (1, 0) {$\odot\; I$};
+
+% Left conductor (into page)
+\filldraw[black!80] (-1, 0) circle (6pt);
+\draw[white, thick] (-1.06, -0.06) -- (-0.94, 0.06);
+\draw[white, thick] (-1.06, 0.06) -- (-0.94, -0.06);
+\node[below=5mm, font=\footnotesize] at (-1, 0) {$\otimes\; I$};
+
+% Local field lines around right conductor
+\foreach \k in {1, 2, ..., 6} {
+    \pgfmathsetmacro{\rr}{0.25 + \k * 0.2 * \lineScale}
+    \pgfmathparse{\k <= \nLines ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \draw[blue!70!black, thin,
+              decoration={markings,
+                  mark=at position 0.25 with {\arrow{Stealth[length=2.5pt]}},
+                  mark=at position 0.75 with {\arrow{Stealth[length=2.5pt]}}},
+              postaction={decorate}]
+            (1, 0) circle [x radius=\rr, y radius=\rr*0.9];
+    \fi
+}
+
+% Local field lines around left conductor
+\foreach \k in {1, 2, ..., 6} {
+    \pgfmathsetmacro{\rr}{0.25 + \k * 0.2 * \lineScale}
+    \pgfmathparse{\k <= \nLines ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \draw[blue!70!black, thin,
+              decoration={markings,
+                  mark=at position 0.25 with {\arrowreversed{Stealth[length=2.5pt]}},
+                  mark=at position 0.75 with {\arrowreversed{Stealth[length=2.5pt]}}},
+              postaction={decorate}]
+            (-1, 0) circle [x radius=\rr, y radius=\rr*0.9];
+    \fi
+}
+
+% Dipole field lines (encircling both)
+\foreach \k in {1, 2, ..., 5} {
+    \pgfmathsetmacro{\rx}{1.5 + \k * 0.45 * \lineScale}
+    \pgfmathsetmacro{\ry}{0.8 + \k * 0.4 * \lineScale}
+    \pgfmathparse{\k <= \nLines ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \draw[red!60!black, thin,
+              decoration={markings,
+                  mark=at position 0.0 with {\arrow{Stealth[length=2.5pt]}},
+                  mark=at position 0.5 with {\arrow{Stealth[length=2.5pt]}}},
+              postaction={decorate}]
+            (0, 0) ellipse [x radius=\rx, y radius=\ry];
+    \fi
+}
+
+\node[anchor=north west, font=\normalsize, fill=white, inner sep=3pt, draw=gray!40]
+    at (-4.4, 3.4)
+    {$I = \pgfmathprintnumber[fixed, precision=1]{\Ival}$ A};
+
+\draw[dashed, gray!50, thin] (0, -3.3) -- (0, 3.3)
+    node[above, font=\tiny, gray]{axis};
+
+\end{tikzpicture}
+\end{document}

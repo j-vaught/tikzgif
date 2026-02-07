@@ -1,0 +1,97 @@
+%%--- TIKZGIF META ---
+%% name: em.wave_propagation
+%% title: Electromagnetic Wave Propagation
+%% description: >
+%%   Plane EM wave in +z direction.  E (red, vertical) and B (blue,
+%%   horizontal) oscillate sinusoidally.  Sweeping temporal phase phi
+%%   creates the illusion of propagation.
+%% author: J.C. Vaught
+%% version: 1.0.0
+%% domain: electromagnetics
+%% tags: [EM, wave, propagation, E-field, B-field]
+%% engine: pdflatex
+%% tikz_libraries: [arrows.meta, calc]
+%% latex_packages: [tikz, amsmath]
+%% params:
+%%   - name: phi
+%%     type: float
+%%     default: 0.0
+%%     min: 0.0
+%%     max: 6.283185
+%%     step: 0.15708
+%%     sweep: true
+%%     description: Temporal phase (0 to 2*pi)
+%%     unit: "rad"
+%%   - name: amplitude
+%%     type: float
+%%     default: 1.5
+%%     min: 0.5
+%%     max: 2.5
+%%     sweep: false
+%%     description: Wave amplitude in cm
+%%     unit: "cm"
+%% fps: 20
+%% frames: 40
+%% loop: true
+%% bounce: false
+%%--- END META ---
+\documentclass[border=8pt,tikz]{standalone}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta, calc}
+
+\begin{document}
+\begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
+
+\pgfmathsetmacro{\phase}{{{{ phi }}}}
+\pgfmathsetmacro{\amp}{{{{ amplitude }}}}
+\pgfmathsetmacro{\wavelen}{4}
+\pgfmathsetmacro{\zmax}{9}
+\pgfmathsetmacro{\kwave}{360/\wavelen}
+
+% Axes
+\draw[->, thick, black!60] (0,0,0) -- (\zmax+0.8, 0, 0) node[right]{$z$};
+\draw[->, thick, black!60] (0,0,0) -- (0, \amp+0.8, 0) node[above]{$\mathbf{E}$};
+\draw[->, thick, black!60] (0,0,0) -- (0, 0, \amp+0.8) node[below left]{$\mathbf{B}$};
+
+% E-field
+\draw[red!80!black, very thick, samples=100, domain=0:\zmax, variable=\z]
+    plot (\z, {\amp * sin(\kwave*\z - \phase*180/3.14159)}, 0);
+
+\foreach \z in {0, 0.5, 1.0, ..., 9.0} {
+    \pgfmathsetmacro{\Eval}{\amp * sin(\kwave*\z - \phase*180/3.14159)}
+    \pgfmathparse{abs(\Eval) > 0.08 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \draw[->, red!60!black, thin] (\z, 0, 0) -- (\z, \Eval, 0);
+    \fi
+}
+
+% B-field
+\draw[blue!80!black, very thick, samples=100, domain=0:\zmax, variable=\z]
+    plot (\z, 0, {\amp * sin(\kwave*\z - \phase*180/3.14159)});
+
+\foreach \z in {0, 0.5, 1.0, ..., 9.0} {
+    \pgfmathsetmacro{\Bval}{\amp * sin(\kwave*\z - \phase*180/3.14159)}
+    \pgfmathparse{abs(\Bval) > 0.08 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \draw[->, blue!60!black, thin] (\z, 0, 0) -- (\z, 0, \Bval);
+    \fi
+}
+
+% Propagation arrow
+\draw[->, ultra thick, black!80, line width=1.5pt]
+    (\zmax*0.45, -\amp-0.5, 0) -- (\zmax*0.65, -\amp-0.5, 0)
+    node[midway, below, font=\footnotesize] {$\hat{k}$};
+
+% Wavelength
+\draw[<->, black!70, thick]
+    (0.5, -\amp-0.15, 0) -- ({0.5 + \wavelen}, -\amp-0.15, 0)
+    node[midway, below, font=\footnotesize]{$\lambda$};
+
+% Phase label
+\node[anchor=north west, font=\footnotesize, fill=white, inner sep=2pt]
+    at (0.1, \amp+0.6, 0)
+    {$\omega t = \pgfmathprintnumber[fixed, precision=2]{\phase}$ rad};
+
+\end{tikzpicture}
+\end{document}

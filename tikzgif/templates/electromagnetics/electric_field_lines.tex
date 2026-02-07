@@ -1,0 +1,106 @@
+%%--- TIKZGIF META ---
+%% name: em.electric_field_lines
+%% title: Electric Field Lines from Point Charges
+%% description: >
+%%   Field lines from two point charges via superposition.
+%%   One positive charge is fixed; the second moves along x-axis.
+%% author: J.C. Vaught
+%% version: 1.0.0
+%% domain: electromagnetics
+%% tags: [EM, electric field, Coulomb, point charge]
+%% engine: pdflatex
+%% tikz_libraries: [arrows.meta, calc]
+%% latex_packages: [tikz, amsmath]
+%% params:
+%%   - name: xpos
+%%     type: float
+%%     default: 1.5
+%%     min: 0.5
+%%     max: 3.5
+%%     step: 0.1
+%%     sweep: true
+%%     description: x-coordinate of the moving charge
+%%     unit: "cm"
+%%   - name: q2sign
+%%     type: float
+%%     default: -1.0
+%%     min: -1.0
+%%     max: 1.0
+%%     step: 2.0
+%%     sweep: false
+%%     description: Sign of the second charge (+1 or -1)
+%%     unit: ""
+%% fps: 12
+%% frames: 31
+%% loop: true
+%% bounce: true
+%%--- END META ---
+\documentclass[border=10pt,tikz]{standalone}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta, calc}
+
+\begin{document}
+\begin{tikzpicture}[>=Stealth]
+
+\pgfmathsetmacro{\xB}{{{{ xpos }}}}
+\pgfmathsetmacro{\qsign}{{{{ q2sign }}}}
+\pgfmathsetmacro{\xA}{-1.5}
+\pgfmathsetmacro{\yA}{0}
+
+% Draw charges
+\filldraw[red!80!black] (\xA, \yA) circle (5pt);
+\node[font=\bfseries\small, white] at (\xA, \yA) {+};
+
+\pgfmathparse{\qsign > 0 ? 1 : 0}
+\ifnum\pgfmathresult=1
+    \filldraw[red!80!black] (\xB, 0) circle (5pt);
+    \node[font=\bfseries\small, white] at (\xB, 0) {+};
+\else
+    \filldraw[blue!80!black] (\xB, 0) circle (5pt);
+    \node[font=\bfseries\small, white] at (\xB, 0) {--};
+\fi
+
+% Field lines via Euler stepping
+\foreach \startAngle in {0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330} {
+    \pgfmathsetmacro{\startR}{0.18}
+    \pgfmathsetmacro{\sx}{\xA + \startR * cos(\startAngle)}
+    \pgfmathsetmacro{\sy}{\yA + \startR * sin(\startAngle)}
+    \pgfmathsetmacro{\stepLen}{0.12}
+    \pgfmathsetmacro{\cx}{\sx}
+    \pgfmathsetmacro{\cy}{\sy}
+    \xdef\fieldpath{(\cx, \cy)}
+    \foreach \step in {1, 2, ..., 50} {
+        \pgfmathsetmacro{\dxA}{\cx - \xA}
+        \pgfmathsetmacro{\dyA}{\cy - \yA}
+        \pgfmathsetmacro{\rA}{max(sqrt(\dxA*\dxA + \dyA*\dyA), 0.15)}
+        \pgfmathsetmacro{\ExA}{\dxA / (\rA*\rA*\rA)}
+        \pgfmathsetmacro{\EyA}{\dyA / (\rA*\rA*\rA)}
+        \pgfmathsetmacro{\dxB}{\cx - \xB}
+        \pgfmathsetmacro{\dyB}{\cy - 0}
+        \pgfmathsetmacro{\rB}{max(sqrt(\dxB*\dxB + \dyB*\dyB), 0.15)}
+        \pgfmathsetmacro{\ExB}{\qsign * \dxB / (\rB*\rB*\rB)}
+        \pgfmathsetmacro{\EyB}{\qsign * \dyB / (\rB*\rB*\rB)}
+        \pgfmathsetmacro{\Ex}{\ExA + \ExB}
+        \pgfmathsetmacro{\Ey}{\EyA + \EyB}
+        \pgfmathsetmacro{\Emag}{max(sqrt(\Ex*\Ex + \Ey*\Ey), 0.001)}
+        \pgfmathsetmacro{\nx}{\Ex / \Emag * \stepLen}
+        \pgfmathsetmacro{\ny}{\Ey / \Emag * \stepLen}
+        \pgfmathsetmacro{\cx}{\cx + \nx}
+        \pgfmathsetmacro{\cy}{\cy + \ny}
+        \pgfmathsetmacro{\distB}{sqrt((\cx-\xB)*(\cx-\xB) + \cy*\cy)}
+        \pgfmathparse{(abs(\cx) < 5.0) && (abs(\cy) < 4.0) && (\distB > 0.2) ? 1 : 0}
+        \ifnum\pgfmathresult=1
+            \xdef\fieldpath{\fieldpath -- (\cx, \cy)}
+        \fi
+    }
+    \draw[orange!70!black, thin, -{Stealth[length=2pt]}] \fieldpath;
+}
+
+\draw[gray!30, thin] (-4, -3.5) rectangle (5, 3.5);
+\node[anchor=north west, font=\footnotesize, fill=white, inner sep=2pt]
+    at (-3.9, 3.4)
+    {$q_2$ at $x = \pgfmathprintnumber[fixed, precision=2]{\xB}$};
+
+\end{tikzpicture}
+\end{document}

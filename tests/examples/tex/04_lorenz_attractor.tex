@@ -1,0 +1,69 @@
+% Example 04: Lorenz Attractor Trace
+% A point traces the Lorenz attractor using Euler integration in pgfmath.
+% We draw only the last N trail points plus the current position.
+% Parameter: \PARAM (integer step count, 0 to 2000)
+% Range: 0 to 2000, recommended 200 frames (step by 10)
+% Difficulty: advanced
+% Features demonstrated: Euler integration in pgfmath, 3D projection, trail
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\begin{document}
+\begin{tikzpicture}
+  \useasboundingbox (-6,-5) rectangle (6,6);
+
+  % Lorenz parameters
+  \pgfmathsetmacro{\sig}{10}
+  \pgfmathsetmacro{\rh}{28}
+  \pgfmathsetmacro{\bet}{2.667}
+  \pgfmathsetmacro{\dt}{0.005}
+  \pgfmathtruncatemacro{\nsteps}{\PARAM}
+
+  % Initial conditions
+  \pgfmathsetmacro{\lx}{1}
+  \pgfmathsetmacro{\ly}{1}
+  \pgfmathsetmacro{\lz}{1}
+
+  % 3D to 2D projection (simple oblique)
+  \newcommand{\projx}[3]{\pgfmathsetmacro{\projresultx}{(#1)*0.12 + (#2)*(-0.06)}}
+  \newcommand{\projy}[3]{\pgfmathsetmacro{\projresulty}{(#3)*0.18 - 4.5}}
+
+  % Axes
+  \draw[->, gray!40, thin] (0,-4.5) -- (0,5.5) node[above, font=\tiny] {$z$};
+
+  % Run Euler integration, storing the last 30 positions for the trail
+  \pgfmathtruncatemacro{\traillen}{30}
+  \pgfmathtruncatemacro{\maxstep}{min(\nsteps, 2000)}
+
+  % We only draw trail dots, not a continuous curve, for reliability
+  \foreach \step in {1,...,\maxstep} {
+    \pgfmathsetmacro{\dx}{\sig * (\ly - \lx) * \dt}
+    \pgfmathsetmacro{\dy}{(\lx * (\rh - \lz) - \ly) * \dt}
+    \pgfmathsetmacro{\dz}{(\lx * \ly - \bet * \lz) * \dt}
+    \pgfmathsetmacro{\lx}{\lx + \dx}
+    \pgfmathsetmacro{\ly}{\ly + \dy}
+    \pgfmathsetmacro{\lz}{\lz + \dz}
+    \global\let\lx\lx
+    \global\let\ly\ly
+    \global\let\lz\lz
+
+    % Draw trail dot for the last 'traillen' steps
+    \pgfmathtruncatemacro{\remaining}{\maxstep - \step}
+    \ifnum\remaining<\traillen\relax
+      \pgfmathsetmacro{\opac}{1.0 - \remaining / \traillen}
+      \projx{\lx}{\ly}{\lz}
+      \projy{\lx}{\ly}{\lz}
+      \pgfmathtruncatemacro{\rcolor}{min(100, max(0, \opac * 100))}
+      \fill[red!\rcolor!blue, opacity=\opac]
+        (\projresultx, \projresulty) circle (1pt);
+    \fi
+  }
+
+  % Current point (bright dot)
+  \projx{\lx}{\ly}{\lz}
+  \projy{\lx}{\ly}{\lz}
+  \fill[white] (\projresultx, \projresulty) circle (3pt);
+  \fill[red] (\projresultx, \projresulty) circle (2pt);
+
+  \node[below, font=\small] at (0,-4.8) {Step \maxstep};
+\end{tikzpicture}
+\end{document}

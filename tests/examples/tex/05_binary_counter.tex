@@ -1,0 +1,49 @@
+% Example 05: Binary Counter
+% Eight boxes showing binary counting from 0 to 255.
+% Parameter: \PARAM (integer value, 0 to 255)
+% Range: 0 to 255, recommended 256 frames (every integer)
+% Difficulty: intermediate
+% Features demonstrated: integer arithmetic, conditional styling, loops
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\begin{document}
+\begin{tikzpicture}
+  \useasboundingbox (-0.5,-1.5) rectangle (8.5,2.5);
+
+  \pgfmathtruncatemacro{\val}{\PARAM}
+
+  % Title
+  \node[font=\large\bfseries] at (4, 2) {Binary: \val};
+
+  % Compute each bit and draw boxes
+  \pgfmathtruncatemacro{\remaining}{\val}
+  \foreach \bit in {7,6,...,0} {
+    \pgfmathtruncatemacro{\colindex}{7 - \bit}
+    \pgfmathtruncatemacro{\power}{2^\bit}
+    \pgfmathtruncatemacro{\thisbit}{int(\remaining / \power)}
+    \pgfmathtruncatemacro{\remaining}{\remaining - \thisbit * \power}
+    \global\let\remaining\remaining
+
+    % Box position
+    \pgfmathsetmacro{\xpos}{\colindex + 0.5}
+
+    % Fill color based on bit value
+    \ifnum\thisbit=1
+      \fill[red!70!black] (\xpos - 0.45, -0.45) rectangle (\xpos + 0.45, 0.45);
+      \node[white, font=\Large\bfseries] at (\xpos, 0) {1};
+    \else
+      \fill[black!10] (\xpos - 0.45, -0.45) rectangle (\xpos + 0.45, 0.45);
+      \node[black!40, font=\Large\bfseries] at (\xpos, 0) {0};
+    \fi
+
+    % Box border
+    \draw[black!60, thick] (\xpos - 0.45, -0.45) rectangle (\xpos + 0.45, 0.45);
+
+    % Bit position label
+    \node[below, font=\tiny, black!50] at (\xpos, -0.55) {$2^{\bit}$};
+  }
+
+  % Decimal value below
+  \node[font=\normalsize] at (4, -1.2) {Decimal: \val};
+\end{tikzpicture}
+\end{document}

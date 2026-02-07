@@ -1,0 +1,102 @@
+%%--- TIKZGIF META ---
+%% name: physics.parametric_curve
+%% title: Parametric Curve Tracing (Lissajous)
+%% description: >
+%%   A point traces a Lissajous figure as tmax sweeps from 0 to 2*pi.
+%% author: J.C. Vaught
+%% version: 1.0.0
+%% domain: general_physics
+%% tags: [parametric, Lissajous, curve tracing]
+%% engine: pdflatex
+%% tikz_libraries: [arrows.meta]
+%% latex_packages: [tikz, amsmath]
+%% params:
+%%   - name: tmax
+%%     type: float
+%%     default: 3.14159
+%%     min: 0.1
+%%     max: 6.283185
+%%     step: 0.1309
+%%     sweep: true
+%%     description: Current max parameter value (0 to 2*pi)
+%%     unit: "rad"
+%%   - name: freqA
+%%     type: float
+%%     default: 3.0
+%%     min: 1.0
+%%     max: 7.0
+%%     sweep: false
+%%     description: Frequency of x-component
+%%   - name: freqB
+%%     type: float
+%%     default: 2.0
+%%     min: 1.0
+%%     max: 7.0
+%%     sweep: false
+%%     description: Frequency of y-component
+%%   - name: phaseDelta
+%%     type: float
+%%     default: 1.5708
+%%     min: 0.0
+%%     max: 3.14159
+%%     sweep: false
+%%     description: Phase offset for x (rad)
+%%     unit: "rad"
+%% fps: 20
+%% frames: 48
+%% loop: false
+%% bounce: false
+%%--- END META ---
+\documentclass[border=10pt,tikz]{standalone}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta}
+
+\begin{document}
+\begin{tikzpicture}[>=Stealth]
+
+\pgfmathsetmacro{\tmax}{{{{ tmax }}}}
+\pgfmathsetmacro{\fa}{{{{ freqA }}}}
+\pgfmathsetmacro{\fb}{{{{ freqB }}}}
+\pgfmathsetmacro{\phd}{{{{ phaseDelta }}}}
+\pgfmathsetmacro{\amp}{3.0}
+
+% Axes
+\draw[->, gray!60, thick] (-\amp-0.5, 0) -- (\amp+0.5, 0) node[right, font=\small]{$x$};
+\draw[->, gray!60, thick] (0, -\amp-0.5) -- (0, \amp+0.5) node[above, font=\small]{$y$};
+
+% Ghost of full curve
+\draw[gray!20, thin, samples=300, domain=0:360, variable=\t]
+    plot ({\amp * sin(\fa*\t + \phd*180/3.14159)}, {\amp * sin(\fb*\t)});
+
+% Traced curve up to tmax
+\pgfmathsetmacro{\tmaxDeg}{\tmax * 180 / 3.14159}
+\pgfmathsetmacro{\trailStart}{max(\tmaxDeg - 60, 0)}
+
+\draw[blue!30, thick, samples=100, domain=0:\trailStart, variable=\t]
+    plot ({\amp * sin(\fa*\t + \phd*180/3.14159)}, {\amp * sin(\fb*\t)});
+\draw[blue!70!black, very thick, samples=80, domain=\trailStart:\tmaxDeg, variable=\t]
+    plot ({\amp * sin(\fa*\t + \phd*180/3.14159)}, {\amp * sin(\fb*\t)});
+
+% Current point
+\pgfmathsetmacro{\currX}{\amp * sin(\fa*\tmaxDeg + \phd*180/3.14159)}
+\pgfmathsetmacro{\currY}{\amp * sin(\fb*\tmaxDeg)}
+\filldraw[red!80!black] (\currX, \currY) circle (4pt);
+\draw[dashed, red!40, thin] (\currX, \currY) -- (\currX, 0);
+\draw[dashed, red!40, thin] (\currX, \currY) -- (0, \currY);
+
+% Label
+\node[anchor=north west, font=\small, fill=white, inner sep=3pt, draw=gray!40]
+    at (-\amp-0.3, \amp+0.4)
+    {$\begin{aligned}
+        x &= \sin(\pgfmathprintnumber[fixed,precision=0]{\fa}\,t
+              + \pgfmathprintnumber[fixed,precision=2]{\phd}) \\
+        y &= \sin(\pgfmathprintnumber[fixed,precision=0]{\fb}\,t)
+     \end{aligned}$};
+
+\node[anchor=south east, font=\footnotesize, fill=white, inner sep=2pt]
+    at (\amp+0.3, -\amp-0.3)
+    {$t = \pgfmathprintnumber[fixed, precision=2]{\tmax}$};
+
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,88 @@
+% Example 07: Mandelbrot Zoom
+% Progressive zoom into the Mandelbrot set boundary near the Seahorse Valley.
+% Uses raw pgfmath iteration to compute escape-time for each pixel.
+% Parameter: \PARAM (zoom level, 0 to 1 representing log-scale zoom)
+% Range: 0 to 1, recommended 60 frames
+% Difficulty: advanced
+% Features demonstrated: heavy computation, pixel-level rendering, pgfmath loops
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\begin{document}
+\begin{tikzpicture}
+  % Zoom center: (-0.745, 0.186) -- Seahorse Valley
+  \pgfmathsetmacro{\cx}{-0.745}
+  \pgfmathsetmacro{\cy}{0.186}
+
+  % Zoom factor: exponential in PARAM
+  % At PARAM=0, window half-width=2.0; at PARAM=1, half-width=0.002
+  \pgfmathsetmacro{\halfwidth}{2.0 * exp(-\PARAM * ln(1000))}
+
+  \pgfmathsetmacro{\xlo}{\cx - \halfwidth}
+  \pgfmathsetmacro{\xhi}{\cx + \halfwidth}
+  \pgfmathsetmacro{\ylo}{\cy - \halfwidth * 0.75}
+  \pgfmathsetmacro{\yhi}{\cy + \halfwidth * 0.75}
+
+  % Resolution: 40x30 pixels (kept small for compilation speed)
+  \pgfmathtruncatemacro{\nx}{40}
+  \pgfmathtruncatemacro{\ny}{30}
+  \pgfmathsetmacro{\dx}{(\xhi - \xlo) / \nx}
+  \pgfmathsetmacro{\dy}{(\yhi - \ylo) / \ny}
+
+  \pgfmathtruncatemacro{\maxiter}{30}
+
+  % Pixel size in TikZ coordinates
+  \pgfmathsetmacro{\pw}{8.0 / \nx}
+  \pgfmathsetmacro{\ph}{6.0 / \ny}
+
+  \foreach \px in {0,...,\numexpr\nx-1} {
+    \foreach \py in {0,...,\numexpr\ny-1} {
+      % Map pixel to complex plane
+      \pgfmathsetmacro{\cr}{\xlo + \px * \dx}
+      \pgfmathsetmacro{\ci}{\ylo + \py * \dy}
+
+      % Mandelbrot iteration
+      \pgfmathsetmacro{\zr}{0}
+      \pgfmathsetmacro{\zi}{0}
+      \pgfmathtruncatemacro{\iter}{0}
+      \pgfmathtruncatemacro{\escaped}{0}
+
+      \foreach \k in {1,...,\maxiter} {
+        \ifnum\escaped=0
+          \pgfmathsetmacro{\zrnew}{\zr*\zr - \zi*\zi + \cr}
+          \pgfmathsetmacro{\zinew}{2*\zr*\zi + \ci}
+          \pgfmathsetmacro{\zr}{\zrnew}
+          \pgfmathsetmacro{\zi}{\zinew}
+          \global\let\zr\zr
+          \global\let\zi\zi
+          \pgfmathsetmacro{\mag}{\zr*\zr + \zi*\zi}
+          \ifdim\mag pt>4pt
+            \pgfmathtruncatemacro{\iter}{\k}
+            \global\let\iter\iter
+            \pgfmathtruncatemacro{\escaped}{1}
+            \global\let\escaped\escaped
+          \fi
+        \fi
+      }
+
+      % Color mapping
+      \ifnum\escaped=0
+        \fill[black]
+          ({\px * \pw}, {\py * \ph}) rectangle ({(\px+1) * \pw}, {(\py+1) * \ph});
+      \else
+        \pgfmathtruncatemacro{\hue}{mod(\iter * 12, 100)}
+        \fill[red!\hue!blue]
+          ({\px * \pw}, {\py * \ph}) rectangle ({(\px+1) * \pw}, {(\py+1) * \ph});
+      \fi
+    }
+  }
+
+  % Border
+  \draw[white, thick] (0,0) rectangle (8,6);
+
+  % Zoom level label
+  \node[white, fill=black, fill opacity=0.6, text opacity=1, font=\small,
+        inner sep=2pt, anchor=north west] at (0.1, 5.9)
+    {Zoom: $\times\pgfmathparse{1/\halfwidth}\pgfmathprintnumber[
+      fixed, precision=0]{\pgfmathresult}$};
+\end{tikzpicture}
+\end{document}

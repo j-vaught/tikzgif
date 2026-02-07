@@ -1,0 +1,26 @@
+%%--- TIKZGIF META ---
+%% name: base.standalone
+%% title: Base Standalone Document
+%% description: >
+%%   Minimal standalone document class wrapper.
+%%   Domain templates extend this to inherit the document preamble.
+%% author: J.C. Vaught
+%% version: 1.0.0
+%% domain: base
+%% tags: [base, standalone]
+%% engine: pdflatex
+%% tikz_libraries: []
+%% latex_packages: [tikz]
+%% params: []
+%% fps: 15
+%% frames: 1
+%%--- END META ---
+\documentclass[border=5pt,tikz]{standalone}
+\usepackage{tikz}
+{{{ EXTRA_PACKAGES }}}
+{{{ EXTRA_TIKZLIBS }}}
+\begin{document}
+\begin{tikzpicture}
+{{{ PARENT_BODY }}}
+\end{tikzpicture}
+\end{document}

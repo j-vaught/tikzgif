@@ -1,0 +1,163 @@
+# ---------------------------------------------------------------------------
+# tikzgif CI -- lint, type-check, test on every push / PR
+# ---------------------------------------------------------------------------
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# ---------------------------------------------------------------------------
+# Shared environment
+# ---------------------------------------------------------------------------
+env:
+  FORCE_COLOR: "1"            # rich / ruff colored output in CI
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  # =========================================================================
+  # Job 1: Lint + type-check (fast, runs on a single matrix cell)
+  # =========================================================================
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Ruff lint
+        run: ruff check tikzgif tests
+
+      - name: Ruff format check
+        run: ruff format --check tikzgif tests
+
+      - name: Mypy
+        run: mypy --package tikzgif
+
+  # =========================================================================
+  # Job 2: Unit tests (no LaTeX needed) across Python x OS matrix
+  # =========================================================================
+  test-unit:
+    name: "Unit / py${{ matrix.python-version }} / ${{ matrix.os }}"
+    needs: lint
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run unit tests
+        run: >
+          pytest tests/
+          -v
+          -m "not integration"
+          --tb=short
+          --cov=tikzgif
+          --cov-report=xml:coverage-unit.xml
+
+      - name: Upload coverage
+        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit
+          path: coverage-unit.xml
+
+  # =========================================================================
+  # Job 3: Integration tests (require LaTeX + poppler)
+  # =========================================================================
+  test-integration:
+    name: "Integration / py${{ matrix.python-version }} / ${{ matrix.os }}"
+    needs: lint
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # ------------------------------------------------------------------
+      # Install LaTeX (TeX Live) and poppler
+      # ------------------------------------------------------------------
+      - name: Install LaTeX and poppler (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            texlive-base \
+            texlive-latex-base \
+            texlive-latex-extra \
+            texlive-latex-recommended \
+            texlive-pictures \
+            texlive-science \
+            poppler-utils \
+            ghostscript
+
+      - name: Install LaTeX and poppler (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install --cask basictex
+          eval "$(/usr/libexec/path_helper)"
+          sudo tlmgr update --self
+          sudo tlmgr install \
+            collection-latexrecommended \
+            collection-pictures \
+            standalone \
+            pgf \
+            xcolor
+          brew install poppler ghostscript
+
+      # ------------------------------------------------------------------
+      # Install Python package
+      # ------------------------------------------------------------------
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run integration tests
+        run: >
+          pytest tests/integration
+          -v
+          -m integration
+          --tb=long
+          --cov=tikzgif
+          --cov-report=xml:coverage-integration.xml
+
+      - name: Upload coverage
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integration
+          path: coverage-integration.xml

@@ -1,0 +1,94 @@
+%%--- TIKZGIF META ---
+%% name: physics.rotation_3d
+%% title: 3D Object Rotation
+%% description: >
+%%   Rotates a wireframe cube using tikz-3dplot.
+%%   Sweep azimuthal angle phi from 0 to 360 degrees.
+%% author: J.C. Vaught
+%% version: 1.0.0
+%% domain: general_physics
+%% tags: [3D, rotation, cube, tikz-3dplot]
+%% engine: pdflatex
+%% tikz_libraries: [arrows.meta, calc]
+%% latex_packages: [tikz, tikz-3dplot, amsmath]
+%% params:
+%%   - name: phi
+%%     type: float
+%%     default: 45.0
+%%     min: 0.0
+%%     max: 360.0
+%%     step: 5.0
+%%     sweep: true
+%%     description: Azimuthal viewing angle (degrees)
+%%     unit: "deg"
+%%   - name: theta
+%%     type: float
+%%     default: 70.0
+%%     min: 30.0
+%%     max: 90.0
+%%     sweep: false
+%%     description: Polar viewing angle (degrees)
+%%     unit: "deg"
+%% fps: 20
+%% frames: 72
+%% loop: true
+%% bounce: false
+%%--- END META ---
+\documentclass[border=10pt,tikz]{standalone}
+\usepackage{tikz}
+\usepackage{tikz-3dplot}
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta, calc}
+
+\begin{document}
+
+\pgfmathsetmacro{\viewPhi}{{{{ phi }}}}
+\pgfmathsetmacro{\viewTheta}{{{{ theta }}}}
+
+\tdplotsetmaincoords{\viewTheta}{\viewPhi}
+
+\begin{tikzpicture}[tdplot_main_coords, >=Stealth, scale=1.5]
+
+\pgfmathsetmacro{\s}{1.5}
+
+% Axes
+\draw[->, thick, red!70!black]   (0,0,0) -- (2.5,0,0) node[anchor=north east]{$x$};
+\draw[->, thick, green!50!black] (0,0,0) -- (0,2.5,0) node[anchor=north west]{$y$};
+\draw[->, thick, blue!70!black]  (0,0,0) -- (0,0,2.5) node[anchor=south]{$z$};
+
+% Vertices
+\coordinate (A) at (-\s, -\s, -\s);
+\coordinate (B) at ( \s, -\s, -\s);
+\coordinate (C) at ( \s,  \s, -\s);
+\coordinate (D) at (-\s,  \s, -\s);
+\coordinate (E) at (-\s, -\s,  \s);
+\coordinate (F) at ( \s, -\s,  \s);
+\coordinate (G) at ( \s,  \s,  \s);
+\coordinate (H) at (-\s,  \s,  \s);
+
+% Edges
+\draw[thick, black!70] (A) -- (B) -- (C) -- (D) -- cycle;
+\draw[thick, black!70] (E) -- (F) -- (G) -- (H) -- cycle;
+\draw[thick, black!70] (A) -- (E);
+\draw[thick, black!70] (B) -- (F);
+\draw[thick, black!70] (C) -- (G);
+\draw[thick, black!70] (D) -- (H);
+
+% Face shading
+\fill[blue!15, opacity=0.4] (E) -- (F) -- (G) -- (H) -- cycle;
+\fill[red!10, opacity=0.3] (A) -- (B) -- (F) -- (E) -- cycle;
+\fill[green!10, opacity=0.3] (B) -- (C) -- (G) -- (F) -- cycle;
+
+% Body diagonal
+\draw[dashed, orange!70!black, thin] (A) -- (G);
+
+% Center
+\filldraw[red!80!black] (0, 0, 0) circle (2pt);
+
+% Label
+\node[anchor=north, font=\footnotesize, fill=white, inner sep=2pt, draw=gray!40]
+    at (0, 0, -\s-0.6)
+    {$\phi = \pgfmathprintnumber[fixed, precision=0]{\viewPhi}^\circ$};
+
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,60 @@
+% Example 11: Pendulum Motion
+% Simple pendulum swinging with a fading trail of past positions.
+% Parameter: \PARAM (time in seconds, 0 to 6.28 for one full period approx)
+% Range: 0 to 6.28, recommended 60 frames
+% Difficulty: intermediate
+% Features demonstrated: trigonometric motion, trail/ghost effect, physics
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\begin{document}
+\begin{tikzpicture}
+  \useasboundingbox (-5,-6) rectangle (5,1.5);
+
+  \pgfmathsetmacro{\tval}{\PARAM}
+  \pgfmathsetmacro{\length}{4.5}     % pendulum length
+  \pgfmathsetmacro{\thetamax}{40}    % max angle in degrees
+  \pgfmathsetmacro{\omega}{2.214}    % angular frequency (sqrt(g/L) for L~2m)
+
+  % Current angle: theta(t) = theta_max * cos(omega * t)
+  \pgfmathsetmacro{\theta}{\thetamax * cos(deg(\omega * \tval))}
+
+  % Pivot point
+  \coordinate (pivot) at (0, 0.5);
+  \fill[black] (pivot) circle (3pt);
+  \draw[thick] (-1.5, 0.5) -- (1.5, 0.5);
+  \foreach \xx in {-1.4,-1.1,...,1.5} {
+    \draw[thin, gray] (\xx, 0.5) -- ({\xx + 0.3}, 0.8);
+  }
+
+  % Trail: draw past positions as fading circles
+  \foreach \k in {1,2,...,12} {
+    \pgfmathsetmacro{\tpast}{\tval - \k * 0.05}
+    \pgfmathsetmacro{\thpast}{\thetamax * cos(deg(\omega * \tpast))}
+    \pgfmathsetmacro{\xpast}{\length * sin(\thpast)}
+    \pgfmathsetmacro{\ypast}{0.5 - \length * cos(\thpast)}
+    \pgfmathsetmacro{\opac}{0.4 * (1 - \k/13)}
+    \fill[red!60!black, opacity=\opac] (\xpast, \ypast) circle (4pt);
+  }
+
+  % Bob position
+  \pgfmathsetmacro{\xbob}{\length * sin(\theta)}
+  \pgfmathsetmacro{\ybob}{0.5 - \length * cos(\theta)}
+
+  % Rod
+  \draw[thick, black!70] (pivot) -- (\xbob, \ybob);
+
+  % Bob
+  \shade[ball color=red!70!black] (\xbob, \ybob) circle (8pt);
+
+  % Angle arc
+  \draw[thin, gray, ->] (0, {0.5 - 1.2}) arc (-90:{-90 + \theta}:1.2);
+  \pgfmathsetmacro{\labelangle}{-90 + \theta/2}
+  \node[font=\tiny, gray] at ({0.8 * sin(\theta/2)}, {0.5 - 0.8 * cos(\theta/2)})
+    {$\theta$};
+
+  % Labels
+  \node[below, font=\small] at (0, -5.5)
+    {$\theta = \pgfmathprintnumber[fixed, precision=1]{\theta}^\circ$
+     \quad $t = \pgfmathprintnumber[fixed, precision=2]{\tval}$ s};
+\end{tikzpicture}
+\end{document}

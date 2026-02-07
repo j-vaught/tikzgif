@@ -1,0 +1,121 @@
+%%--- TIKZGIF META ---
+%% name: control.pid_tuning
+%% title: PID Tuning Visualization
+%% description: >
+%%   PID step response for G(s) = 1/(s+1), sweeping Kp.
+%% author: J.C. Vaught
+%% version: 1.0.0
+%% domain: control_systems
+%% tags: [control, PID, tuning]
+%% engine: pdflatex
+%% tikz_libraries: [arrows.meta, positioning]
+%% latex_packages: [tikz, pgfplots, amsmath]
+%% params:
+%%   - name: Kp
+%%     type: float
+%%     default: 2.0
+%%     min: 0.5
+%%     max: 15.0
+%%     step: 0.5
+%%     sweep: true
+%%     description: Proportional gain
+%%   - name: Ki
+%%     type: float
+%%     default: 1.0
+%%     min: 0.0
+%%     max: 10.0
+%%     sweep: false
+%%     description: Integral gain
+%%   - name: Kd
+%%     type: float
+%%     default: 0.3
+%%     min: 0.0
+%%     max: 5.0
+%%     sweep: false
+%%     description: Derivative gain
+%% fps: 10
+%% frames: 30
+%% loop: true
+%% bounce: true
+%%--- END META ---
+\documentclass[border=5pt]{standalone}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta, positioning}
+\pgfplotsset{compat=1.18}
+
+\begin{document}
+\begin{tikzpicture}
+
+\pgfmathsetmacro{\Kp}{{{{ Kp }}}}
+\pgfmathsetmacro{\Ki}{{{{ Ki }}}}
+\pgfmathsetmacro{\Kd}{{{{ Kd }}}}
+
+% Approximate dominant second-order model
+\pgfmathsetmacro{\wnSq}{\Kp / (1 + \Kd)}
+\pgfmathsetmacro{\wn}{sqrt(abs(\wnSq) + 0.001)}
+\pgfmathsetmacro{\zetaEff}{\Kp / (2 * (1 + \Kd) * \wn)}
+\pgfmathsetmacro{\zetaClamp}{min(\zetaEff, 3.0)}
+\pgfmathsetmacro{\sigmaD}{\zetaClamp * \wn}
+\pgfmathsetmacro{\wdSq}{max(\wn*\wn - \sigmaD*\sigmaD, 0.001)}
+\pgfmathsetmacro{\wd}{sqrt(\wdSq)}
+
+\begin{axis}[
+    name=response, width=9cm, height=6cm,
+    xmin=0, xmax=8, ymin=-0.2, ymax=2.0,
+    xlabel={Time $t$ (s)}, ylabel={$y(t)$},
+    title={\small PID:\;
+           $K_p\!=\!\pgfmathprintnumber[fixed,precision=1]{\Kp}$,\;
+           $K_i\!=\!\pgfmathprintnumber[fixed,precision=1]{\Ki}$,\;
+           $K_d\!=\!\pgfmathprintnumber[fixed,precision=1]{\Kd}$},
+    grid=major, grid style={gray!25}, thick,
+    tick label style={font=\tiny},
+    label style={font=\footnotesize},
+]
+    \addplot[domain=0:8, samples=2, dashed, black!40] {1};
+
+    % Underdamped
+    \pgfmathparse{\zetaClamp < 0.999 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \pgfmathsetmacro{\phiDeg}{acos(min(\zetaClamp,0.999))}
+        \addplot[domain=0:8, samples=300, blue!80!black, very thick]
+            {1 - exp(-\sigmaD * x) / sqrt(max(1-\zetaClamp*\zetaClamp, 0.001))
+             * sin(\wd * x * 180/3.14159 + \phiDeg)};
+    \fi
+    % Critically damped
+    \pgfmathparse{(\zetaClamp >= 0.999) && (\zetaClamp <= 1.001) ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \addplot[domain=0:8, samples=300, red!70!black, very thick]
+            {1 - (1 + \wn*x) * exp(-\wn*x)};
+    \fi
+    % Overdamped
+    \pgfmathparse{\zetaClamp > 1.001 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \pgfmathsetmacro{\sqZ}{sqrt(\zetaClamp*\zetaClamp - 1)}
+        \pgfmathsetmacro{\sA}{(-\zetaClamp + \sqZ)*\wn}
+        \pgfmathsetmacro{\sB}{(-\zetaClamp - \sqZ)*\wn}
+        \pgfmathsetmacro{\cA}{\sB / (\sB - \sA)}
+        \pgfmathsetmacro{\cB}{\sA / (\sA - \sB)}
+        \addplot[domain=0:8, samples=300, green!50!black, very thick]
+            {1 + \cA * exp(\sA * x) + \cB * exp(\sB * x)};
+    \fi
+\end{axis}
+
+% Gain bar chart
+\begin{axis}[
+    at={(response.east)}, anchor=west, xshift=12mm,
+    width=3.5cm, height=6cm, ybar, bar width=14pt,
+    ymin=0, ymax=16, ylabel={Gain},
+    symbolic x coords={$K_p$, $K_i$, $K_d$}, xtick=data,
+    tick label style={font=\footnotesize},
+    nodes near coords,
+    every node near coord/.append style={font=\tiny},
+    ymajorgrids=true, grid style={gray!25},
+]
+    \addplot[fill=blue!60!black, draw=blue!80!black] coordinates
+        {($K_p$, \Kp) ($K_i$, \Ki) ($K_d$, \Kd)};
+\end{axis}
+
+\end{tikzpicture}
+\end{document}

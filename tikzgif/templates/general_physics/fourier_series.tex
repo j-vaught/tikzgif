@@ -1,0 +1,92 @@
+%%--- TIKZGIF META ---
+%% name: physics.fourier_series
+%% title: Fourier Series Buildup
+%% description: >
+%%   Partial-sum convergence of a Fourier series to a square wave.
+%%   N odd harmonics are included, showing Gibbs phenomenon.
+%% author: J.C. Vaught
+%% version: 1.0.0
+%% domain: general_physics
+%% tags: [Fourier, series, convergence, square wave, Gibbs]
+%% engine: pdflatex
+%% tikz_libraries: []
+%% latex_packages: [tikz, pgfplots, amsmath]
+%% params:
+%%   - name: N
+%%     type: int
+%%     default: 5
+%%     min: 1
+%%     max: 41
+%%     step: 2
+%%     sweep: true
+%%     description: Number of odd harmonics in the partial sum
+%%     unit: ""
+%% fps: 4
+%% frames: 21
+%% loop: false
+%% bounce: false
+%%--- END META ---
+\documentclass[border=5pt]{standalone}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{amsmath}
+\pgfplotsset{compat=1.18}
+
+\begin{document}
+\begin{tikzpicture}
+
+\pgfmathtruncatemacro{\Nterms}{{{{ N }}}}
+
+\begin{axis}[
+    width=12cm, height=7cm,
+    xmin=-3.5, xmax=10.5, ymin=-1.5, ymax=1.5,
+    xlabel={$x$}, ylabel={$f(x)$},
+    title={Fourier Partial Sum: $N = \Nterms$ odd harmonics},
+    grid=major, grid style={gray!25}, thick,
+    every axis title/.style={font=\normalsize},
+    tick label style={font=\small},
+    xtick={-3.14159, 0, 3.14159, 6.28318, 9.42478},
+    xticklabels={$-\pi$, $0$, $\pi$, $2\pi$, $3\pi$},
+    legend pos=south east, legend style={font=\footnotesize},
+]
+    % Target square wave
+    \addplot[domain=-3.5:10.5, samples=500, dashed, black!40, thin]
+        {(sin(deg(x)) >= 0) ? 1 : -1};
+    \addlegendentry{Square wave}
+
+    % Fourier partial sum
+    \addplot[domain=-3.5:10.5, samples=400, blue!80!black, very thick]
+        {(4/3.14159) * (
+            (\Nterms >= 1  ? sin(deg(1*x))/1   : 0) +
+            (\Nterms >= 3  ? sin(deg(3*x))/3   : 0) +
+            (\Nterms >= 5  ? sin(deg(5*x))/5   : 0) +
+            (\Nterms >= 7  ? sin(deg(7*x))/7   : 0) +
+            (\Nterms >= 9  ? sin(deg(9*x))/9   : 0) +
+            (\Nterms >= 11 ? sin(deg(11*x))/11 : 0) +
+            (\Nterms >= 13 ? sin(deg(13*x))/13 : 0) +
+            (\Nterms >= 15 ? sin(deg(15*x))/15 : 0) +
+            (\Nterms >= 17 ? sin(deg(17*x))/17 : 0) +
+            (\Nterms >= 19 ? sin(deg(19*x))/19 : 0) +
+            (\Nterms >= 21 ? sin(deg(21*x))/21 : 0) +
+            (\Nterms >= 23 ? sin(deg(23*x))/23 : 0) +
+            (\Nterms >= 25 ? sin(deg(25*x))/25 : 0) +
+            (\Nterms >= 27 ? sin(deg(27*x))/27 : 0) +
+            (\Nterms >= 29 ? sin(deg(29*x))/29 : 0) +
+            (\Nterms >= 31 ? sin(deg(31*x))/31 : 0) +
+            (\Nterms >= 33 ? sin(deg(33*x))/33 : 0) +
+            (\Nterms >= 35 ? sin(deg(35*x))/35 : 0) +
+            (\Nterms >= 37 ? sin(deg(37*x))/37 : 0) +
+            (\Nterms >= 39 ? sin(deg(39*x))/39 : 0) +
+            (\Nterms >= 41 ? sin(deg(41*x))/41 : 0)
+        )};
+    \addlegendentry{$f_N(x)$}
+
+    \pgfmathparse{\Nterms >= 3 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \node[font=\tiny, red!60!black, anchor=south west]
+            at (axis cs:0.05, 1.1) {Gibbs overshoot $\approx 9\%$};
+    \fi
+\end{axis}
+
+\end{tikzpicture}
+\end{document}

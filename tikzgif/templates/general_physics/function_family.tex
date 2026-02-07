@@ -1,0 +1,66 @@
+%%--- TIKZGIF META ---
+%% name: physics.function_family
+%% title: Function Family Animation
+%% description: >
+%%   Animates y = x^n as n sweeps from 0.3 to 5.0.
+%% author: J.C. Vaught
+%% version: 1.0.0
+%% domain: general_physics
+%% tags: [function family, power curve, exponent]
+%% engine: pdflatex
+%% tikz_libraries: []
+%% latex_packages: [tikz, pgfplots, amsmath]
+%% params:
+%%   - name: n
+%%     type: float
+%%     default: 2.0
+%%     min: 0.3
+%%     max: 5.0
+%%     step: 0.1
+%%     sweep: true
+%%     description: Exponent in y = x^n
+%%     unit: ""
+%% fps: 12
+%% frames: 48
+%% loop: true
+%% bounce: true
+%%--- END META ---
+\documentclass[border=5pt]{standalone}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{amsmath}
+\pgfplotsset{compat=1.18}
+
+\begin{document}
+\begin{tikzpicture}
+
+\pgfmathsetmacro{\nval}{{{{ n }}}}
+
+\begin{axis}[
+    width=10cm, height=8cm,
+    xmin=0, xmax=2.2, ymin=0, ymax=5.5,
+    xlabel={$x$}, ylabel={$y$},
+    title={$y = x^{\pgfmathprintnumber[fixed, precision=2]{\nval}}$},
+    grid=major, grid style={gray!20}, thick,
+    every axis title/.style={font=\large},
+    tick label style={font=\small},
+]
+    % Ghost family
+    \foreach \ghostN in {0.5, 1.0, 2.0, 3.0, 4.0, 5.0} {
+        \addplot[domain=0.01:2.2, samples=100, gray!25, thin] {x^\ghostN};
+    }
+
+    % Current curve
+    \addplot[domain=0.01:2.2, samples=200, blue!80!black, ultra thick] {x^\nval};
+
+    % Fixed point (1,1)
+    \addplot[only marks, mark=*, mark size=3pt, red!80!black] coordinates {(1, 1)};
+    \node[font=\footnotesize, anchor=south west, red!60!black]
+        at (axis cs:1.05, 1.05) {$(1,\,1)$};
+
+    % Identity line
+    \addplot[domain=0:2.2, samples=2, dashed, black!30, thin] {x};
+\end{axis}
+
+\end{tikzpicture}
+\end{document}
