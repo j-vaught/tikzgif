@@ -21,78 +21,109 @@
 
 \begin{document}
 \begin{tikzpicture}
-  \useasboundingbox (-6,-4.5) rectangle (6,4.5);
+  \useasboundingbox (-6,-5.5) rectangle (7,5.5);
 
   \pgfmathsetmacro{\angleA}{\PARAM}
 
-  % Gear parameters
+  % Gear parameters (module = tooth size)
   \pgfmathtruncatemacro{\teethA}{16}
   \pgfmathtruncatemacro{\teethB}{24}
-  \pgfmathsetmacro{\moduleVal}{0.2}
-  \pgfmathsetmacro{\radiusA}{\teethA * \moduleVal / 2}
-  \pgfmathsetmacro{\radiusB}{\teethB * \moduleVal / 2}
-  \pgfmathsetmacro{\toothDepth}{0.2}
+  \pgfmathsetmacro{\moduleVal}{0.25}
+  \pgfmathsetmacro{\pitchA}{\teethA * \moduleVal / 2}   % pitch radius A = 2.0
+  \pgfmathsetmacro{\pitchB}{\teethB * \moduleVal / 2}   % pitch radius B = 3.0
+  \pgfmathsetmacro{\addendum}{\moduleVal}                % 0.25
+  \pgfmathsetmacro{\dedendum}{\moduleVal * 1.25}         % 0.3125
+  \pgfmathsetmacro{\outerA}{\pitchA + \addendum}
+  \pgfmathsetmacro{\rootA}{\pitchA - \dedendum}
+  \pgfmathsetmacro{\outerB}{\pitchB + \addendum}
+  \pgfmathsetmacro{\rootB}{\pitchB - \dedendum}
 
   % Gear B rotates opposite, scaled by gear ratio
   \pgfmathsetmacro{\angleB}{-\angleA * \teethA / \teethB}
-  % Offset for meshing alignment
   \pgfmathsetmacro{\meshOffset}{180 / \teethB}
 
-  % Center positions (touching at pitch circles)
-  \pgfmathsetmacro{\distAB}{\radiusA + \radiusB}
-  \coordinate (centerA) at ({-\distAB/2}, 0);
-  \coordinate (centerB) at ({\distAB/2}, 0);
+  % Center positions (pitch circles tangent)
+  \pgfmathsetmacro{\distAB}{\pitchA + \pitchB}
+  \coordinate (cA) at ({-\distAB/2}, 0);
+  \coordinate (cB) at ({\distAB/2}, 0);
 
-  % Draw gear macro
-  % #1 = center, #2 = radius, #3 = num teeth, #4 = angle, #5 = color
-  \newcommand{\drawgear}[5]{
-    \begin{scope}[shift={#1}, rotate=#4]
-      % Gear body
-      \fill[#5!20] (0,0) circle (#2 + \toothDepth/2);
-      \draw[#5!70!black, thick] (0,0) circle (#2);
+  % === Draw gear macro ===
+  % #1=center, #2=pitch R, #3=outer R, #4=root R, #5=teeth, #6=angle, #7=color
+  \newcommand{\drawgear}[7]{%
+    \begin{scope}[shift={#1}, rotate=#6]
+      %% Gear body (root circle fill)
+      \fill[#7!15] (0,0) circle (#4);
 
-      % Teeth
-      \foreach \t in {1,...,#3} {
-        \pgfmathsetmacro{\tangle}{360 / #3 * \t}
-        \pgfmathsetmacro{\halfTooth}{360 / #3 / 4}
-        \pgfmathsetmacro{\innerR}{#2 - \toothDepth/2}
-        \pgfmathsetmacro{\outerR}{#2 + \toothDepth/2}
-        \draw[#5!70!black, thick, fill=#5!30]
-          ({\tangle - \halfTooth}:\innerR) --
-          ({\tangle - \halfTooth * 0.6}:\outerR) --
-          ({\tangle + \halfTooth * 0.6}:\outerR) --
-          ({\tangle + \halfTooth}:\innerR);
+      %% Teeth: trapezoidal profile from root to tip
+      \pgfmathsetmacro{\angpitch}{360 / #5}
+      \foreach \t in {1,...,#5} {
+        \pgfmathsetmacro{\tc}{\angpitch * \t}
+        \pgfmathsetmacro{\hbase}{\angpitch * 0.25}
+        \pgfmathsetmacro{\htip}{\angpitch * 0.18}
+        \fill[#7!28]
+          ({\tc - \hbase}:#4) -- ({\tc - \htip}:#3)
+          -- ({\tc + \htip}:#3) -- ({\tc + \hbase}:#4) -- cycle;
+        \draw[#7!70!black, line width=0.5pt]
+          ({\tc - \hbase}:#4) -- ({\tc - \htip}:#3)
+          -- ({\tc + \htip}:#3) -- ({\tc + \hbase}:#4);
       }
 
-      % Hub
-      \fill[#5!50] (0,0) circle (0.3);
-      \fill[white] (0,0) circle (0.12);
-      \draw[#5!70!black, thick] (0,0) circle (0.3);
+      %% Root circle outline
+      \draw[#7!60!black, line width=0.6pt] (0,0) circle (#4);
 
-      % Spoke lines
-      \foreach \s in {0,90,180,270} {
-        \draw[#5!40, thick] (\s:0.3) -- (\s:{#2 * 0.6});
+      %% Pitch circle (dashed reference)
+      \draw[#7!30, line width=0.3pt, dashed] (0,0) circle (#2);
+
+      %% Inner web
+      \pgfmathsetmacro{\webR}{#4 * 0.7}
+      \fill[#7!10] (0,0) circle (\webR);
+      \draw[#7!40, line width=0.4pt] (0,0) circle (\webR);
+
+      %% Lightening holes
+      \pgfmathsetmacro{\holeR}{#4 * 0.16}
+      \pgfmathsetmacro{\holeDist}{#4 * 0.46}
+      \foreach \h in {0,60,...,300} {
+        \fill[white] (\h:\holeDist) circle (\holeR);
+        \draw[#7!35, line width=0.4pt] (\h:\holeDist) circle (\holeR);
       }
+
+      %% Hub
+      \pgfmathsetmacro{\hubR}{#2 * 0.2}
+      \fill[#7!30] (0,0) circle (\hubR);
+      \draw[#7!60!black, line width=0.8pt] (0,0) circle (\hubR);
+
+      %% Bore hole
+      \pgfmathsetmacro{\boreR}{#2 * 0.09}
+      \fill[white] (0,0) circle (\boreR);
+      \draw[#7!60!black, line width=0.5pt] (0,0) circle (\boreR);
+
+      %% Keyway slot (extends outward from bore into hub)
+      \pgfmathsetmacro{\keyW}{#2 * 0.04}
+      \pgfmathsetmacro{\keyOuter}{\hubR * 0.85}
+      \fill[white] (-\keyW, \boreR) rectangle (\keyW, \keyOuter);
+      \draw[#7!60!black, line width=0.4pt]
+        (-\keyW, \boreR) -- (-\keyW, \keyOuter) -- (\keyW, \keyOuter) -- (\keyW, \boreR);
     \end{scope}
-  }
+  }%
 
-  % Draw gears
-  \drawgear{(centerA)}{\radiusA}{\teethA}{\angleA}{garnet}
-  \drawgear{(centerB)}{\radiusB}{\teethB}{\angleB + \meshOffset}{atlantic}
+  % Draw gear B first (behind), then A on top at mesh point
+  \drawgear{(cB)}{\pitchB}{\outerB}{\rootB}{\teethB}{\angleB + \meshOffset}{atlantic}
+  \drawgear{(cA)}{\pitchA}{\outerA}{\rootA}{\teethA}{\angleA}{garnet}
+
+  % Rotation arrows
+  \draw[->, garnet, thick]
+    ([shift={(130:{\outerA + 0.35})}]cA) arc (130:50:{\outerA + 0.35});
+  \draw[->, atlantic, thick]
+    ([shift={(50:{\outerB + 0.35})}]cB) arc (50:130:{\outerB + 0.35});
 
   % Labels
-  \node[below, font=\small] at (centerA) [yshift=-\radiusA cm - 0.6cm]
-    {Gear A (\teethA T)};
-  \node[below, font=\small] at (centerB) [yshift=-\radiusB cm - 0.6cm]
-    {Gear B (\teethB T)};
+  \node[below, font=\small\bfseries, garnet!80!black] at ([yshift={-\outerA cm - 0.5cm}]cA)
+    {Gear A (\teethA\,T)};
+  \node[below, font=\small\bfseries, atlantic!80!black] at ([yshift={-\outerB cm - 0.5cm}]cB)
+    {Gear B (\teethB\,T)};
 
-  % Rotation indicators
-  \draw[->, garnet, thick] ([shift={(120:{\radiusA + 0.6})}]centerA)
-    arc (120:60:{\radiusA + 0.6});
-  \draw[->, atlantic, thick] ([shift={(60:{\radiusB + 0.6})}]centerB)
-    arc (60:120:{\radiusB + 0.6});
-
-  \node[font=\small] at (0, -3.5)
+  % Angle readout
+  \node[font=\small] at (0, -4.8)
     {$\theta_A = \pgfmathprintnumber[fixed, precision=0]{\angleA}^\circ$
      \quad
      $\theta_B = \pgfmathprintnumber[fixed, precision=0]{\angleB}^\circ$};
