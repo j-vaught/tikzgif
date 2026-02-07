@@ -15,7 +15,7 @@ from pathlib import Path
 from .template_schema import Template, TemplateMeta, parse_template
 
 
-_BUILTIN_DIR = Path(__file__).parent / "templates"
+_BUILTIN_DIR = Path(__file__).resolve().parent.parent / "examples"
 _USER_CONFIG_DIR = Path.home() / ".config" / "tikzgif" / "templates"
 _LOCAL_DIR_NAME = ".tikzgif/templates"
 
