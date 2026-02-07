@@ -1,16 +1,16 @@
 % Example 06a: Bubble Sort Visualization
-% Bars showing values being sorted via bubble sort, pass by pass.
-% Pre-computed states interpolated smoothly between passes.
+% Each swap animated individually — only one pair of bars moves at a time.
+% Pre-computed slot positions for each value across all 15 swap steps.
 % Initial array: [6, 2, 8, 4, 1, 7, 3, 5]
-% Parameter: \PARAM (progress 0 to 1, maps across 4 passes)
-% Range: 0 to 1, recommended 50 frames
+% Parameter: \PARAM (0 to 15, maps across 15 individual swaps)
+% Range: 0 to 15, recommended 180 frames at 24fps
 % Difficulty: intermediate
-% Features demonstrated: array encoding, interpolation, algorithm visualization
+% Features demonstrated: step-by-step algorithm visualization, interpolation
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
 
-% USC Brand Colors
+% Brand Colors
 \definecolor{garnet}{HTML}{73000A}
 \definecolor{rose}{HTML}{CC2E40}
 \definecolor{atlantic}{HTML}{466A9F}
@@ -23,56 +23,87 @@
 
 \begin{document}
 \begin{tikzpicture}
-  \useasboundingbox (-1,-2) rectangle (10,8);
+  \useasboundingbox (-1,-2.5) rectangle (10,8);
 
-  \pgfmathsetmacro{\progress}{\PARAM}
+  \pgfmathsetmacro{\raw}{\PARAM}
+  \pgfmathtruncatemacro{\sLo}{min(15, max(0, floor(\raw)))}
+  \pgfmathtruncatemacro{\sHi}{min(15, \sLo + 1)}
+  \pgfmathsetmacro{\interp}{max(0, min(1, \raw - \sLo))}
 
-  % 5 states (initial + 4 passes), indexed 0..4
-  \pgfmathsetmacro{\nstates}{5}
-  \pgfmathsetmacro{\state}{\progress * (\nstates - 1)}
-  \pgfmathtruncatemacro{\sLo}{floor(\state)}
-  \pgfmathtruncatemacro{\sHi}{min(\nstates - 1, ceil(\state))}
-  \pgfmathsetmacro{\interp}{\state - \sLo}
+  % Swap slot pairs for each of the 15 transitions (index 0..14)
+  % Pass 1 (6 swaps): (0,1) (2,3) (3,4) (4,5) (5,6) (6,7)
+  % Pass 2 (4 swaps): (1,2) (2,3) (4,5) (5,6)
+  % Pass 3 (3 swaps): (1,2) (3,4) (4,5)
+  % Pass 4 (2 swaps): (0,1) (2,3)
+  \pgfmathtruncatemacro{\safeIdx}{min(14, \sLo)}
+  \pgfmathparse{array({0,2,3,4,5,6, 1,2,4,5, 1,3,4, 0,2}, \safeIdx)}
+  \pgfmathtruncatemacro{\swpA}{\pgfmathresult}
+  \pgfmathparse{array({1,3,4,5,6,7, 2,3,5,6, 2,4,5, 1,3}, \safeIdx)}
+  \pgfmathtruncatemacro{\swpB}{\pgfmathresult}
 
-  % Bubble sort of [6,2,8,4,1,7,3,5]:
-  % State 0: [6,2,8,4,1,7,3,5]  (initial)
-  % State 1: [2,6,4,1,7,3,5,8]  (after pass 1)
-  % State 2: [2,4,1,6,3,5,7,8]  (after pass 2)
-  % State 3: [2,1,4,3,5,6,7,8]  (after pass 3)
-  % State 4: [1,2,3,4,5,6,7,8]  (sorted)
-  %
-  % Slot of each value at each state:
-  % val -> {state0, state1, state2, state3, state4}
+  % Pass number: transitions 0-5=Pass1, 6-9=Pass2, 10-12=Pass3, 13-14=Pass4
+  \pgfmathtruncatemacro{\passnum}{%
+    (\sLo<6) ? 1 : (\sLo<10) ? 2 : (\sLo<13) ? 3 : (\sLo<15) ? 4 : 5}
 
-  % Sorted boundary: after pass k, rightmost k elements are sorted
-  \pgfmathtruncatemacro{\sortedFrom}{8 - \sLo}
-  \ifnum\sLo>0
-    \fill[horseshoe!8] ({\sortedFrom * 1.15 + 0.05}, -0.15)
-      rectangle (9.5, 6.6);
+  % Sorted region shading (elements locked in place after each pass)
+  \pgfmathtruncatemacro{\sortedCount}{%
+    (\sLo<6) ? 0 : (\sLo<10) ? 1 : (\sLo<13) ? 2 : (\sLo<15) ? 3 : 8}
+  \pgfmathtruncatemacro{\sortedFrom}{8 - \sortedCount}
+
+  \ifnum\sortedCount>0
+    \fill[horseshoe!8] ({\sortedFrom * 1.15 + 0.05}, -0.15) rectangle (9.5, 6.6);
   \fi
 
-  % Draw each bar with interpolated position
+  % Position of each value (1-8) across 16 states (initial + 15 post-swap).
+  % Bubble sort of [6,2,8,4,1,7,3,5]:
+  %   State 0:  [6,2,8,4,1,7,3,5]  initial
+  %   State 1:  [2,6,8,4,1,7,3,5]  swap(0,1)
+  %   State 2:  [2,6,4,8,1,7,3,5]  swap(2,3)
+  %   State 3:  [2,6,4,1,8,7,3,5]  swap(3,4)
+  %   State 4:  [2,6,4,1,7,8,3,5]  swap(4,5)
+  %   State 5:  [2,6,4,1,7,3,8,5]  swap(5,6)
+  %   State 6:  [2,6,4,1,7,3,5,8]  swap(6,7) end pass 1
+  %   State 7:  [2,4,6,1,7,3,5,8]  swap(1,2)
+  %   State 8:  [2,4,1,6,7,3,5,8]  swap(2,3)
+  %   State 9:  [2,4,1,6,3,7,5,8]  swap(4,5)
+  %   State 10: [2,4,1,6,3,5,7,8]  swap(5,6) end pass 2
+  %   State 11: [2,1,4,6,3,5,7,8]  swap(1,2)
+  %   State 12: [2,1,4,3,6,5,7,8]  swap(3,4)
+  %   State 13: [2,1,4,3,5,6,7,8]  swap(4,5) end pass 3
+  %   State 14: [1,2,4,3,5,6,7,8]  swap(0,1)
+  %   State 15: [1,2,3,4,5,6,7,8]  swap(2,3) sorted!
   \foreach \val/\slots in {
-    1/{4,3,2,1,0},
-    2/{1,0,0,0,1},
-    3/{6,5,4,3,2},
-    4/{3,2,1,2,3},
-    5/{7,6,5,4,4},
-    6/{0,1,3,5,5},
-    7/{5,4,6,6,6},
-    8/{2,7,7,7,7}%
+    1/{4,4,4,3,3,3,3,3,2,2,2,1,1,1,0,0},
+    2/{1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1},
+    3/{6,6,6,6,6,5,5,5,5,4,4,4,3,3,3,2},
+    4/{3,3,2,2,2,2,2,1,1,1,1,2,2,2,2,3},
+    5/{7,7,7,7,7,7,6,6,6,6,5,5,5,4,4,4},
+    6/{0,1,1,1,1,1,1,2,3,3,3,3,4,5,5,5},
+    7/{5,5,5,5,4,4,4,4,4,5,6,6,6,6,6,6},
+    8/{2,2,3,4,5,6,7,7,7,7,7,7,7,7,7,7}%
   } {
     \pgfmathparse{array({\slots}, \sLo)}
     \pgfmathsetmacro{\posLo}{\pgfmathresult}
     \pgfmathparse{array({\slots}, \sHi)}
     \pgfmathsetmacro{\posHi}{\pgfmathresult}
-    \pgfmathsetmacro{\xpos}{(\posLo * (1 - \interp) + \posHi * \interp) * 1.15 + 0.5}
+    \pgfmathsetmacro{\xpos}{(\posLo*(1-\interp) + \posHi*\interp) * 1.15 + 0.5}
     \pgfmathsetmacro{\barht}{\val * 0.75}
 
-    % Color gradient: low values atlantic, high values garnet
+    % Detect if this bar is actively being swapped
+    \pgfmathtruncatemacro{\posLoInt}{round(\posLo)}
+    \pgfmathtruncatemacro{\isActive}{%
+      (\sLo<15 && \interp>0.01 && (\posLoInt==\swpA || \posLoInt==\swpB)) ? 1 : 0}
+
+    % Color: gradient from atlantic (low) to garnet (high)
     \pgfmathtruncatemacro{\cpct}{min(100, max(0, \val * 12.5))}
-    \fill[garnet!\cpct!atlantic] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
-    \draw[black!70, thick] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
+
+    \ifnum\isActive=1
+      \fill[garnet!\cpct!atlantic] (\xpos-0.4, 0) rectangle (\xpos+0.4, \barht);
+      \draw[rose, very thick] (\xpos-0.4, 0) rectangle (\xpos+0.4, \barht);
+    \else
+      \fill[garnet!\cpct!atlantic] (\xpos-0.4, 0) rectangle (\xpos+0.4, \barht);
+      \draw[black!70, thick] (\xpos-0.4, 0) rectangle (\xpos+0.4, \barht);
+    \fi
     \node[above, font=\small\bfseries] at (\xpos, \barht) {\val};
   }
 
@@ -83,15 +114,15 @@
   \node[font=\large\bfseries, garnet] at (4.5, 7.2) {Bubble Sort};
 
   % Pass indicator
-  \pgfmathtruncatemacro{\passnum}{\sLo}
-  \ifnum\passnum=0
-    \node[font=\small] at (4.5, -1) {Initial array};
+  \ifnum\passnum<5
+    \node[font=\small] at (4.5, -1.0) {Pass \passnum\ of 4};
   \else
-    \ifnum\passnum>3
-      \node[font=\small, horseshoe] at (4.5, -1) {Sorted!};
-    \else
-      \node[font=\small] at (4.5, -1) {Pass \passnum\ of 4};
-    \fi
+    \node[font=\small, horseshoe] at (4.5, -1.0) {Sorted!};
   \fi
+
+  % Step counter
+  \pgfmathtruncatemacro{\stepdisp}{min(15, \sLo + 1)}
+  \node[font=\tiny, warmgrey] at (4.5, -1.7) {Step \stepdisp\ of 15};
+
 \end{tikzpicture}
 \end{document}
