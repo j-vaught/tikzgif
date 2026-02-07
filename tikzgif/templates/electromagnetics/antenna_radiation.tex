@@ -40,6 +40,17 @@
 \usepackage{amsmath}
 \usetikzlibrary{arrows.meta}
 
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
@@ -49,19 +60,19 @@
 
 % Polar grid
 \foreach \r in {0.875, 1.75, 2.625, 3.5} {
-    \draw[gray!25, thin] (0,0) circle (\r);
+    \draw[warmgrey!25, thin] (0,0) circle (\r);
 }
 \foreach \a in {0, 30, 60, ..., 330} {
-    \draw[gray!25, thin] (0,0) -- (\a:\Rmax+0.2);
-    \node[font=\tiny, gray!60] at (\a:\Rmax+0.5) {$\a^\circ$};
+    \draw[warmgrey!25, thin] (0,0) -- (\a:\Rmax+0.2);
+    \node[font=\tiny, warmgrey!60] at (\a:\Rmax+0.5) {$\a^\circ$};
 }
 
 % Pattern
-\draw[red!80!black, very thick, samples=360, domain=0:360, variable=\t]
+\draw[garnet, very thick, samples=360, domain=0:360, variable=\t]
     plot ({\t + \rotA}:
           {\Rmax * (abs(sin(\t)) > 0.001 ? pow(abs(sin(\t)), \nExp) : 0)});
 
-\fill[red!20, opacity=0.3, samples=360, domain=0:360, variable=\t]
+\fill[garnet!20, opacity=0.3, samples=360, domain=0:360, variable=\t]
     plot ({\t + \rotA}:
           {\Rmax * (abs(sin(\t)) > 0.001 ? pow(abs(sin(\t)), \nExp) : 0)})
     -- cycle;
@@ -72,7 +83,7 @@
 \filldraw[black] (0, -0.35) circle (1.5pt);
 
 % Label
-\node[anchor=south west, font=\normalsize, fill=white, inner sep=3pt, draw=gray!40]
+\node[anchor=south west, font=\normalsize, fill=white, inner sep=3pt, draw=warmgrey]
     at (-\Rmax-0.8, \Rmax-0.2)
     {$f(\theta) = |\sin\theta|^{\pgfmathprintnumber[fixed, precision=1]{\nExp}}$};
 

@@ -7,6 +7,19 @@
 % Features demonstrated: Euler integration in pgfmath, 3D projection, trail
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
+\usepackage{xcolor}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
   \useasboundingbox (-6,-5) rectangle (6,6);
@@ -28,7 +41,7 @@
   \newcommand{\projy}[3]{\pgfmathsetmacro{\projresulty}{(#3)*0.18 - 4.5}}
 
   % Axes
-  \draw[->, gray!40, thin] (0,-4.5) -- (0,5.5) node[above, font=\tiny] {$z$};
+  \draw[->, warmgrey!40, thin] (0,-4.5) -- (0,5.5) node[above, font=\tiny] {$z$};
 
   % Run Euler integration, storing the last 30 positions for the trail
   \pgfmathtruncatemacro{\traillen}{30}
@@ -53,7 +66,7 @@
       \projx{\lx}{\ly}{\lz}
       \projy{\lx}{\ly}{\lz}
       \pgfmathtruncatemacro{\rcolor}{min(100, max(0, \opac * 100))}
-      \fill[red!\rcolor!blue, opacity=\opac]
+      \fill[garnet!\rcolor!atlantic, opacity=\opac]
         (\projresultx, \projresulty) circle (1pt);
     \fi
   }
@@ -62,7 +75,7 @@
   \projx{\lx}{\ly}{\lz}
   \projy{\lx}{\ly}{\lz}
   \fill[white] (\projresultx, \projresulty) circle (3pt);
-  \fill[red] (\projresultx, \projresulty) circle (2pt);
+  \fill[garnet] (\projresultx, \projresulty) circle (2pt);
 
   \node[below, font=\small] at (0,-4.8) {Step \maxstep};
 \end{tikzpicture}

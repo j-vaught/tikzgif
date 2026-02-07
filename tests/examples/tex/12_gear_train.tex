@@ -6,6 +6,19 @@
 % Features demonstrated: parameterized drawing, mechanical simulation, rotation
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
+\usepackage{xcolor}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
   \useasboundingbox (-5.5,-4) rectangle (5.5,4);
@@ -64,8 +77,8 @@
   }
 
   % Draw gears
-  \drawgear{(centerA)}{\radiusA}{\teethA}{\angleA}{red}
-  \drawgear{(centerB)}{\radiusB}{\teethB}{\angleB + \meshOffset}{blue}
+  \drawgear{(centerA)}{\radiusA}{\teethA}{\angleA}{garnet}
+  \drawgear{(centerB)}{\radiusB}{\teethB}{\angleB + \meshOffset}{atlantic}
 
   % Labels
   \node[below, font=\small] at (centerA) [yshift=-\radiusA cm - 0.6cm]
@@ -74,9 +87,9 @@
     {Gear B (\teethB T)};
 
   % Rotation indicators
-  \draw[->, red!70!black, thick] ([shift={(120:{\radiusA + 0.6})}]centerA)
+  \draw[->, garnet, thick] ([shift={(120:{\radiusA + 0.6})}]centerA)
     arc (120:60:{\radiusA + 0.6});
-  \draw[->, blue!70!black, thick] ([shift={(60:{\radiusB + 0.6})}]centerB)
+  \draw[->, atlantic, thick] ([shift={(60:{\radiusB + 0.6})}]centerB)
     arc (60:120:{\radiusB + 0.6});
 
   \node[font=\small] at (0, -3.5)

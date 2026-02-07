@@ -30,6 +30,17 @@
 \usepackage{amsmath}
 \usetikzlibrary{arrows.meta, calc, decorations.markings}
 
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
@@ -38,7 +49,7 @@
 \pgfmathsetmacro{\nLines}{min(floor(\Ival * 2 + 1), 10)}
 
 % Grid
-\draw[gray!15, very thin, step=0.5] (-4.5,-3.5) grid (4.5,3.5);
+\draw[warmgrey!15, very thin, step=0.5] (-4.5,-3.5) grid (4.5,3.5);
 
 % Right conductor (out of page)
 \filldraw[black!80] (1, 0) circle (6pt);
@@ -56,7 +67,7 @@
     \pgfmathsetmacro{\rr}{0.25 + \k * 0.2 * \lineScale}
     \pgfmathparse{\k <= \nLines ? 1 : 0}
     \ifnum\pgfmathresult=1
-        \draw[blue!70!black, thin,
+        \draw[atlantic, thin,
               decoration={markings,
                   mark=at position 0.25 with {\arrow{Stealth[length=2.5pt]}},
                   mark=at position 0.75 with {\arrow{Stealth[length=2.5pt]}}},
@@ -70,7 +81,7 @@
     \pgfmathsetmacro{\rr}{0.25 + \k * 0.2 * \lineScale}
     \pgfmathparse{\k <= \nLines ? 1 : 0}
     \ifnum\pgfmathresult=1
-        \draw[blue!70!black, thin,
+        \draw[atlantic, thin,
               decoration={markings,
                   mark=at position 0.25 with {\arrowreversed{Stealth[length=2.5pt]}},
                   mark=at position 0.75 with {\arrowreversed{Stealth[length=2.5pt]}}},
@@ -85,7 +96,7 @@
     \pgfmathsetmacro{\ry}{0.8 + \k * 0.4 * \lineScale}
     \pgfmathparse{\k <= \nLines ? 1 : 0}
     \ifnum\pgfmathresult=1
-        \draw[red!60!black, thin,
+        \draw[garnet, thin,
               decoration={markings,
                   mark=at position 0.0 with {\arrow{Stealth[length=2.5pt]}},
                   mark=at position 0.5 with {\arrow{Stealth[length=2.5pt]}}},
@@ -94,11 +105,11 @@
     \fi
 }
 
-\node[anchor=north west, font=\normalsize, fill=white, inner sep=3pt, draw=gray!40]
+\node[anchor=north west, font=\normalsize, fill=white, inner sep=3pt, draw=warmgrey]
     at (-4.4, 3.4)
     {$I = \pgfmathprintnumber[fixed, precision=1]{\Ival}$ A};
 
-\draw[dashed, gray!50, thin] (0, -3.3) -- (0, 3.3)
+\draw[dashed, warmgrey!50, thin] (0, -3.3) -- (0, 3.3)
     node[above, font=\tiny, gray]{axis};
 
 \end{tikzpicture}

@@ -6,6 +6,19 @@
 % Features demonstrated: trigonometric motion, trail/ghost effect, physics
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
+\usepackage{xcolor}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
   \useasboundingbox (-5,-6) rectangle (5,1.5);
@@ -23,7 +36,7 @@
   \fill[black] (pivot) circle (3pt);
   \draw[thick] (-1.5, 0.5) -- (1.5, 0.5);
   \foreach \xx in {-1.4,-1.1,...,1.5} {
-    \draw[thin, gray] (\xx, 0.5) -- ({\xx + 0.3}, 0.8);
+    \draw[thin, warmgrey] (\xx, 0.5) -- ({\xx + 0.3}, 0.8);
   }
 
   % Trail: draw past positions as fading circles
@@ -33,7 +46,7 @@
     \pgfmathsetmacro{\xpast}{\length * sin(\thpast)}
     \pgfmathsetmacro{\ypast}{0.5 - \length * cos(\thpast)}
     \pgfmathsetmacro{\opac}{0.4 * (1 - \k/13)}
-    \fill[red!60!black, opacity=\opac] (\xpast, \ypast) circle (4pt);
+    \fill[garnet, opacity=\opac] (\xpast, \ypast) circle (4pt);
   }
 
   % Bob position
@@ -44,12 +57,12 @@
   \draw[thick, black!70] (pivot) -- (\xbob, \ybob);
 
   % Bob
-  \shade[ball color=red!70!black] (\xbob, \ybob) circle (8pt);
+  \fill[garnet] (\xbob, \ybob) circle (8pt);
 
   % Angle arc
-  \draw[thin, gray, ->] (0, {0.5 - 1.2}) arc (-90:{-90 + \theta}:1.2);
+  \draw[thin, warmgrey, ->] (0, {0.5 - 1.2}) arc (-90:{-90 + \theta}:1.2);
   \pgfmathsetmacro{\labelangle}{-90 + \theta/2}
-  \node[font=\tiny, gray] at ({0.8 * sin(\theta/2)}, {0.5 - 0.8 * cos(\theta/2)})
+  \node[font=\tiny, warmgrey] at ({0.8 * sin(\theta/2)}, {0.5 - 0.8 * cos(\theta/2)})
     {$\theta$};
 
   % Labels

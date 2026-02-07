@@ -7,7 +7,20 @@
 % Features demonstrated: pgfplots, mathematical modeling, engineering visualization
 \documentclass[tikz]{standalone}
 \usepackage{pgfplots}
+\usepackage{xcolor}
 \pgfplotsset{compat=1.18}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
   \pgfmathsetmacro{\zeta}{\PARAM}
@@ -27,28 +40,28 @@
     ymin=-0.1, ymax=2.0,
     xmin=0, xmax=5,
     grid=major,
-    grid style={gray!25},
+    grid style={warmgrey!25},
     title={Step Response: $\zeta = \pgfmathprintnumber[fixed, precision=2]{\zeta}$},
     every axis title/.style={at={(0.5,1.05)}, font=\large},
     legend pos=south east,
     legend style={font=\small},
   ]
     % Step response of second-order system
-    \addplot[red!70!black, very thick] {
+    \addplot[garnet, very thick] {
       1 - exp(-\zeta * \wn * x) / sqrt(max(1 - \zeta*\zeta, 0.001))
         * sin(deg(\wdamp * x) + acos(\zeta))
     };
     \addlegendentry{$y(t)$}
 
     % Reference line at y=1
-    \addplot[dashed, blue!50!black, thin] {1};
+    \addplot[dashed, atlantic, thin] {1};
     \addlegendentry{Setpoint}
 
     % Overshoot line
     \addplot[dotted, black!40, thin] {\osline};
 
     % 2% settling band
-    \fill[green!10, opacity=0.3] (axis cs:0, 0.98) rectangle (axis cs:5, 1.02);
+    \fill[horseshoe!10, opacity=0.3] (axis cs:0, 0.98) rectangle (axis cs:5, 1.02);
   \end{axis}
 
   % Info box

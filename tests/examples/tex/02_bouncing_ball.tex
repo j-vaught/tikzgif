@@ -7,12 +7,25 @@
 % Features demonstrated: mathematical expressions, shadows, trail effect
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
+\usepackage{xcolor}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
   \useasboundingbox (-0.5,-0.8) rectangle (10.5,5.5);
 
   % Ground
-  \fill[black!10] (-0.5,-0.8) rectangle (10.5,0);
+  \fill[sandstorm] (-0.5,-0.8) rectangle (10.5,0);
   \draw[thick] (-0.5,0) -- (10.5,0);
 
   % Helper macro: compute y height from global time t in [0,1]
@@ -28,7 +41,7 @@
     \pgfmathsetmacro{\ypast}{4 * 4 * \tlocal * (1 - \tlocal)}
     \pgfmathsetmacro{\opac}{0.35 * (1 - \k/16)}
     \pgfmathsetmacro{\sz}{0.28 * (1 - \k/20)}
-    \fill[red!50!black, opacity=\opac] (\xpast, \ypast) circle (\sz);
+    \fill[garnet, opacity=\opac] (\xpast, \ypast) circle (\sz);
   }
 
   % Current position
@@ -38,7 +51,7 @@
   \pgfmathsetmacro{\ypos}{4 * 4 * \tlocal * (1 - \tlocal)}
 
   % Ball
-  \fill[red!70!black] (\xpos, \ypos) circle (0.35);
+  \fill[garnet] (\xpos, \ypos) circle (0.35);
 
   % Label
   \node[below right, font=\small] at (0.2,5.2)

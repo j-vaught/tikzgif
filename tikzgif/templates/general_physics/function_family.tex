@@ -31,6 +31,17 @@
 \usepackage{amsmath}
 \pgfplotsset{compat=1.18}
 
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
 
@@ -41,21 +52,21 @@
     xmin=0, xmax=2.2, ymin=0, ymax=5.5,
     xlabel={$x$}, ylabel={$y$},
     title={$y = x^{\pgfmathprintnumber[fixed, precision=2]{\nval}}$},
-    grid=major, grid style={gray!20}, thick,
+    grid=major, grid style={warmgrey!20}, thick,
     every axis title/.style={font=\large},
     tick label style={font=\small},
 ]
     % Ghost family
     \foreach \ghostN in {0.5, 1.0, 2.0, 3.0, 4.0, 5.0} {
-        \addplot[domain=0.01:2.2, samples=100, gray!25, thin] {x^\ghostN};
+        \addplot[domain=0.01:2.2, samples=100, warmgrey!25, thin] {x^\ghostN};
     }
 
     % Current curve
-    \addplot[domain=0.01:2.2, samples=200, blue!80!black, ultra thick] {x^\nval};
+    \addplot[domain=0.01:2.2, samples=200, atlantic, ultra thick] {x^\nval};
 
     % Fixed point (1,1)
-    \addplot[only marks, mark=*, mark size=3pt, red!80!black] coordinates {(1, 1)};
-    \node[font=\footnotesize, anchor=south west, red!60!black]
+    \addplot[only marks, mark=*, mark size=3pt, garnet] coordinates {(1, 1)};
+    \node[font=\footnotesize, anchor=south west, garnet]
         at (axis cs:1.05, 1.05) {$(1,\,1)$};
 
     % Identity line

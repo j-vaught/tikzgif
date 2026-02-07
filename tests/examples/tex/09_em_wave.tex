@@ -7,7 +7,20 @@
 % Features demonstrated: 3D drawing, coordinate transforms, physics visualization
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
+\usepackage{xcolor}
 \usetikzlibrary{3d, arrows.meta}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}[
     x={(-0.4cm,-0.3cm)},
@@ -15,7 +28,7 @@
     z={(0cm,1cm)},
     >=Stealth,
   ]
-  \useasboundingbox (-2,-7) rectangle (5,4.5);
+  \useasboundingbox (-3,-4) rectangle (12,5);
 
   \pgfmathsetmacro{\phase}{\PARAM}
   \pgfmathsetmacro{\wavelength}{3}
@@ -25,17 +38,17 @@
   % Propagation axis (y-axis)
   \draw[->, thick, black!60] (0,-0.5,0) -- (0,11,0) node[right] {$\hat{k}$};
   % E-field axis (z-axis)
-  \draw[->, thick, red!60] (0,0,-2.5) -- (0,0,3) node[above] {$\vec{E}$};
+  \draw[->, thick, garnet!60] (0,0,-2.5) -- (0,0,3) node[above] {$\vec{E}$};
   % B-field axis (x-axis)
-  \draw[->, thick, blue!60] (-2.5,0,0) -- (3,0,0) node[left] {$\vec{B}$};
+  \draw[->, thick, atlantic!60] (-2.5,0,0) -- (3,0,0) node[left] {$\vec{B}$};
 
   % Draw E-field wave (in y-z plane)
-  \draw[red!70!black, thick]
+  \draw[garnet, thick]
     plot[domain=0:10, samples=\npoints, variable=\yy, smooth]
     (0, \yy, {\amplitude * sin(360/\wavelength * \yy + \phase)});
 
   % Draw B-field wave (in x-y plane)
-  \draw[blue!70!black, thick]
+  \draw[atlantic, thick]
     plot[domain=0:10, samples=\npoints, variable=\yy, smooth]
     ({\amplitude * sin(360/\wavelength * \yy + \phase)}, \yy, 0);
 
@@ -43,10 +56,10 @@
   \foreach \yy in {0,0.5,...,10} {
     \pgfmathsetmacro{\Eval}{\amplitude * sin(360/\wavelength * \yy + \phase)}
     \pgfmathsetmacro{\Bval}{\amplitude * sin(360/\wavelength * \yy + \phase)}
-    % E-field arrows (red)
-    \draw[->, red!50, thin] (0, \yy, 0) -- (0, \yy, \Eval);
-    % B-field arrows (blue)
-    \draw[->, blue!50, thin] (0, \yy, 0) -- (\Bval, \yy, 0);
+    % E-field arrows (garnet)
+    \draw[->, garnet!50, thin] (0, \yy, 0) -- (0, \yy, \Eval);
+    % B-field arrows (atlantic)
+    \draw[->, atlantic!50, thin] (0, \yy, 0) -- (\Bval, \yy, 0);
   }
 
   % Phase label

@@ -8,8 +8,21 @@
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{pgfplots}
+\usepackage{xcolor}
 \pgfplotsset{compat=1.18}
 \usetikzlibrary{decorations.markings}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
   \pgfmathsetmacro{\ttau}{max(\PARAM, 0.01)}  % t/tau (clamped to avoid zero domain)
@@ -50,7 +63,7 @@
 
     % Capacitor voltage indicator (colored fill)
     \pgfmathsetmacro{\fillht}{0.4 * \Vc / \Vs}
-    \fill[red!40, opacity=0.6] (3.65, 1.1) rectangle (4.35, {1.1 + \fillht});
+    \fill[garnet!40, opacity=0.6] (3.65, 1.1) rectangle (4.35, {1.1 + \fillht});
 
     % Bottom wire
     \draw[thick] (4,1.1) -- (4,0) -- (0,0);
@@ -58,9 +71,9 @@
     % Current arrow
     \pgfmathsetmacro{\arrowsize}{max(0.1, \Ic * 0.4)}
     \pgfmathsetmacro{\linewd}{0.5 + \Ic * 2}
-    \draw[->, red!70!black, line width=\linewd pt]
+    \draw[->, garnet, line width=\linewd pt]
       (2.9, 3.6) -- (3.5, 3.6);
-    \node[above, font=\tiny, red!70!black] at (3.2, 3.7) {$i(t)$};
+    \node[above, font=\tiny, garnet] at (3.2, 3.7) {$i(t)$};
 
     % Voltage label
     \node[below, font=\small] at (4, 0.9)
@@ -80,22 +93,22 @@
     ymin=0, ymax=6,
     xmin=0, xmax=5,
     grid=major,
-    grid style={gray!25},
+    grid style={warmgrey!25},
     title={\small Capacitor Charging},
   ]
     % Full response curve (faint)
-    \addplot[gray!40, thick] {\Vs * (1 - exp(-x))};
+    \addplot[warmgrey!40, thick] {\Vs * (1 - exp(-x))};
 
     % Traced portion up to current time
-    \addplot[red!70!black, very thick, domain=0:\ttau] {\Vs * (1 - exp(-x))};
+    \addplot[garnet, very thick, domain=0:\ttau] {\Vs * (1 - exp(-x))};
 
     % Current point
-    \addplot[only marks, mark=*, mark size=3pt, red!70!black]
+    \addplot[only marks, mark=*, mark size=3pt, garnet]
       coordinates {(\ttau, \Vc)};
 
     % Asymptote
-    \addplot[dashed, blue!50, thin] {\Vs};
-    \node[right, font=\tiny, blue!50] at (axis cs:4.2, 5.2) {$V_s$};
+    \addplot[dashed, atlantic!50, thin] {\Vs};
+    \node[right, font=\tiny, atlantic!50] at (axis cs:4.2, 5.2) {$V_s$};
 
     % Time constant markers
     \addplot[dotted, black!30] coordinates {(1,0) (1,{\Vs*(1-exp(-1))})};

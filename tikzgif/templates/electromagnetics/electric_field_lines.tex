@@ -40,6 +40,17 @@
 \usepackage{amsmath}
 \usetikzlibrary{arrows.meta, calc}
 
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}[>=Stealth]
 
@@ -49,15 +60,15 @@
 \pgfmathsetmacro{\yA}{0}
 
 % Draw charges
-\filldraw[red!80!black] (\xA, \yA) circle (5pt);
+\filldraw[garnet] (\xA, \yA) circle (5pt);
 \node[font=\bfseries\small, white] at (\xA, \yA) {+};
 
 \pgfmathparse{\qsign > 0 ? 1 : 0}
 \ifnum\pgfmathresult=1
-    \filldraw[red!80!black] (\xB, 0) circle (5pt);
+    \filldraw[garnet] (\xB, 0) circle (5pt);
     \node[font=\bfseries\small, white] at (\xB, 0) {+};
 \else
-    \filldraw[blue!80!black] (\xB, 0) circle (5pt);
+    \filldraw[atlantic] (\xB, 0) circle (5pt);
     \node[font=\bfseries\small, white] at (\xB, 0) {--};
 \fi
 
@@ -94,10 +105,10 @@
             \xdef\fieldpath{\fieldpath -- (\cx, \cy)}
         \fi
     }
-    \draw[orange!70!black, thin, -{Stealth[length=2pt]}] \fieldpath;
+    \draw[rose, thin, -{Stealth[length=2pt]}] \fieldpath;
 }
 
-\draw[gray!30, thin] (-4, -3.5) rectangle (5, 3.5);
+\draw[warmgrey!30, thin] (-4, -3.5) rectangle (5, 3.5);
 \node[anchor=north west, font=\footnotesize, fill=white, inner sep=2pt]
     at (-3.9, 3.4)
     {$q_2$ at $x = \pgfmathprintnumber[fixed, precision=2]{\xB}$};

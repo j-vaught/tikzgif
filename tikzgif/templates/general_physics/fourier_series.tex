@@ -32,6 +32,17 @@
 \usepackage{amsmath}
 \pgfplotsset{compat=1.18}
 
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
 
@@ -42,7 +53,7 @@
     xmin=-3.5, xmax=10.5, ymin=-1.5, ymax=1.5,
     xlabel={$x$}, ylabel={$f(x)$},
     title={Fourier Partial Sum: $N = \Nterms$ odd harmonics},
-    grid=major, grid style={gray!25}, thick,
+    grid=major, grid style={warmgrey!25}, thick,
     every axis title/.style={font=\normalsize},
     tick label style={font=\small},
     xtick={-3.14159, 0, 3.14159, 6.28318, 9.42478},
@@ -55,7 +66,7 @@
     \addlegendentry{Square wave}
 
     % Fourier partial sum
-    \addplot[domain=-3.5:10.5, samples=400, blue!80!black, very thick]
+    \addplot[domain=-3.5:10.5, samples=400, atlantic, very thick]
         {(4/3.14159) * (
             (\Nterms >= 1  ? sin(deg(1*x))/1   : 0) +
             (\Nterms >= 3  ? sin(deg(3*x))/3   : 0) +
@@ -83,7 +94,7 @@
 
     \pgfmathparse{\Nterms >= 3 ? 1 : 0}
     \ifnum\pgfmathresult=1
-        \node[font=\tiny, red!60!black, anchor=south west]
+        \node[font=\tiny, garnet, anchor=south west]
             at (axis cs:0.05, 1.1) {Gibbs overshoot $\approx 9\%$};
     \fi
 \end{axis}

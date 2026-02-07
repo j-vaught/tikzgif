@@ -7,6 +7,19 @@
 % Features demonstrated: heavy computation, pixel-level rendering, pgfmath loops
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
+\usepackage{xcolor}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
   % Zoom center: (-0.745, 0.186) -- Seahorse Valley
@@ -70,7 +83,7 @@
           ({\px * \pw}, {\py * \ph}) rectangle ({(\px+1) * \pw}, {(\py+1) * \ph});
       \else
         \pgfmathtruncatemacro{\hue}{mod(\iter * 12, 100)}
-        \fill[red!\hue!blue]
+        \fill[garnet!\hue!atlantic]
           ({\px * \pw}, {\py * \ph}) rectangle ({(\px+1) * \pw}, {(\py+1) * \ph});
       \fi
     }

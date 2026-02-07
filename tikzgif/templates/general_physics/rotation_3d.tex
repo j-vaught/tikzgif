@@ -40,6 +40,17 @@
 \usepackage{amsmath}
 \usetikzlibrary{arrows.meta, calc}
 
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 
 \pgfmathsetmacro{\viewPhi}{{{{ phi }}}}
@@ -52,9 +63,9 @@
 \pgfmathsetmacro{\s}{1.5}
 
 % Axes
-\draw[->, thick, red!70!black]   (0,0,0) -- (2.5,0,0) node[anchor=north east]{$x$};
-\draw[->, thick, green!50!black] (0,0,0) -- (0,2.5,0) node[anchor=north west]{$y$};
-\draw[->, thick, blue!70!black]  (0,0,0) -- (0,0,2.5) node[anchor=south]{$z$};
+\draw[->, thick, garnet]   (0,0,0) -- (2.5,0,0) node[anchor=north east]{$x$};
+\draw[->, thick, horseshoe] (0,0,0) -- (0,2.5,0) node[anchor=north west]{$y$};
+\draw[->, thick, atlantic]  (0,0,0) -- (0,0,2.5) node[anchor=south]{$z$};
 
 % Vertices
 \coordinate (A) at (-\s, -\s, -\s);
@@ -75,18 +86,18 @@
 \draw[thick, black!70] (D) -- (H);
 
 % Face shading
-\fill[blue!15, opacity=0.4] (E) -- (F) -- (G) -- (H) -- cycle;
-\fill[red!10, opacity=0.3] (A) -- (B) -- (F) -- (E) -- cycle;
-\fill[green!10, opacity=0.3] (B) -- (C) -- (G) -- (F) -- cycle;
+\fill[atlantic!15, opacity=0.4] (E) -- (F) -- (G) -- (H) -- cycle;
+\fill[garnet!10, opacity=0.3] (A) -- (B) -- (F) -- (E) -- cycle;
+\fill[horseshoe!10, opacity=0.3] (B) -- (C) -- (G) -- (F) -- cycle;
 
 % Body diagonal
-\draw[dashed, orange!70!black, thin] (A) -- (G);
+\draw[dashed, rose, thin] (A) -- (G);
 
 % Center
-\filldraw[red!80!black] (0, 0, 0) circle (2pt);
+\filldraw[garnet] (0, 0, 0) circle (2pt);
 
 % Label
-\node[anchor=north, font=\footnotesize, fill=white, inner sep=2pt, draw=gray!40]
+\node[anchor=north, font=\footnotesize, fill=white, inner sep=2pt, draw=warmgrey]
     at (0, 0, -\s-0.6)
     {$\phi = \pgfmathprintnumber[fixed, precision=0]{\viewPhi}^\circ$};
 

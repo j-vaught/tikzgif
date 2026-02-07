@@ -45,6 +45,17 @@
 \usetikzlibrary{arrows.meta, positioning}
 \pgfplotsset{compat=1.18}
 
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
 
@@ -69,7 +80,7 @@
            $K_p\!=\!\pgfmathprintnumber[fixed,precision=1]{\Kp}$,\;
            $K_i\!=\!\pgfmathprintnumber[fixed,precision=1]{\Ki}$,\;
            $K_d\!=\!\pgfmathprintnumber[fixed,precision=1]{\Kd}$},
-    grid=major, grid style={gray!25}, thick,
+    grid=major, grid style={warmgrey!25}, thick,
     tick label style={font=\tiny},
     label style={font=\footnotesize},
 ]
@@ -79,14 +90,14 @@
     \pgfmathparse{\zetaClamp < 0.999 ? 1 : 0}
     \ifnum\pgfmathresult=1
         \pgfmathsetmacro{\phiDeg}{acos(min(\zetaClamp,0.999))}
-        \addplot[domain=0:8, samples=300, blue!80!black, very thick]
+        \addplot[domain=0:8, samples=300, atlantic, very thick]
             {1 - exp(-\sigmaD * x) / sqrt(max(1-\zetaClamp*\zetaClamp, 0.001))
              * sin(\wd * x * 180/3.14159 + \phiDeg)};
     \fi
     % Critically damped
     \pgfmathparse{(\zetaClamp >= 0.999) && (\zetaClamp <= 1.001) ? 1 : 0}
     \ifnum\pgfmathresult=1
-        \addplot[domain=0:8, samples=300, red!70!black, very thick]
+        \addplot[domain=0:8, samples=300, garnet, very thick]
             {1 - (1 + \wn*x) * exp(-\wn*x)};
     \fi
     % Overdamped
@@ -97,7 +108,7 @@
         \pgfmathsetmacro{\sB}{(-\zetaClamp - \sqZ)*\wn}
         \pgfmathsetmacro{\cA}{\sB / (\sB - \sA)}
         \pgfmathsetmacro{\cB}{\sA / (\sA - \sB)}
-        \addplot[domain=0:8, samples=300, green!50!black, very thick]
+        \addplot[domain=0:8, samples=300, horseshoe, very thick]
             {1 + \cA * exp(\sA * x) + \cB * exp(\sB * x)};
     \fi
 \end{axis}
@@ -111,9 +122,9 @@
     tick label style={font=\footnotesize},
     nodes near coords,
     every node near coord/.append style={font=\tiny},
-    ymajorgrids=true, grid style={gray!25},
+    ymajorgrids=true, grid style={warmgrey!25},
 ]
-    \addplot[fill=blue!60!black, draw=blue!80!black] coordinates
+    \addplot[fill=atlantic!60, draw=atlantic] coordinates
         {($K_p$, \Kp) ($K_i$, \Ki) ($K_d$, \Kd)};
 \end{axis}
 

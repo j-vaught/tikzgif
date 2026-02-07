@@ -40,6 +40,17 @@
 \usepackage{amsmath}
 \pgfplotsset{compat=1.18}
 
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
 
@@ -54,13 +65,13 @@
     ymin=-60, ymax=60,
     ylabel={$|G(j\omega)|$ (dB)},
     title={Bode Plot:\; $G(s) = \dfrac{\pgfmathprintnumber[fixed,precision=1]{\K}}{s/\pgfmathprintnumber[fixed,precision=0]{\polef}+1}$},
-    grid=both, grid style={gray!20}, thick,
+    grid=both, grid style={warmgrey!20}, thick,
     every axis title/.style={font=\small},
     tick label style={font=\tiny},
     label style={font=\footnotesize},
     xticklabels={},
 ]
-    \addplot[domain=0.1:1000, samples=200, blue!80!black, very thick]
+    \addplot[domain=0.1:1000, samples=200, atlantic, very thick]
         {\KdB - 20*log10(sqrt(1 + (x/\polef)^2))};
     \addplot[domain=0.1:1000, samples=2, dashed, black!40, thin] {0};
 \end{axis}
@@ -73,12 +84,12 @@
     ymin=-100, ymax=10,
     xlabel={$\omega$ (rad/s)},
     ylabel={$\angle G(j\omega)$ (deg)},
-    grid=both, grid style={gray!20}, thick,
+    grid=both, grid style={warmgrey!20}, thick,
     tick label style={font=\tiny},
     label style={font=\footnotesize},
     ytick={0, -45, -90},
 ]
-    \addplot[domain=0.1:1000, samples=200, red!70!black, very thick]
+    \addplot[domain=0.1:1000, samples=200, garnet, very thick]
         {-atan(x/\polef) * 180 / 3.14159};
     \addplot[domain=0.1:1000, samples=2, dashed, black!30, thin] {-45};
     \addplot[domain=0.1:1000, samples=2, dashed, black!30, thin] {-90};

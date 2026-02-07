@@ -6,7 +6,20 @@
 % Features demonstrated: pgfplots integration, trigonometric functions
 \documentclass[tikz]{standalone}
 \usepackage{pgfplots}
+\usepackage{xcolor}
 \pgfplotsset{compat=1.18}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
   \begin{axis}[
@@ -23,13 +36,13 @@
                  $\frac{5\pi}{2}$,$3\pi$,$\frac{7\pi}{2}$,$4\pi$},
     ytick={-1,0,1},
     grid=major,
-    grid style={gray!30},
+    grid style={warmgrey!30},
     title={\small Phase shift $\phi = \PARAM^\circ$},
     every axis title/.style={at={(0.5,1.05)}},
     tick label style={font=\tiny},
   ]
-    \addplot[red!70!black, thick, smooth] {sin(x + \PARAM)};
-    \addplot[blue!50!black, thick, smooth, dashed, opacity=0.3] {sin(x)};
+    \addplot[garnet, thick, smooth] {sin(x + \PARAM)};
+    \addplot[atlantic, thick, smooth, dashed, opacity=0.3] {sin(x)};
   \end{axis}
 \end{tikzpicture}
 \end{document}

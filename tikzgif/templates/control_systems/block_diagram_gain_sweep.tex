@@ -36,6 +36,17 @@
 \usetikzlibrary{arrows.meta, positioning, calc}
 \pgfplotsset{compat=1.18}
 
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}[
     block/.style={draw, thick, minimum height=1cm, minimum width=1.4cm,
@@ -52,9 +63,9 @@
 \node[below left=0.5mm] at (sum.center) {\tiny $+$};
 \node[above left=0.5mm and -1mm] at (sum.south) {\tiny $-$};
 
-\node[block, right=1.2cm of sum, fill=blue!8] (gain)
+\node[block, right=1.2cm of sum, fill=atlantic!8] (gain)
     {$K = \pgfmathprintnumber[fixed, precision=2]{\K}$};
-\node[block, right=1.2cm of gain, fill=red!8] (plant)
+\node[block, right=1.2cm of gain, fill=garnet!8] (plant)
     {$\dfrac{1}{s+1}$};
 
 \coordinate (output) at ($(plant.east) + (1.5,0)$);
@@ -79,7 +90,7 @@
     ylabel={$y(t)$},
     title={\footnotesize Step Response},
     grid=major,
-    grid style={gray!30},
+    grid style={warmgrey!30},
     thick,
     every axis title/.style={font=\footnotesize},
     tick label style={font=\tiny},
@@ -88,10 +99,10 @@
     \pgfmathsetmacro{\KK}{{{{ K }}}}
     \pgfmathsetmacro{\dc}{\KK / (1 + \KK)}
     \pgfmathsetmacro{\tau}{1 + \KK}
-    \addplot[domain=0:5, samples=100, blue!70!black, very thick]
+    \addplot[domain=0:5, samples=100, atlantic, very thick]
         {\dc * (1 - exp(-\tau * x))};
-    \addplot[domain=0:5, dashed, red!60!black, thin] {\dc};
-    \node[anchor=south east, font=\tiny, text=red!60!black]
+    \addplot[domain=0:5, dashed, garnet, thin] {\dc};
+    \node[anchor=south east, font=\tiny, text=garnet]
         at (axis cs:5, \dc)
         {$y_{\mathrm{ss}} = \pgfmathprintnumber[fixed, precision=3]{\dc}$};
 \end{axis}

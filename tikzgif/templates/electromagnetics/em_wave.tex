@@ -40,6 +40,17 @@
 \usepackage{amsmath}
 \usetikzlibrary{arrows.meta, calc}
 
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
@@ -55,26 +66,26 @@
 \draw[->, thick, black!60] (0,0,0) -- (0, 0, \amp+0.8) node[below left]{$\mathbf{B}$};
 
 % E-field
-\draw[red!80!black, very thick, samples=100, domain=0:\zmax, variable=\z]
+\draw[garnet, very thick, samples=100, domain=0:\zmax, variable=\z]
     plot (\z, {\amp * sin(\kwave*\z - \phase*180/3.14159)}, 0);
 
 \foreach \z in {0, 0.5, 1.0, ..., 9.0} {
     \pgfmathsetmacro{\Eval}{\amp * sin(\kwave*\z - \phase*180/3.14159)}
     \pgfmathparse{abs(\Eval) > 0.08 ? 1 : 0}
     \ifnum\pgfmathresult=1
-        \draw[->, red!60!black, thin] (\z, 0, 0) -- (\z, \Eval, 0);
+        \draw[->, garnet, thin] (\z, 0, 0) -- (\z, \Eval, 0);
     \fi
 }
 
 % B-field
-\draw[blue!80!black, very thick, samples=100, domain=0:\zmax, variable=\z]
+\draw[atlantic, very thick, samples=100, domain=0:\zmax, variable=\z]
     plot (\z, 0, {\amp * sin(\kwave*\z - \phase*180/3.14159)});
 
 \foreach \z in {0, 0.5, 1.0, ..., 9.0} {
     \pgfmathsetmacro{\Bval}{\amp * sin(\kwave*\z - \phase*180/3.14159)}
     \pgfmathparse{abs(\Bval) > 0.08 ? 1 : 0}
     \ifnum\pgfmathresult=1
-        \draw[->, blue!60!black, thin] (\z, 0, 0) -- (\z, 0, \Bval);
+        \draw[->, atlantic, thin] (\z, 0, 0) -- (\z, 0, \Bval);
     \fi
 }
 

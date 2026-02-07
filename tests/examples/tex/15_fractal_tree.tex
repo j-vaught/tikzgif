@@ -6,6 +6,19 @@
 % Features demonstrated: recursive macros, conditional drawing, organic shapes
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
+\usepackage{xcolor}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
   \useasboundingbox (-6,-1) rectangle (6,10);
@@ -38,18 +51,18 @@
         \pgfmathsetmacro{\ix}{#1 + \growfactor * (#4) * sin(#3)}%
         \pgfmathsetmacro{\iy}{#2 + \growfactor * (#4) * cos(#3)}%
 
-        % Color: trunk is brown, tips are green
+        % Color: trunk is warmgrey, tips are horseshoe
         \pgfmathtruncatemacro{\greenpct}{min(100, max(0, \dep * 15))}
 
         % Draw the branch
         \draw[line width=#6 pt, line cap=round,
-              green!\greenpct!brown!80!black]
+              horseshoe!\greenpct!warmgrey]
           (#1, #2) -- (\ix, \iy);
 
         % Leaves at the tips (only for deeper branches)
         \ifnum\dep>5
           \ifdim\growfactor pt>0.8pt
-            \fill[green!60!black, opacity=0.6]
+            \fill[horseshoe, opacity=0.6]
               (\ix, \iy) circle ({0.08 * (1 + \dep/\maxdepth)});
           \fi
         \fi
@@ -71,8 +84,8 @@
   }
 
   % Ground
-  \fill[green!30!brown!20] (-6, -0.5) rectangle (6, 0);
-  \draw[brown!60!black, thick] (-6, 0) -- (6, 0);
+  \fill[horseshoe!30!warmgrey!20] (-6, -0.5) rectangle (6, 0);
+  \draw[warmgrey, thick] (-6, 0) -- (6, 0);
 
   % Start the tree
   \branch{0}{0}{0}{2.5}{0}{4}

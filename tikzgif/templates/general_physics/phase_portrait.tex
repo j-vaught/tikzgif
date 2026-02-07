@@ -39,6 +39,17 @@
 \usepackage{amsmath}
 \usetikzlibrary{arrows.meta}
 
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}[>=Stealth]
 
@@ -51,8 +62,8 @@
 
 % Grid
 \foreach \v in {-4,-3,-2,-1,1,2,3,4} {
-    \draw[gray!15, thin] (\v, -4) -- (\v, 4);
-    \draw[gray!15, thin] (-4, \v) -- (4, \v);
+    \draw[warmgrey!15, thin] (\v, -4) -- (\v, 4);
+    \draw[warmgrey!15, thin] (-4, \v) -- (4, \v);
 }
 
 % Vector field
@@ -66,7 +77,7 @@
         \ifnum\pgfmathresult=1
             \pgfmathsetmacro{\ndx}{\dx/\mag*\scale}
             \pgfmathsetmacro{\ndy}{\dy/\mag*\scale}
-            \draw[->, gray!50, thin] (\xi, \yi) -- ({\xi+\ndx}, {\yi+\ndy});
+            \draw[->, warmgrey!50, thin] (\xi, \yi) -- ({\xi+\ndx}, {\yi+\ndy});
         \fi
     }
 }
@@ -74,10 +85,10 @@
 % Trajectories: x(t) = e^{-a*t} * R0 * [cos(b*t + th), sin(b*t + th)]
 \foreach \thetaStart in {0, 60, 120, 180, 240, 300} {
     \pgfmathsetmacro{\R}{3.0}
-    \draw[blue!70!black, thick, samples=120, domain=0:6.28, variable=\t]
+    \draw[atlantic, thick, samples=120, domain=0:6.28, variable=\t]
         plot ({exp(-\aval*\t) * \R * cos(\bval*\t*180/3.14159 + \thetaStart)},
               {exp(-\aval*\t) * \R * sin(\bval*\t*180/3.14159 + \thetaStart)});
-    \filldraw[red!70!black]
+    \filldraw[garnet]
         ({\R * cos(\thetaStart)}, {\R * sin(\thetaStart)}) circle (2pt);
 }
 
@@ -88,18 +99,18 @@
 \pgfmathtruncatemacro{\stabType}{\pgfmathresult}
 
 \ifnum\stabType=1
-    \node[anchor=north east, font=\footnotesize, fill=green!10, inner sep=3pt,
-          draw=green!40!black]
+    \node[anchor=north east, font=\footnotesize, fill=horseshoe!10, inner sep=3pt,
+          draw=horseshoe]
         at (4.0, 4.0) {Stable spiral ($a = \pgfmathprintnumber[fixed,precision=2]{\aval}$)};
 \fi
 \ifnum\stabType=-1
-    \node[anchor=north east, font=\footnotesize, fill=red!10, inner sep=3pt,
-          draw=red!40!black]
+    \node[anchor=north east, font=\footnotesize, fill=garnet!10, inner sep=3pt,
+          draw=garnet]
         at (4.0, 4.0) {Unstable spiral ($a = \pgfmathprintnumber[fixed,precision=2]{\aval}$)};
 \fi
 \ifnum\stabType=0
-    \node[anchor=north east, font=\footnotesize, fill=yellow!10, inner sep=3pt,
-          draw=yellow!60!black]
+    \node[anchor=north east, font=\footnotesize, fill=honeycomb!10, inner sep=3pt,
+          draw=honeycomb]
         at (4.0, 4.0) {Center ($a \approx 0$)};
 \fi
 

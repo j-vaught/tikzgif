@@ -6,6 +6,19 @@
 % Features demonstrated: integer arithmetic, conditional styling, loops
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
+\usepackage{xcolor}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
   \useasboundingbox (-0.5,-1.5) rectangle (8.5,2.5);
@@ -29,10 +42,10 @@
 
     % Fill color based on bit value
     \ifnum\thisbit=1
-      \fill[red!70!black] (\xpos - 0.45, -0.45) rectangle (\xpos + 0.45, 0.45);
+      \fill[garnet] (\xpos - 0.45, -0.45) rectangle (\xpos + 0.45, 0.45);
       \node[white, font=\Large\bfseries] at (\xpos, 0) {1};
     \else
-      \fill[black!10] (\xpos - 0.45, -0.45) rectangle (\xpos + 0.45, 0.45);
+      \fill[sandstorm] (\xpos - 0.45, -0.45) rectangle (\xpos + 0.45, 0.45);
       \node[black!40, font=\Large\bfseries] at (\xpos, 0) {0};
     \fi
 

@@ -9,6 +9,19 @@
 % Features demonstrated: computed coordinates, color mapping, bar charts
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
+\usepackage{xcolor}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
 \begin{document}
 \begin{tikzpicture}
   \useasboundingbox (-0.5,-1) rectangle (9.5,7);
@@ -31,7 +44,7 @@
     \pgfmathsetmacro{\dist}{abs(\unsortedPos - \sortedPos)}
     \pgfmathtruncatemacro{\colorval}{min(100, max(20, 100 - \dist * 12))}
 
-    \fill[blue!\colorval!red] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
+    \fill[atlantic!\colorval!garnet] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
     \draw[black!80, thick] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
     \node[above, font=\small\bfseries] at (\xpos, \barht) {\val};
   }
