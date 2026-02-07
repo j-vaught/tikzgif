@@ -1,9 +1,10 @@
 % Example 28: 3D Object Rotation
-% Rotates a wireframe cube using TikZ 3D coordinate system.
+% Rotates a wireframe cube with shadow projection and vertex tracking.
 % Parameter: \PARAM (azimuthal viewing angle in degrees, range 0.0..360.0)
 % Range: 0.0 to 360.0, recommended 72 frames
 % Difficulty: intermediate
-% Features demonstrated: 3D rotation, cube wireframe, viewing angle variation
+% Features demonstrated: 3D rotation, shadow projection, vertex labels,
+%   tracked vertex trail, face shading, rotation angle indicator
 
 \documentclass[border=10pt,tikz]{standalone}
 \usepackage{tikz}
@@ -32,6 +33,16 @@
 
 \pgfmathsetmacro{\s}{1.5}
 
+% Ground plane at z = -s (shadow surface)
+\fill[warmgrey!8, opacity=0.5]
+    (-2.2, -2.2, -\s) -- (2.2, -2.2, -\s) -- (2.2, 2.2, -\s) -- (-2.2, 2.2, -\s) -- cycle;
+\draw[warmgrey!20, very thin]
+    (-2.2, -2.2, -\s) -- (2.2, -2.2, -\s) -- (2.2, 2.2, -\s) -- (-2.2, 2.2, -\s) -- cycle;
+
+% Shadow projection (project top face onto ground plane z=-s)
+\fill[black, opacity=0.12]
+    (-\s, -\s, -\s) -- (\s, -\s, -\s) -- (\s, \s, -\s) -- (-\s, \s, -\s) -- cycle;
+
 % Axes
 \draw[->, thick, garnet]   (0,0,0) -- (2.5,0,0) node[anchor=north east]{$x$};
 \draw[->, thick, horseshoe] (0,0,0) -- (0,2.5,0) node[anchor=north west]{$y$};
@@ -47,29 +58,68 @@
 \coordinate (G) at ( \s,  \s,  \s);
 \coordinate (H) at (-\s,  \s,  \s);
 
+% Face shading
+\fill[atlantic!12, opacity=0.4] (E) -- (F) -- (G) -- (H) -- cycle; % top
+\fill[garnet!8, opacity=0.3] (A) -- (B) -- (F) -- (E) -- cycle; % front
+\fill[horseshoe!8, opacity=0.3] (B) -- (C) -- (G) -- (F) -- cycle; % right
+
 % Edges
-\draw[thick, black!70] (A) -- (B) -- (C) -- (D) -- cycle;
-\draw[thick, black!70] (E) -- (F) -- (G) -- (H) -- cycle;
+\draw[thick, black!70] (A) -- (B) -- (C) -- (D) -- cycle; % bottom
+\draw[thick, black!70] (E) -- (F) -- (G) -- (H) -- cycle; % top
 \draw[thick, black!70] (A) -- (E);
 \draw[thick, black!70] (B) -- (F);
 \draw[thick, black!70] (C) -- (G);
 \draw[thick, black!70] (D) -- (H);
 
-% Face shading
-\fill[atlantic!15, opacity=0.4] (E) -- (F) -- (G) -- (H) -- cycle;
-\fill[garnet!10, opacity=0.3] (A) -- (B) -- (F) -- (E) -- cycle;
-\fill[horseshoe!10, opacity=0.3] (B) -- (C) -- (G) -- (F) -- cycle;
-
 % Body diagonal
 \draw[dashed, rose, thin] (A) -- (G);
 
+% Vertex labels
+\node[font=\tiny, anchor=east] at (A) {A};
+\node[font=\tiny, anchor=west] at (B) {B};
+\node[font=\tiny, anchor=west] at (C) {C};
+\node[font=\tiny, anchor=east] at (D) {D};
+\node[font=\tiny, anchor=east] at (E) {E};
+\node[font=\tiny, anchor=west] at (F) {F};
+\node[font=\tiny, anchor=west] at (G) {G};
+\node[font=\tiny, anchor=east] at (H) {H};
+
+% Tracked vertex trail: vertex A position for past 60 degrees (garnet dots fading)
+\foreach \prevAng/\prevOp in {-60/10, -50/15, -40/20, -30/30, -20/45, -10/65} {
+    \pgfmathsetmacro{\histAng}{\rotAngle + \prevAng}
+    \pgfmathsetmacro{\hax}{-\s * cos(\histAng) + (-\s) * sin(\histAng) * 0.5}
+    \pgfmathsetmacro{\hay}{\s * sin(\histAng) + (-\s) * cos(\histAng) * 0.5 + (-\s)}
+    \fill[garnet, opacity=0.\prevOp] (\hax, \hay) circle (1.2pt);
+}
+
+% Current vertex A highlight
+\pgfmathsetmacro{\Asx}{-\s * cos(\rotAngle) + (-\s) * sin(\rotAngle) * 0.5}
+\pgfmathsetmacro{\Asy}{\s * sin(\rotAngle) + (-\s) * cos(\rotAngle) * 0.5 + (-\s)}
+\fill[garnet] (\Asx, \Asy) circle (2pt);
+
 % Center
-\filldraw[garnet] (0, 0, 0) circle (2pt);
+\filldraw[garnet] (0, 0, 0) circle (1.5pt);
+
+% Rotation angle indicator arc at base
+\begin{scope}[shift={(0,0)}, z={(0,0)}]
+    \pgfmathsetmacro{\arcR}{0.6}
+    \draw[warmgrey!50, thick] (\arcR, 0) arc (0:\rotAngle:\arcR);
+    \pgfmathsetmacro{\tickX}{\arcR * cos(\rotAngle)}
+    \pgfmathsetmacro{\tickY}{-\arcR * sin(\rotAngle)}
+    \filldraw[garnet] (\tickX, \tickY) circle (1pt);
+\end{scope}
 
 % Label
-\node[anchor=north, font=\footnotesize, fill=white, inner sep=2pt, draw=warmgrey]
+\node[anchor=north, font=\footnotesize, fill=white, fill opacity=0.85,
+      text opacity=1, inner sep=2pt, draw=warmgrey!40]
     at (0, 0, -\s-0.6)
     {$\phi = \pgfmathprintnumber[fixed, precision=0]{\rotAngle}^\circ$};
+
+% Vertex A coordinate readout
+\node[anchor=south, font=\tiny, garnet, fill=white, fill opacity=0.7,
+      text opacity=1, inner sep=1pt]
+    at (A)
+    {$(\pgfmathprintnumber[fixed,precision=1]{-\s},\,\pgfmathprintnumber[fixed,precision=1]{-\s},\,\pgfmathprintnumber[fixed,precision=1]{-\s})$};
 
 \end{tikzpicture}
 \end{document}

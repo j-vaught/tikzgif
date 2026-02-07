@@ -1,13 +1,17 @@
 % Example 25: Phase Portrait Animation
-% Phase portrait of dx/dt = [[-a, b], [-b, -a]]*x showing stable spiral to unstable spiral.
+% Phase portrait of dx/dt = [[-a, b], [-b, -a]]*x with stability transitions.
 % Parameter: \PARAM (real part of eigenvalue a, range -1.0..2.0)
 % Range: -1.0 to 2.0, recommended 30 frames
 % Difficulty: advanced
-% Features demonstrated: phase portrait, ODE, dynamical systems, spiral stability
+% Features demonstrated: phase portrait, ODE, nullclines, eigenvalue inset,
+%   trajectory opacity fading, energy-level circles, flow particles
+
 \documentclass[border=8pt,tikz]{standalone}
 \usepackage{tikz}
+\usepackage{pgfplots}
 \usepackage{amsmath}
 \usetikzlibrary{arrows.meta}
+\pgfplotsset{compat=1.18}
 
 % USC Brand Colors
 \definecolor{garnet}{HTML}{73000A}
@@ -32,9 +36,49 @@
 
 % Grid
 \foreach \v in {-4,-3,-2,-1,1,2,3,4} {
-    \draw[warmgrey!15, thin] (\v, -4) -- (\v, 4);
-    \draw[warmgrey!15, thin] (-4, \v) -- (4, \v);
+    \draw[warmgrey!12, thin] (\v, -4) -- (\v, 4);
+    \draw[warmgrey!12, thin] (-4, \v) -- (4, \v);
 }
+
+% Energy-level circles (Lyapunov contours V = x1^2 + x2^2 = const)
+\foreach \rr in {1.0, 2.0, 3.0} {
+    \draw[dashed, warmgrey!20, very thin] (0,0) circle (\rr);
+}
+
+% Nullclines
+% dx1/dt = 0: -a*x1 + b*x2 = 0  =>  x2 = (a/b)*x1
+% dx2/dt = 0: -b*x1 - a*x2 = 0  =>  x2 = -(b/a)*x1 (when a != 0)
+\pgfmathsetmacro{\slopeNullVal}{\aval/max(abs(\aval),0.001)*abs(\aval)/\bval}
+\pgfmathsetmacro{\absAval}{abs(\aval)}
+% Pre-compute all nullcline coordinates
+\pgfmathsetmacro{\slopeN}{(\absAval > 0.05) ? \aval/\bval : 0}
+\pgfmathsetmacro{\slopeNtwo}{(\absAval > 0.05) ? -\bval/\aval : -100}
+\pgfmathsetmacro{\absSlopeN}{abs(\slopeN)}
+\pgfmathsetmacro{\nDenom}{max(\absSlopeN+1,1)}
+\pgfmathsetmacro{\nXa}{-4/\nDenom}
+\pgfmathsetmacro{\nYa}{-4*\slopeN/\nDenom}
+\pgfmathsetmacro{\nXb}{4/\nDenom}
+\pgfmathsetmacro{\nYb}{4*\slopeN/\nDenom}
+\pgfmathsetmacro{\nLabelY}{2.5*\slopeN}
+\pgfmathsetmacro{\sNtwoClamp}{min(max(\slopeNtwo, -10), 10)}
+\pgfmathsetmacro{\absSNtwo}{abs(\sNtwoClamp)}
+\pgfmathsetmacro{\nDenomB}{max(\absSNtwo+1,1)}
+\pgfmathsetmacro{\nXc}{-4/\nDenomB}
+\pgfmathsetmacro{\nYc}{-4*\sNtwoClamp/\nDenomB}
+\pgfmathsetmacro{\nXd}{4/\nDenomB}
+\pgfmathsetmacro{\nYd}{4*\sNtwoClamp/\nDenomB}
+\pgfmathsetmacro{\nLabelXe}{-2.5/\nDenomB}
+\pgfmathsetmacro{\nLabelYe}{-2.5*\sNtwoClamp/\nDenomB}
+\pgfmathtruncatemacro{\showNull}{(\absAval > 0.05) ? 1 : 0}
+\ifnum\showNull=1
+    \draw[rose, thick, dashed] (\nXa, \nYa) -- (\nXb, \nYb);
+    \node[font=\tiny, rose, anchor=south west] at (2.5, \nLabelY)
+        {$\dot{x}_1\!=\!0$};
+    \draw[horseshoe, thick, dashed] (\nXc, \nYc) -- (\nXd, \nYd);
+    \node[font=\tiny, horseshoe, anchor=north east]
+        at (\nLabelXe, \nLabelYe)
+        {$\dot{x}_2\!=\!0$};
+\fi
 
 % Vector field
 \foreach \xi in {-3.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5} {
@@ -47,21 +91,44 @@
         \ifnum\pgfmathresult=1
             \pgfmathsetmacro{\ndx}{\dx/\mag*\scale}
             \pgfmathsetmacro{\ndy}{\dy/\mag*\scale}
-            \draw[->, warmgrey!50, thin] (\xi, \yi) -- ({\xi+\ndx}, {\yi+\ndy});
+            \draw[->, warmgrey!45, thin] (\xi, \yi) -- ({\xi+\ndx}, {\yi+\ndy});
         \fi
     }
 }
 
-% Trajectories: x(t) = e^{-a*t} * R0 * [cos(b*t + th), sin(b*t + th)]
+% Trajectories with opacity fading
 \foreach \thetaStart in {0, 60, 120, 180, 240, 300} {
     \pgfmathsetmacro{\R}{3.0}
-    \draw[atlantic, thick, samples=120, domain=0:6.28, variable=\t]
-        plot ({exp(-\aval*\t) * \R * cos(\bval*\t*180/3.14159 + \thetaStart)},
-              {exp(-\aval*\t) * \R * sin(\bval*\t*180/3.14159 + \thetaStart)});
+    % Draw in segments with varying opacity (clamp radius to avoid overflow)
+    \foreach \seg in {0, 1, 2, ..., 9} {
+        \pgfmathsetmacro{\tA}{\seg * 0.628}
+        \pgfmathsetmacro{\tB}{(\seg + 1) * 0.628}
+        \pgfmathsetmacro{\radiusAtB}{exp(-\aval*\tB) * \R}
+        \pgfmathparse{\radiusAtB < 50 ? 1 : 0}
+        \ifnum\pgfmathresult=1
+            \pgfmathsetmacro{\opac}{max(0.9 - \seg*0.08, 0.15)}
+            \draw[atlantic, thick, opacity=\opac, samples=20,
+                  domain=\tA:\tB, variable=\t]
+                plot ({min(max(exp(-\aval*\t) * \R * cos(\bval*\t*180/3.14159 + \thetaStart),-20),20)},
+                      {min(max(exp(-\aval*\t) * \R * sin(\bval*\t*180/3.14159 + \thetaStart),-20),20)});
+        \fi
+    }
+    % Initial condition marker
     \filldraw[garnet]
-        ({\R * cos(\thetaStart)}, {\R * sin(\thetaStart)}) circle (2pt);
+        ({\R * cos(\thetaStart)}, {\R * sin(\thetaStart)}) circle (2.5pt);
+
+    % Flow particle at t=2 (clamp to avoid overflow for unstable spirals)
+    \pgfmathsetmacro{\tflow}{2.0}
+    \pgfmathsetmacro{\rFlow}{exp(-\aval*\tflow) * \R}
+    \pgfmathsetmacro{\fpx}{(\rFlow < 50) ? \rFlow * cos(\bval*\tflow*180/3.14159 + \thetaStart) : 999}
+    \pgfmathsetmacro{\fpy}{(\rFlow < 50) ? \rFlow * sin(\bval*\tflow*180/3.14159 + \thetaStart) : 999}
+    \pgfmathparse{(abs(\fpx) < 4.0) && (abs(\fpy) < 4.0) ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \filldraw[congaree] (\fpx, \fpy) circle (1.5pt);
+    \fi
 }
 
+% Equilibrium
 \filldraw[black] (0, 0) circle (3pt);
 
 % Stability label
@@ -71,22 +138,50 @@
 \ifnum\stabType=1
     \node[anchor=north east, font=\footnotesize, fill=horseshoe!10, inner sep=3pt,
           draw=horseshoe]
-        at (4.0, 4.0) {Stable spiral ($a = \pgfmathprintnumber[fixed,precision=2]{\aval}$)};
+        at (4.0, 4.0) {Stable spiral};
 \fi
 \ifnum\stabType=-1
     \node[anchor=north east, font=\footnotesize, fill=garnet!10, inner sep=3pt,
           draw=garnet]
-        at (4.0, 4.0) {Unstable spiral ($a = \pgfmathprintnumber[fixed,precision=2]{\aval}$)};
+        at (4.0, 4.0) {Unstable spiral};
 \fi
 \ifnum\stabType=0
     \node[anchor=north east, font=\footnotesize, fill=honeycomb!10, inner sep=3pt,
           draw=honeycomb]
-        at (4.0, 4.0) {Center ($a \approx 0$)};
+        at (4.0, 4.0) {Center};
 \fi
 
+% ODE label
 \node[anchor=south west, font=\footnotesize, fill=white, inner sep=3pt]
     at (-4.0, -4.0)
-    {$\dot{\mathbf{x}} = \begin{bmatrix} -a & b \\ -b & -a \end{bmatrix} \mathbf{x}$};
+    {$\dot{\mathbf{x}} = \begin{bmatrix} -a & b \\ -b & -a \end{bmatrix} \mathbf{x}$,\;
+     $a = \pgfmathprintnumber[fixed,precision=2]{\aval}$};
+
+% Eigenvalue s-plane inset
+\begin{axis}[
+    at={(4.0cm, -3.0cm)}, anchor=south east,
+    width=3cm, height=3cm,
+    xmin=-2.5, xmax=1.5, ymin=-2.5, ymax=2.5,
+    xtick={-2,0}, ytick={-2,0,2},
+    tick label style={font=\tiny},
+    axis line style={warmgrey},
+    grid=major, grid style={warmgrey!12},
+    axis background/.style={fill=sandstorm, fill opacity=0.3},
+    title={\tiny Eigenvalues},
+    every axis title/.style={font=\tiny},
+]
+    % Imaginary axis
+    \addplot[warmgrey!30, thin] coordinates {(0, -2.5) (0, 2.5)};
+
+    % Eigenvalues at -a +/- j*b
+    \addplot[only marks, mark=*, mark size=2.5pt, atlantic]
+        coordinates {(-\aval, \bval) (-\aval, -\bval)};
+
+    % Label
+    \node[font=\tiny, atlantic, anchor=west]
+        at (axis cs:{-\aval+0.1}, {\bval})
+        {$\lambda$};
+\end{axis}
 
 \end{tikzpicture}
 \end{document}

@@ -3,7 +3,8 @@
 % Parameter: \PARAM (proportional gain, range 0.5..15.0)
 % Range: 0.5 to 15.0, recommended 30 frames
 % Difficulty: advanced
-% Features demonstrated: control systems, PID dynamics, gain effects
+% Features demonstrated: control systems, PID dynamics, settling band,
+%   time markers, decay envelope, performance metrics, error overlay
 
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
@@ -11,6 +12,7 @@
 \usepackage{amsmath}
 \usetikzlibrary{arrows.meta, positioning}
 \pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween}
 
 % USC Brand Colors
 \definecolor{garnet}{HTML}{73000A}
@@ -39,32 +41,57 @@
 \pgfmathsetmacro{\wdSq}{max(\wn*\wn - \sigmaD*\sigmaD, 0.001)}
 \pgfmathsetmacro{\wdamp}{sqrt(\wdSq)}
 
+% Classify damping
+\pgfmathtruncatemacro{\isunder}{\zetaClamp < 0.999 ? 1 : 0}
+
+% Performance metrics (underdamped)
+\pgfmathsetmacro{\MpVal}{\isunder > 0 ? exp(-3.14159*\zetaClamp / sqrt(max(1-\zetaClamp*\zetaClamp, 0.001))) : 0}
+\pgfmathsetmacro{\tpVal}{\isunder > 0 ? 3.14159 / \wdamp : 2.0}
+\pgfmathsetmacro{\tsVal}{4.0 / max(\sigmaD, 0.01)}
+\pgfmathsetmacro{\MpPct}{\MpVal * 100}
+
 \begin{axis}[
-    name=response, width=9cm, height=6cm,
+    name=response, width=10cm, height=6.5cm,
     xmin=0, xmax=8, ymin=-0.2, ymax=2.0,
     xlabel={Time $t$ (s)}, ylabel={$y(t)$},
     title={\small PID:\;
            $K_p\!=\!\pgfmathprintnumber[fixed,precision=1]{\Kp}$,\;
            $K_i\!=\!\pgfmathprintnumber[fixed,precision=1]{\Ki}$,\;
            $K_d\!=\!\pgfmathprintnumber[fixed,precision=1]{\Kd}$},
-    grid=major, grid style={warmgrey!25}, thick,
-    tick label style={font=\tiny},
+    grid=major, grid style={warmgrey!20}, thick,
+    tick label style={font=\small},
     label style={font=\footnotesize},
+    clip=false,
 ]
-    \addplot[domain=0:8, samples=2, dashed, black!40] {1};
+    % 2% settling band
+    \addplot[domain=0:8, samples=2, name path=upper, draw=none] {1.02};
+    \addplot[domain=0:8, samples=2, name path=lower, draw=none] {0.98};
+    \addplot[fill=sandstorm, fill opacity=0.5] fill between[of=upper and lower];
+    \addplot[domain=0:8, samples=2, dashed, warmgrey!50, very thin] {1.02};
+    \addplot[domain=0:8, samples=2, dashed, warmgrey!50, very thin] {0.98};
 
-    % Underdamped
-    \pgfmathparse{\zetaClamp < 0.999 ? 1 : 0}
-    \ifnum\pgfmathresult=1
+    % Reference
+    \addplot[domain=0:8, samples=2, dashed, black!40, thin] {1};
+
+    % Decay envelope (underdamped)
+    \ifnum\isunder>0
+        \addplot[domain=0.01:8, samples=100, garnet, thin, dashed]
+            {1 + exp(-\sigmaD * x) / sqrt(max(1-\zetaClamp*\zetaClamp, 0.001))};
+        \addplot[domain=0.01:8, samples=100, garnet, thin, dashed]
+            {1 - exp(-\sigmaD * x) / sqrt(max(1-\zetaClamp*\zetaClamp, 0.001))};
+    \fi
+
+    % Main response
+    \ifnum\isunder>0
         \pgfmathsetmacro{\phiDeg}{acos(min(\zetaClamp,0.999))}
-        \addplot[domain=0:8, samples=300, atlantic, very thick]
+        \addplot[domain=0:8, samples=400, atlantic, very thick]
             {1 - exp(-\sigmaD * x) / sqrt(max(1-\zetaClamp*\zetaClamp, 0.001))
              * sin(\wdamp * x * 180/3.14159 + \phiDeg)};
     \fi
     % Critically damped
     \pgfmathparse{(\zetaClamp >= 0.999) && (\zetaClamp <= 1.001) ? 1 : 0}
     \ifnum\pgfmathresult=1
-        \addplot[domain=0:8, samples=300, garnet, very thick]
+        \addplot[domain=0:8, samples=400, garnet, very thick]
             {1 - (1 + \wn*x) * exp(-\wn*x)};
     \fi
     % Overdamped
@@ -75,25 +102,46 @@
         \pgfmathsetmacro{\sB}{(-\zetaClamp - \sqZ)*\wn}
         \pgfmathsetmacro{\cA}{\sB / (\sB - \sA)}
         \pgfmathsetmacro{\cB}{\sA / (\sA - \sB)}
-        \addplot[domain=0:8, samples=300, horseshoe, very thick]
+        \addplot[domain=0:8, samples=400, horseshoe, very thick]
             {1 + \cA * exp(\sA * x) + \cB * exp(\sB * x)};
+    \fi
+
+    % Error signal overlay e(t) = 1 - y(t)
+    \ifnum\isunder>0
+        \pgfmathsetmacro{\phiDeg}{acos(min(\zetaClamp,0.999))}
+        \addplot[domain=0:8, samples=200, rose, thin]
+            {exp(-\sigmaD * x) / sqrt(max(1-\zetaClamp*\zetaClamp, 0.001))
+             * sin(\wdamp * x * 180/3.14159 + \phiDeg)};
+        \node[font=\tiny, rose, anchor=west]
+            at (axis cs:0.3, {1/sqrt(max(1-\zetaClamp*\zetaClamp,0.001))*0.7})
+            {$e(t)$};
+    \fi
+
+    % Time markers (underdamped)
+    \ifnum\isunder>0
+        % Peak time
+        \pgfmathsetmacro{\tpC}{min(\tpVal, 7.5)}
+        \addplot[dashed, garnet, thin] coordinates {(\tpC, 0) (\tpC, {1+\MpVal})};
+        \node[font=\tiny, garnet, anchor=south]
+            at (axis cs:\tpC, {1+\MpVal+0.02})
+            {$t_p$};
+
+        % Settling time
+        \pgfmathsetmacro{\tsC}{min(\tsVal, 7.5)}
+        \addplot[dashed, horseshoe, thin] coordinates {(\tsC, 0) (\tsC, 1.02)};
+        \node[font=\tiny, horseshoe, anchor=north, rotate=90]
+            at (axis cs:\tsC, 0.4) {$t_s$};
     \fi
 \end{axis}
 
-% Gain bar chart
-\begin{axis}[
-    at={(response.east)}, anchor=west, xshift=12mm,
-    width=3.5cm, height=6cm, ybar, bar width=14pt,
-    ymin=0, ymax=16, ylabel={Gain},
-    symbolic x coords={$K_p$, $K_i$, $K_d$}, xtick=data,
-    tick label style={font=\footnotesize},
-    nodes near coords,
-    every node near coord/.append style={font=\tiny},
-    ymajorgrids=true, grid style={warmgrey!25},
-]
-    \addplot[fill=atlantic!60, draw=atlantic] coordinates
-        {($K_p$, \Kp) ($K_i$, \Ki) ($K_d$, \Kd)};
-\end{axis}
+% Performance metrics box
+\node[anchor=north west, fill=white, fill opacity=0.9, text opacity=1,
+      draw=warmgrey!50, inner sep=4pt, font=\footnotesize, align=left]
+    at ([shift={(0.3cm,-0.3cm)}]response.north west)
+    {$\zeta = \pgfmathprintnumber[fixed,precision=2]{\zetaClamp}$\\[1pt]
+     $\omega_n = \pgfmathprintnumber[fixed,precision=1]{\wn}$ rad/s\\[1pt]
+     $\%\mathrm{OS} = \pgfmathprintnumber[fixed,precision=1]{\MpPct}\%$\\[1pt]
+     $t_s = \pgfmathprintnumber[fixed,precision=2]{\tsVal}$ s};
 
 \end{tikzpicture}
 \end{document}

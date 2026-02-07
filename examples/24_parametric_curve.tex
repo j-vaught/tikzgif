@@ -1,9 +1,11 @@
 % Example 24: Parametric Curve Tracing (Lissajous)
-% A point traces a Lissajous figure as the parameter sweeps from 0 to 2π.
+% A point traces a Lissajous figure as the parameter sweeps from 0 to 2pi.
 % Parameter: \PARAM (maximum t value, range 0.1..6.283185 rad)
 % Range: 0.1 to 6.283185, recommended 48 frames
 % Difficulty: intermediate
-% Features demonstrated: parametric curves, Lissajous figures, curve tracing
+% Features demonstrated: parametric curves, Lissajous figures, velocity vector,
+%   speed-coded trail, component signal strips, frequency ratio label
+
 \documentclass[border=10pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{amsmath}
@@ -28,43 +30,86 @@
 \pgfmathsetmacro{\fb}{2.0}
 \pgfmathsetmacro{\phd}{1.5708}
 \pgfmathsetmacro{\amp}{3.0}
-
-% Axes
-\draw[->, warmgrey!60, thick] (-\amp-0.5, 0) -- (\amp+0.5, 0) node[right, font=\small]{$x$};
-\draw[->, warmgrey!60, thick] (0, -\amp-0.5) -- (0, \amp+0.5) node[above, font=\small]{$y$};
-
-% Ghost of full curve
-\draw[warmgrey!20, thin, samples=300, domain=0:360, variable=\t]
-    plot ({\amp * sin(\fa*\t + \phd*180/3.14159)}, {\amp * sin(\fb*\t)});
-
-% Traced curve up to tmax
 \pgfmathsetmacro{\tmaxDeg}{\tmax * 180 / 3.14159}
-\pgfmathsetmacro{\trailStart}{max(\tmaxDeg - 60, 0)}
 
-\draw[atlantic!30, thick, samples=100, domain=0:\trailStart, variable=\t]
-    plot ({\amp * sin(\fa*\t + \phd*180/3.14159)}, {\amp * sin(\fb*\t)});
-\draw[atlantic!70!black, very thick, samples=80, domain=\trailStart:\tmaxDeg, variable=\t]
-    plot ({\amp * sin(\fa*\t + \phd*180/3.14159)}, {\amp * sin(\fb*\t)});
-
-% Current point
+% Current point coordinates
 \pgfmathsetmacro{\currX}{\amp * sin(\fa*\tmaxDeg + \phd*180/3.14159)}
 \pgfmathsetmacro{\currY}{\amp * sin(\fb*\tmaxDeg)}
+
+% Velocity vector: dx/dt = A*a*cos(a*t+phi), dy/dt = A*b*cos(b*t)
+\pgfmathsetmacro{\vx}{\fa * cos(\fa*\tmaxDeg + \phd*180/3.14159)}
+\pgfmathsetmacro{\vy}{\fb * cos(\fb*\tmaxDeg)}
+\pgfmathsetmacro{\speed}{sqrt(\vx*\vx + \vy*\vy)}
+\pgfmathsetmacro{\vscale}{0.5}
+
+% Axes
+\draw[->, warmgrey!50, thick] (-\amp-0.5, 0) -- (\amp+0.5, 0) node[right, font=\small]{$x$};
+\draw[->, warmgrey!50, thick] (0, -\amp-0.5) -- (0, \amp+0.5) node[above, font=\small]{$y$};
+
+% Ghost of full curve
+\draw[warmgrey!15, thin, samples=300, domain=0:360, variable=\t]
+    plot ({\amp * sin(\fa*\t + \phd*180/3.14159)}, {\amp * sin(\fb*\t)});
+
+% Speed-coded trail: draw segments colored by speed (garnet=fast, atlantic=slow)
+\pgfmathsetmacro{\segStep}{3.0}
+\pgfmathsetmacro{\numSegs}{min(floor(\tmaxDeg / \segStep), 120)}
+\foreach \idx in {0, 1, ..., \numSegs} {
+    \pgfmathsetmacro{\tA}{\idx * \segStep}
+    \pgfmathsetmacro{\tB}{min((\idx + 1) * \segStep, \tmaxDeg)}
+    \pgfmathsetmacro{\xA}{\amp * sin(\fa*\tA + \phd*180/3.14159)}
+    \pgfmathsetmacro{\yA}{\amp * sin(\fb*\tA)}
+    \pgfmathsetmacro{\xB}{\amp * sin(\fa*\tB + \phd*180/3.14159)}
+    \pgfmathsetmacro{\yB}{\amp * sin(\fb*\tB)}
+    % Speed at midpoint
+    \pgfmathsetmacro{\tM}{(\tA + \tB) / 2}
+    \pgfmathsetmacro{\svx}{\fa * cos(\fa*\tM + \phd*180/3.14159)}
+    \pgfmathsetmacro{\svy}{\fb * cos(\fb*\tM)}
+    \pgfmathsetmacro{\spd}{sqrt(\svx*\svx + \svy*\svy)}
+    \pgfmathtruncatemacro{\gpct}{min(max(round(\spd / 3.6 * 100), 10), 95)}
+    \draw[garnet!\gpct!atlantic, thick] (\xA, \yA) -- (\xB, \yB);
+}
+
+% Current point
 \filldraw[garnet!80!black] (\currX, \currY) circle (4pt);
-\draw[dashed, garnet!40, thin] (\currX, \currY) -- (\currX, 0);
-\draw[dashed, garnet!40, thin] (\currX, \currY) -- (0, \currY);
 
-% Label
-\node[anchor=north west, font=\small, fill=white, inner sep=3pt, draw=warmgrey!40]
-    at (-\amp-0.3, \amp+0.4)
-    {$\begin{aligned}
-        x &= \sin(\pgfmathprintnumber[fixed,precision=0]{\fa}\,t
-              + \pgfmathprintnumber[fixed,precision=2]{\phd}) \\
-        y &= \sin(\pgfmathprintnumber[fixed,precision=0]{\fb}\,t)
-     \end{aligned}$};
+% Velocity vector arrow
+\pgfmathparse{\speed > 0.2 ? 1 : 0}
+\ifnum\pgfmathresult=1
+    \draw[-{Stealth[length=4pt]}, garnet, very thick]
+        (\currX, \currY) -- ++({\vx*\vscale}, {\vy*\vscale});
+\fi
 
-\node[anchor=south east, font=\footnotesize, fill=white, inner sep=2pt]
-    at (\amp+0.3, -\amp-0.3)
-    {$t = \pgfmathprintnumber[fixed, precision=2]{\tmax}$};
+% Projection lines
+\draw[dashed, warmgrey!40, thin] (\currX, \currY) -- (\currX, 0);
+\draw[dashed, warmgrey!40, thin] (\currX, \currY) -- (0, \currY);
+
+% Component strip: x(t) along top
+\begin{scope}[shift={(0, \amp+1.2)}]
+    \draw[warmgrey!30, thin] (-\amp, -0.4) rectangle (\amp, 0.4);
+    \draw[warmgrey!25, thin, samples=100, domain=0:\tmaxDeg, variable=\t, xshift=0]
+        plot ({\amp * sin(\fa*\t + \phd*180/3.14159)}, {0.35 * sin(\fa*\t + \phd*180/3.14159)});
+    \filldraw[garnet] (\currX, {0.35 * sin(\fa*\tmaxDeg + \phd*180/3.14159)}) circle (2pt);
+    \draw[dashed, warmgrey!30, thin] (\currX, -0.4) -- (\currX, {\amp+0.5 - \amp - 1.2});
+    \node[font=\tiny, warmgrey, anchor=west] at (\amp+0.15, 0) {$x(t)$};
+\end{scope}
+
+% Component strip: y(t) along right
+\begin{scope}[shift={(\amp+1.2, 0)}]
+    \draw[warmgrey!30, thin] (-0.4, -\amp) rectangle (0.4, \amp);
+    \draw[warmgrey!25, thin, samples=100, domain=0:\tmaxDeg, variable=\t]
+        plot ({0.35 * sin(\fb*\t)}, {\amp * sin(\fb*\t)});
+    \filldraw[garnet] ({0.35 * sin(\fb*\tmaxDeg)}, \currY) circle (2pt);
+    \draw[dashed, warmgrey!30, thin] (-0.4, \currY) -- ({-\amp-0.5 + \amp + 1.2}, \currY);
+    \node[font=\tiny, warmgrey, anchor=south, rotate=90] at (0, \amp+0.15) {$y(t)$};
+\end{scope}
+
+% Info box with frequency ratio
+\node[anchor=south west, font=\footnotesize, fill=white, fill opacity=0.9,
+      text opacity=1, inner sep=3pt, draw=warmgrey!40, align=left]
+    at (-\amp-0.3, -\amp-0.3)
+    {$a\!:\!b = 3\!:\!2$,\; $\delta = \pi/2$\\[1pt]
+     $t = \pgfmathprintnumber[fixed, precision=2]{\tmax}$\;
+     $|\mathbf{v}| = \pgfmathprintnumber[fixed, precision=1]{\speed}$};
 
 \end{tikzpicture}
 \end{document}

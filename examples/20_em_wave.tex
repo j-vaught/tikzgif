@@ -1,9 +1,10 @@
 % Example 20: Electromagnetic Wave Propagation
-% Plane EM wave showing E and B field oscillation in time and space.
+% Traveling wave packet with E and B field visualization in 3D.
 % Parameter: \PARAM (temporal phase in radians, range 0.0..6.283185)
 % Range: 0.0 to 6.283185, recommended 40 frames
 % Difficulty: advanced
-% Features demonstrated: EM waves, 3D plotting, field visualization
+% Features demonstrated: EM waves, wave packet envelope, energy density strip,
+%   Poynting vector arrows, phase-front planes, improved labels
 
 \documentclass[border=8pt,tikz]{standalone}
 \usepackage{tikz}
@@ -30,48 +31,108 @@
 \pgfmathsetmacro{\zmax}{9}
 \pgfmathsetmacro{\kwave}{360/\wavelen}
 
+% Wave packet center (moves with phase)
+\pgfmathsetmacro{\zcenter}{\zmax * \phase / 6.28318}
+\pgfmathsetmacro{\envSig}{1.8}
+
 % Axes
-\draw[->, thick, black!60] (0,0,0) -- (\zmax+0.8, 0, 0) node[right]{$z$};
+\draw[->, thick, black!60] (0,0,0) -- (\zmax+1.0, 0, 0) node[right]{$z$};
 \draw[->, thick, black!60] (0,0,0) -- (0, \amp+0.8, 0) node[above]{$\mathbf{E}$};
 \draw[->, thick, black!60] (0,0,0) -- (0, 0, \amp+0.8) node[below left]{$\mathbf{B}$};
 
-% E-field
-\draw[garnet, very thick, samples=100, domain=0:\zmax, variable=\z]
-    plot (\z, {\amp * sin(\kwave*\z - \phase*180/3.14159)}, 0);
+% Energy density color strip (horizontal bar below wave)
+\foreach \zp in {0.0, 0.25, 0.5, ..., 9.0} {
+    \pgfmathsetmacro{\envVal}{exp(-(\zp - \zcenter)*(\zp - \zcenter)/(2*\envSig*\envSig))}
+    \pgfmathsetmacro{\Elocal}{\amp * \envVal * sin(\kwave*\zp - \phase*180/3.14159)}
+    \pgfmathsetmacro{\Usq}{min(\Elocal*\Elocal / (\amp*\amp), 1.0)}
+    \pgfmathtruncatemacro{\Upct}{max(round(\Usq * 80), 2)}
+    \fill[garnet!\Upct!sandstorm] (\zp, {-\amp-0.6}, 0) rectangle ++(0.25, 0.2);
+}
+\node[font=\tiny, warmgrey, anchor=west] at (\zmax+0.3, {-\amp-0.5}, 0) {$u \propto E^2$};
 
-\foreach \z in {0, 0.5, 1.0, ..., 9.0} {
-    \pgfmathsetmacro{\Eval}{\amp * sin(\kwave*\z - \phase*180/3.14159)}
-    \pgfmathparse{abs(\Eval) > 0.08 ? 1 : 0}
+% Phase-front planes at E=0 crossings (every half wavelength)
+\foreach \zf in {0.0, 2.0, 4.0, 6.0, 8.0} {
+    \pgfmathsetmacro{\zfront}{\zf + \phase * \wavelen / 6.28318}
+    \pgfmathsetmacro{\zfmod}{\zfront - floor(\zfront / \wavelen) * \wavelen}
+    \pgfmathsetmacro{\zfA}{\zf}
+    \pgfmathparse{(\zfA > 0.1) && (\zfA < \zmax - 0.1) ? 1 : 0}
     \ifnum\pgfmathresult=1
-        \draw[->, garnet, thin] (\z, 0, 0) -- (\z, \Eval, 0);
+        \fill[atlantic!8, opacity=0.3]
+            (\zfA, {-\amp*0.5}, {-\amp*0.5}) --
+            (\zfA, {\amp*0.5}, {-\amp*0.5}) --
+            (\zfA, {\amp*0.5}, {\amp*0.5}) --
+            (\zfA, {-\amp*0.5}, {\amp*0.5}) -- cycle;
     \fi
 }
 
-% B-field
-\draw[atlantic, very thick, samples=100, domain=0:\zmax, variable=\z]
-    plot (\z, 0, {\amp * sin(\kwave*\z - \phase*180/3.14159)});
+% E-field with Gaussian envelope
+\draw[garnet, very thick, samples=120, domain=0:\zmax, variable=\z]
+    plot (\z,
+          {\amp * exp(-(\z - \zcenter)*(\z - \zcenter)/(2*\envSig*\envSig))
+           * sin(\kwave*\z - \phase*180/3.14159)},
+          0);
 
+% E-field arrows
 \foreach \z in {0, 0.5, 1.0, ..., 9.0} {
-    \pgfmathsetmacro{\Bval}{\amp * sin(\kwave*\z - \phase*180/3.14159)}
-    \pgfmathparse{abs(\Bval) > 0.08 ? 1 : 0}
+    \pgfmathsetmacro{\envVal}{exp(-(\z - \zcenter)*(\z - \zcenter)/(2*\envSig*\envSig))}
+    \pgfmathsetmacro{\Eval}{\amp * \envVal * sin(\kwave*\z - \phase*180/3.14159)}
+    \pgfmathparse{abs(\Eval) > 0.06 ? 1 : 0}
     \ifnum\pgfmathresult=1
-        \draw[->, atlantic, thin] (\z, 0, 0) -- (\z, 0, \Bval);
+        \draw[->, garnet!70, thin] (\z, 0, 0) -- (\z, \Eval, 0);
     \fi
 }
+
+% B-field with Gaussian envelope
+\draw[atlantic, very thick, samples=120, domain=0:\zmax, variable=\z]
+    plot (\z, 0,
+          {\amp * exp(-(\z - \zcenter)*(\z - \zcenter)/(2*\envSig*\envSig))
+           * sin(\kwave*\z - \phase*180/3.14159)});
+
+% B-field arrows
+\foreach \z in {0, 0.5, 1.0, ..., 9.0} {
+    \pgfmathsetmacro{\envVal}{exp(-(\z - \zcenter)*(\z - \zcenter)/(2*\envSig*\envSig))}
+    \pgfmathsetmacro{\Bval}{\amp * \envVal * sin(\kwave*\z - \phase*180/3.14159)}
+    \pgfmathparse{abs(\Bval) > 0.06 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \draw[->, atlantic!70, thin] (\z, 0, 0) -- (\z, 0, \Bval);
+    \fi
+}
+
+% Poynting vector arrows at key positions
+\foreach \zs in {2.0, 4.5, 7.0} {
+    \pgfmathsetmacro{\envV}{exp(-(\zs - \zcenter)*(\zs - \zcenter)/(2*\envSig*\envSig))}
+    \pgfmathsetmacro{\Eloc}{\amp * \envV * sin(\kwave*\zs - \phase*180/3.14159)}
+    \pgfmathsetmacro{\Smag}{abs(\Eloc * \Eloc) / (\amp * \amp)}
+    \pgfmathparse{\Smag > 0.05 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \pgfmathsetmacro{\Slen}{min(\Smag * 1.2, 1.0)}
+        \draw[-{Stealth[length=3pt]}, horseshoe, very thick]
+            (\zs, {-\amp-0.25}, {\amp*0.4})
+            -- ++({\Slen}, 0, 0);
+    \fi
+}
+\node[font=\tiny, horseshoe, anchor=west]
+    at (\zmax+0.3, {-\amp-0.25}, {\amp*0.4}) {$\mathbf{S}$};
 
 % Propagation arrow
 \draw[->, ultra thick, black!80, line width=1.5pt]
-    (\zmax*0.45, -\amp-0.5, 0) -- (\zmax*0.65, -\amp-0.5, 0)
-    node[midway, below, font=\footnotesize] {$\hat{k}$};
+    (\zmax*0.4, -\amp-0.9, 0) -- (\zmax*0.6, -\amp-0.9, 0)
+    node[midway, below, font=\footnotesize] {$v_g$};
 
-% Wavelength
-\draw[<->, black!70, thick]
-    (0.5, -\amp-0.15, 0) -- ({0.5 + \wavelen}, -\amp-0.15, 0)
-    node[midway, below, font=\footnotesize]{$\lambda$};
+% Wavelength bracket
+\draw[<->, black!60, thick]
+    (0.5, {\amp+0.3}, 0) -- ({0.5 + \wavelen}, {\amp+0.3}, 0)
+    node[midway, above, font=\footnotesize]{$\lambda$};
+
+% Amplitude annotation
+\draw[<->, garnet!60, thin]
+    ({\zcenter}, 0, 0) -- ({\zcenter}, {\amp*0.9}, 0);
+\node[font=\tiny, garnet, anchor=west] at ({\zcenter+0.1}, {\amp*0.45}, 0) {$E_0$};
 
 % Phase label
-\node[anchor=north west, font=\footnotesize, fill=white, inner sep=2pt]
-    at (0.1, \amp+0.6, 0)
+\node[anchor=north west, font=\footnotesize, fill=white, inner sep=2pt,
+      draw=warmgrey!40]
+    at (0.1, \amp+0.7, 0)
     {$\omega t = \pgfmathprintnumber[fixed, precision=2]{\phase}$ rad};
 
 \end{tikzpicture}

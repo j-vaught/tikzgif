@@ -3,7 +3,8 @@
 % Parameter: \PARAM (radiation pattern exponent, range 1.0..8.0)
 % Range: 1.0 to 8.0, recommended 30 frames
 % Difficulty: intermediate
-% Features demonstrated: polar plots, parametric curves, radiation patterns
+% Features demonstrated: polar plots, dB-scale grid, half-power beamwidth,
+%   ghost reference pattern, directivity readout, sidelobe fill distinction
 
 \documentclass[border=10pt,tikz]{standalone}
 \usepackage{tikz}
@@ -25,37 +26,78 @@
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
 \pgfmathsetmacro{\nExp}{\PARAM}
-\pgfmathsetmacro{\rotA}{0.0}
 \pgfmathsetmacro{\Rmax}{3.5}
 
-% Polar grid
-\foreach \r in {0.875, 1.75, 2.625, 3.5} {
-    \draw[warmgrey!25, thin] (0,0) circle (\r);
-}
+% dB-scale concentric grid rings: -3dB, -10dB, -20dB, 0dB
+% Map: R = Rmax * 10^(dB/20)
+\pgfmathsetmacro{\RdBzero}{\Rmax}
+\pgfmathsetmacro{\RdBthree}{\Rmax * 0.7079}  % 10^(-3/20)
+\pgfmathsetmacro{\RdBten}{\Rmax * 0.3162}    % 10^(-10/20)
+\pgfmathsetmacro{\RdBtwenty}{\Rmax * 0.1}    % 10^(-20/20)
+
+% Draw dB rings
+\draw[warmgrey!30, thin] (0,0) circle (\RdBzero);
+\node[font=\tiny, warmgrey!50, anchor=south west] at ({\RdBzero*0.707}, {\RdBzero*0.707}) {0\,dB};
+\draw[warmgrey!30, thin] (0,0) circle (\RdBthree);
+\node[font=\tiny, warmgrey!50, anchor=south west] at ({\RdBthree*0.707}, {\RdBthree*0.707}) {-3};
+\draw[warmgrey!25, thin] (0,0) circle (\RdBten);
+\node[font=\tiny, warmgrey!40, anchor=south west] at ({\RdBten*0.707}, {\RdBten*0.707}) {-10};
+\draw[warmgrey!20, thin] (0,0) circle (\RdBtwenty);
+\node[font=\tiny, warmgrey!30, anchor=south west] at ({\RdBtwenty*0.707}, {\RdBtwenty*0.707}) {-20};
+
+% Angle markers
 \foreach \a in {0, 30, 60, ..., 330} {
-    \draw[warmgrey!25, thin] (0,0) -- (\a:\Rmax+0.2);
-    \node[font=\tiny, warmgrey!60] at (\a:\Rmax+0.5) {$\a^\circ$};
+    \draw[warmgrey!20, thin] (0,0) -- (\a:\Rmax+0.2);
+    \node[font=\tiny, warmgrey!50] at (\a:\Rmax+0.5) {$\a^\circ$};
 }
 
-% Pattern
-\draw[garnet, very thick, samples=360, domain=0:360, variable=\t]
-    plot ({\t + \rotA}:
-          {\Rmax * (abs(sin(\t)) > 0.001 ? pow(abs(sin(\t)), \nExp) : 0)});
+% Ghost reference pattern (n=1 dipole, faint)
+\fill[warmgrey!10, opacity=0.4, samples=360, domain=0:360, variable=\t]
+    plot ({\t}: {\Rmax * abs(sin(\t))}) -- cycle;
 
-\fill[garnet!20, opacity=0.3, samples=360, domain=0:360, variable=\t]
-    plot ({\t + \rotA}:
-          {\Rmax * (abs(sin(\t)) > 0.001 ? pow(abs(sin(\t)), \nExp) : 0)})
+% Main pattern fill — main lobe in garnet, sidelobes in atlantic
+% For sin^n, when n>=2 sidelobes are smaller; use single color for simplicity
+% Main lobe fill
+\fill[garnet!15, opacity=0.4, samples=360, domain=0:360, variable=\t]
+    plot ({\t}: {\Rmax * (abs(sin(\t)) > 0.001 ? pow(abs(sin(\t)), \nExp) : 0)})
     -- cycle;
 
-% Dipole
+% Main pattern outline
+\draw[garnet, very thick, samples=360, domain=0:360, variable=\t]
+    plot ({\t}: {\Rmax * (abs(sin(\t)) > 0.001 ? pow(abs(sin(\t)), \nExp) : 0)});
+
+% Half-power beamwidth arc
+% theta_3dB = asin(0.5^(1/n)) in degrees
+\pgfmathsetmacro{\halfPowerAngle}{asin(pow(0.5, 1.0/\nExp))}
+\pgfmathsetmacro{\thetaUpper}{90 - \halfPowerAngle}
+\pgfmathsetmacro{\thetaLower}{90 + \halfPowerAngle}
+\pgfmathsetmacro{\beamWidth}{2.0 * \halfPowerAngle}
+% Draw arc at the -3dB radius
+\draw[rose, thick] (\thetaUpper:\RdBthree)
+    arc (\thetaUpper:\thetaLower:\RdBthree);
+% Radial lines showing beamwidth
+\draw[rose, thin, dashed] (0,0) -- (\thetaUpper:\Rmax*0.85);
+\draw[rose, thin, dashed] (0,0) -- (\thetaLower:\Rmax*0.85);
+% Beamwidth label
+\node[font=\tiny, rose, anchor=west]
+    at ({(\RdBthree+0.15)*cos(90)}, {(\RdBthree+0.15)*sin(\thetaLower)})
+    {BW $= \pgfmathprintnumber[fixed,precision=1]{\beamWidth}^\circ$};
+
+% Dipole antenna
 \draw[black!80, line width=2pt] (0, -0.35) -- (0, 0.35);
 \filldraw[black] (0, 0.35) circle (1.5pt);
 \filldraw[black] (0, -0.35) circle (1.5pt);
 
-% Label
-\node[anchor=south west, font=\normalsize, fill=white, inner sep=3pt, draw=warmgrey]
-    at (-\Rmax-0.8, \Rmax-0.2)
-    {$f(\theta) = |\sin\theta|^{\pgfmathprintnumber[fixed, precision=1]{\nExp}}$};
+% Directivity readout: D = 2n+1 for sin^n pattern (approximate)
+\pgfmathsetmacro{\Dval}{2*\nExp + 1}
+\pgfmathsetmacro{\DdBi}{10 * ln(\Dval) / ln(10)}
+
+% Info box
+\node[anchor=south west, font=\footnotesize, fill=white, inner sep=4pt,
+      draw=warmgrey!50, fill opacity=0.9, text opacity=1, align=left]
+    at (-\Rmax-0.8, -\Rmax-0.3)
+    {$f(\theta) = |\sin\theta|^{\pgfmathprintnumber[fixed,precision=1]{\nExp}}$\\[2pt]
+     $D \approx \pgfmathprintnumber[fixed,precision=1]{\DdBi}$ dBi};
 
 \end{tikzpicture}
 \end{document}

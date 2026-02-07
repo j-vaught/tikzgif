@@ -3,13 +3,15 @@
 % Parameter: \PARAM (damping ratio, range 0.1..2.0)
 % Range: 0.1 to 2.0, recommended 39 frames
 % Difficulty: intermediate
-% Features demonstrated: control systems, step response, damping effects
+% Features demonstrated: control systems, step response, decay envelope,
+%   s-plane inset, ghost family traces, settling band, time-domain markers
 
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \usepackage{pgfplots}
 \usepackage{amsmath}
 \pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween}
 
 % USC Brand Colors
 \definecolor{garnet}{HTML}{73000A}
@@ -27,43 +29,83 @@
 
 \pgfmathsetmacro{\zeta}{\PARAM}
 \pgfmathsetmacro{\wn}{3.0}
-\pgfmathsetmacro{\wdamp}{\wn * sqrt(abs(1 - \zeta*\zeta))}
-\pgfmathsetmacro{\sigma}{\zeta * \wn}
+\pgfmathsetmacro{\zetaC}{min(\zeta, 3.0)}
+\pgfmathsetmacro{\sigma}{\zetaC * \wn}
+\pgfmathsetmacro{\wdSq}{max(\wn*\wn - \sigma*\sigma, 0.001)}
+\pgfmathsetmacro{\wdamp}{sqrt(\wdSq)}
+
+% Time-domain metrics (underdamped only)
+\pgfmathtruncatemacro{\isunder}{\zeta < 0.999 ? 1 : 0}
+\pgfmathsetmacro{\Mp}{\isunder > 0 ? exp(-3.14159*\zeta / sqrt(max(1-\zeta*\zeta, 0.001))) : 0}
+\pgfmathsetmacro{\MpPct}{\Mp * 100}
+\pgfmathsetmacro{\tp}{\isunder > 0 ? 3.14159 / \wdamp : 2.0}
+\pgfmathsetmacro{\tr}{\isunder > 0 ? (3.14159 - acos(min(\zeta,0.99))*3.14159/180) / max(\wdamp,0.01) : 0}
+\pgfmathsetmacro{\ts}{4.0 / max(\sigma, 0.01)}
 
 \begin{axis}[
+    name=mainax,
     width=10cm, height=6.5cm,
-    xmin=0, xmax=5, ymin=0, ymax=2.0,
+    xmin=0, xmax=5, ymin=-0.1, ymax=2.0,
     xlabel={Time $t$ (s)},
     ylabel={$y(t)$},
     title={Step Response: $\zeta = \pgfmathprintnumber[fixed, precision=2]{\zeta}$,\;
            $\omega_n = \pgfmathprintnumber[fixed, precision=1]{\wn}$ rad/s},
-    grid=major, grid style={warmgrey!30}, thick,
+    grid=major, grid style={warmgrey!20}, thick,
     every axis title/.style={font=\normalsize},
-    legend pos=south east,
-    legend style={font=\footnotesize},
+    tick label style={font=\small},
+    clip=false,
 ]
-    % Reference line
-    \addplot[domain=0:5, samples=2, dashed, black!50, thin] {1};
+    % 2% settling band
+    \addplot[domain=0:5, samples=2, name path=upper, draw=none] {1.02};
+    \addplot[domain=0:5, samples=2, name path=lower, draw=none] {0.98};
+    \addplot[fill=sandstorm, fill opacity=0.5] fill between[of=upper and lower];
+    \addplot[domain=0:5, samples=2, dashed, warmgrey!60, very thin] {1.02};
+    \addplot[domain=0:5, samples=2, dashed, warmgrey!60, very thin] {0.98};
 
-    % Underdamped case (zeta < 1)
+    % Reference line
+    \addplot[domain=0:5, samples=2, dashed, black!40, thin] {1};
+
+    % Ghost family traces
+    \foreach \gz in {0.2, 0.5, 0.707, 1.0} {
+        \pgfmathsetmacro{\gsigma}{\gz * \wn}
+        \pgfmathparse{\gz < 0.999 ? 1 : 0}
+        \ifnum\pgfmathresult=1
+            \pgfmathsetmacro{\gwd}{\wn * sqrt(1 - \gz*\gz)}
+            \pgfmathsetmacro{\gphi}{acos(\gz)}
+            \addplot[domain=0:5, samples=150, warmgrey!25, thin]
+                {1 - (exp(-\gsigma * x) / sqrt(1 - \gz*\gz))
+                 * sin(\gwd * x * 180/3.14159 + \gphi)};
+        \else
+            \addplot[domain=0:5, samples=150, warmgrey!25, thin]
+                {1 - (1 + \wn*x) * exp(-\wn * x)};
+        \fi
+    }
+
+    % Decay envelope (underdamped)
+    \ifnum\isunder>0
+        \addplot[domain=0.01:5, samples=100, garnet, thin, dashed]
+            {1 + exp(-\sigma * x) / sqrt(max(1-\zetaC*\zetaC, 0.001))};
+        \addplot[domain=0.01:5, samples=100, garnet, thin, dashed]
+            {1 - exp(-\sigma * x) / sqrt(max(1-\zetaC*\zetaC, 0.001))};
+    \fi
+
+    % Underdamped response
     \pgfmathparse{\zeta < 0.999 ? 1 : 0}
     \ifnum\pgfmathresult=1
         \pgfmathsetmacro{\phirad}{acos(\zeta)}
-        \addplot[domain=0:5, samples=200, atlantic, very thick]
+        \addplot[domain=0:5, samples=300, atlantic, very thick]
             {1 - (exp(-\sigma * x) / sqrt(1 - \zeta*\zeta))
              * sin(\wdamp * x * 180/3.14159 + \phirad)};
-        \addlegendentry{Underdamped}
     \fi
 
-    % Critically damped (zeta = 1)
+    % Critically damped
     \pgfmathparse{(\zeta >= 0.999) && (\zeta <= 1.001) ? 1 : 0}
     \ifnum\pgfmathresult=1
-        \addplot[domain=0:5, samples=200, garnet, very thick]
+        \addplot[domain=0:5, samples=300, garnet, very thick]
             {1 - (1 + \wn*x) * exp(-\wn * x)};
-        \addlegendentry{Critically damped}
     \fi
 
-    % Overdamped (zeta > 1)
+    % Overdamped
     \pgfmathparse{\zeta > 1.001 ? 1 : 0}
     \ifnum\pgfmathresult=1
         \pgfmathsetmacro{\sqrtterm}{sqrt(\zeta*\zeta - 1)}
@@ -71,21 +113,74 @@
         \pgfmathsetmacro{\stwo}{-\zeta*\wn - \wn*\sqrtterm}
         \pgfmathsetmacro{\coeffA}{\stwo / (\stwo - \sone)}
         \pgfmathsetmacro{\coeffB}{\sone / (\sone - \stwo)}
-        \addplot[domain=0:5, samples=200, horseshoe, very thick]
+        \addplot[domain=0:5, samples=300, horseshoe, very thick]
             {1 + \coeffA * exp(\sone * x) + \coeffB * exp(\stwo * x)};
-        \addlegendentry{Overdamped}
     \fi
 
-    % Overshoot annotation (underdamped only)
+    % Time-domain markers (underdamped)
+    \ifnum\isunder>0
+        % Rise time line
+        \pgfmathsetmacro{\trC}{min(\tr, 4.8)}
+        \addplot[dashed, atlantic, thin] coordinates {(\trC, 0) (\trC, 1)};
+        \node[font=\tiny, atlantic, anchor=north, rotate=90]
+            at (axis cs:\trC, 0.4)
+            {$t_r\!=\!\pgfmathprintnumber[fixed,precision=2]{\tr}$};
+
+        % Peak time line
+        \pgfmathsetmacro{\tpC}{min(\tp, 4.8)}
+        \addplot[dashed, garnet, thin] coordinates {(\tpC, 0) (\tpC, {1+\Mp})};
+        \node[font=\tiny, garnet, anchor=south]
+            at (axis cs:\tpC, {1+\Mp+0.03})
+            {$M_p\!=\!\pgfmathprintnumber[fixed,precision=1]{\MpPct}\%$};
+
+        % Settling time line
+        \pgfmathsetmacro{\tsC}{min(\ts, 4.8)}
+        \addplot[dashed, horseshoe, thin] coordinates {(\tsC, 0) (\tsC, 1.02)};
+        \node[font=\tiny, horseshoe, anchor=north, rotate=90]
+            at (axis cs:\tsC, 0.4)
+            {$t_s\!=\!\pgfmathprintnumber[fixed,precision=2]{\ts}$};
+    \fi
+\end{axis}
+
+% s-plane inset: show closed-loop poles
+\begin{axis}[
+    at={(mainax.north east)}, anchor=north east,
+    shift={(-0.3cm,-0.5cm)},
+    width=3.2cm, height=3.2cm,
+    xmin=-7, xmax=1, ymin=-4, ymax=4,
+    xtick={-6,-3,0}, ytick={-3,0,3},
+    tick label style={font=\tiny},
+    axis line style={warmgrey},
+    grid=major, grid style={warmgrey!15},
+    axis background/.style={fill=sandstorm, fill opacity=0.3},
+    title={\tiny $s$-plane},
+    every axis title/.style={font=\tiny},
+    xlabel={\tiny Re}, ylabel={\tiny Im},
+    label style={font=\tiny},
+]
+    % Imaginary axis
+    \addplot[warmgrey!40, thin] coordinates {(0, -4) (0, 4)};
+
+    % Poles
     \pgfmathparse{\zeta < 0.999 ? 1 : 0}
     \ifnum\pgfmathresult=1
-        \pgfmathsetmacro{\Mp}{exp(-3.14159*\zeta / sqrt(1-\zeta*\zeta))}
-        \pgfmathsetmacro{\tp}{3.14159 / \wdamp}
-        \pgfmathsetmacro{\yp}{1 + \Mp}
-        \draw[<-, thin, garnet]
-            (axis cs:\tp, \yp) -- ++(axis direction cs:0.3,0.15)
-            node[right, font=\tiny, text=garnet]
-            {$M_p = \pgfmathprintnumber[fixed, precision=1, multiply to=100]{\Mp}\%$};
+        \addplot[only marks, mark=*, mark size=2.5pt, atlantic]
+            coordinates {(-\sigma, \wdamp) (-\sigma, -\wdamp)};
+        % Damping angle line
+        \addplot[dashed, rose, very thin]
+            coordinates {(0, 0) (-\sigma, \wdamp)};
+    \fi
+    \pgfmathparse{(\zeta >= 0.999) && (\zeta <= 1.001) ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \addplot[only marks, mark=*, mark size=2.5pt, garnet]
+            coordinates {(-\wn, 0)};
+    \fi
+    \pgfmathparse{\zeta > 1.001 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \pgfmathsetmacro{\sqrtterm}{sqrt(\zeta*\zeta - 1)}
+        \addplot[only marks, mark=*, mark size=2.5pt, horseshoe]
+            coordinates {({-\zeta*\wn + \wn*\sqrtterm}, 0)
+                         ({-\zeta*\wn - \wn*\sqrtterm}, 0)};
     \fi
 \end{axis}
 

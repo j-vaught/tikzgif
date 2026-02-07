@@ -3,12 +3,13 @@
 % Parameter: \PARAM (x-coordinate of moving charge, range 0.5..3.5)
 % Range: 0.5 to 3.5, recommended 30 frames
 % Difficulty: intermediate
-% Features demonstrated: electric fields, superposition, field line integration
+% Features demonstrated: electric fields, superposition, per-segment color,
+%   quiver field overlay, mid-path arrowheads, charge annotations
 
 \documentclass[border=10pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{amsmath}
-\usetikzlibrary{arrows.meta, calc}
+\usetikzlibrary{arrows.meta, calc, decorations.markings}
 
 % USC Brand Colors
 \definecolor{garnet}{HTML}{73000A}
@@ -29,58 +30,133 @@
 \pgfmathsetmacro{\xA}{-1.5}
 \pgfmathsetmacro{\yA}{0}
 
-% Draw charges
-\filldraw[garnet] (\xA, \yA) circle (5pt);
-\node[font=\bfseries\small, white] at (\xA, \yA) {+};
+% Background bounding frame
+\draw[warmgrey!20, thin] (-4.2, -3.5) rectangle (5.2, 3.5);
 
-\pgfmathparse{\qsign > 0 ? 1 : 0}
-\ifnum\pgfmathresult=1
-    \filldraw[garnet] (\xB, 0) circle (5pt);
-    \node[font=\bfseries\small, white] at (\xB, 0) {+};
-\else
-    \filldraw[atlantic] (\xB, 0) circle (5pt);
-    \node[font=\bfseries\small, white] at (\xB, 0) {--};
-\fi
+% Quiver field overlay: 7x5 grid of small arrows
+\foreach \qx in {-3.0, -1.5, 0, 1.5, 3.0, 4.5} {
+    \foreach \qy in {-2.5, -1.25, 0, 1.25, 2.5} {
+        % Skip if too close to a charge
+        \pgfmathsetmacro{\dqA}{sqrt((\qx-\xA)^2 + (\qy-\yA)^2)}
+        \pgfmathsetmacro{\dqB}{sqrt((\qx-\xB)^2 + \qy*\qy)}
+        \pgfmathparse{(\dqA > 0.5) && (\dqB > 0.5) ? 1 : 0}
+        \ifnum\pgfmathresult=1
+            \pgfmathsetmacro{\rAq}{max(\dqA, 0.3)}
+            \pgfmathsetmacro{\rBq}{max(\dqB, 0.3)}
+            \pgfmathsetmacro{\Eqx}{(\qx-\xA)/(\rAq*\rAq*\rAq) + \qsign*(\qx-\xB)/(\rBq*\rBq*\rBq)}
+            \pgfmathsetmacro{\Eqy}{(\qy-\yA)/(\rAq*\rAq*\rAq) + \qsign*\qy/(\rBq*\rBq*\rBq)}
+            \pgfmathsetmacro{\Eqmag}{max(sqrt(\Eqx*\Eqx + \Eqy*\Eqy), 0.001)}
+            \pgfmathsetmacro{\arrowLen}{min(0.4, 0.15 * sqrt(\Eqmag))}
+            \pgfmathsetmacro{\anx}{\Eqx/\Eqmag * \arrowLen}
+            \pgfmathsetmacro{\any}{\Eqy/\Eqmag * \arrowLen}
+            \draw[-{Stealth[length=1.8pt]}, warmgrey!40, thin]
+                (\qx, \qy) -- ++(\anx, \any);
+        \fi
+    }
+}
 
-% Field lines via Euler stepping
-\foreach \startAngle in {0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330} {
+% Field lines via Euler stepping (20 lines from positive charge)
+\foreach \startAngle in {0, 18, 36, ..., 342} {
     \pgfmathsetmacro{\startR}{0.18}
     \pgfmathsetmacro{\sx}{\xA + \startR * cos(\startAngle)}
     \pgfmathsetmacro{\sy}{\yA + \startR * sin(\startAngle)}
-    \pgfmathsetmacro{\stepLen}{0.12}
+    \pgfmathsetmacro{\stepLen}{0.10}
+    \pgfmathsetmacro{\prevx}{\sx}
+    \pgfmathsetmacro{\prevy}{\sy}
     \pgfmathsetmacro{\cx}{\sx}
     \pgfmathsetmacro{\cy}{\sy}
-    \xdef\fieldpath{(\cx, \cy)}
-    \foreach \step in {1, 2, ..., 50} {
+    \foreach \step in {1, 2, ..., 55} {
         \pgfmathsetmacro{\dxA}{\cx - \xA}
         \pgfmathsetmacro{\dyA}{\cy - \yA}
         \pgfmathsetmacro{\rA}{max(sqrt(\dxA*\dxA + \dyA*\dyA), 0.15)}
         \pgfmathsetmacro{\ExA}{\dxA / (\rA*\rA*\rA)}
         \pgfmathsetmacro{\EyA}{\dyA / (\rA*\rA*\rA)}
-        \pgfmathsetmacro{\dxB}{\cx - \xB}
-        \pgfmathsetmacro{\dyB}{\cy - 0}
-        \pgfmathsetmacro{\rB}{max(sqrt(\dxB*\dxB + \dyB*\dyB), 0.15)}
-        \pgfmathsetmacro{\ExB}{\qsign * \dxB / (\rB*\rB*\rB)}
-        \pgfmathsetmacro{\EyB}{\qsign * \dyB / (\rB*\rB*\rB)}
+        \pgfmathsetmacro{\dxBv}{\cx - \xB}
+        \pgfmathsetmacro{\dyBv}{\cy - 0}
+        \pgfmathsetmacro{\rB}{max(sqrt(\dxBv*\dxBv + \dyBv*\dyBv), 0.15)}
+        \pgfmathsetmacro{\ExB}{\qsign * \dxBv / (\rB*\rB*\rB)}
+        \pgfmathsetmacro{\EyB}{\qsign * \dyBv / (\rB*\rB*\rB)}
         \pgfmathsetmacro{\Ex}{\ExA + \ExB}
         \pgfmathsetmacro{\Ey}{\EyA + \EyB}
         \pgfmathsetmacro{\Emag}{max(sqrt(\Ex*\Ex + \Ey*\Ey), 0.001)}
         \pgfmathsetmacro{\nx}{\Ex / \Emag * \stepLen}
         \pgfmathsetmacro{\ny}{\Ey / \Emag * \stepLen}
+        \pgfmathsetmacro{\prevx}{\cx}
+        \pgfmathsetmacro{\prevy}{\cy}
         \pgfmathsetmacro{\cx}{\cx + \nx}
         \pgfmathsetmacro{\cy}{\cy + \ny}
         \pgfmathsetmacro{\distB}{sqrt((\cx-\xB)*(\cx-\xB) + \cy*\cy)}
-        \pgfmathparse{(abs(\cx) < 5.0) && (abs(\cy) < 4.0) && (\distB > 0.2) ? 1 : 0}
+        % Color by field strength: strong=garnet, weak=atlantic
+        \pgfmathsetmacro{\Estr}{min(\Emag * 2.0, 1.0)}
+        \pgfmathtruncatemacro{\garnetPct}{max(min(round(\Estr * 100), 100), 5)}
+        \pgfmathparse{(abs(\cx) < 5.0) && (abs(\cy) < 3.8) && (\distB > 0.2) ? 1 : 0}
         \ifnum\pgfmathresult=1
-            \xdef\fieldpath{\fieldpath -- (\cx, \cy)}
+            \draw[garnet!\garnetPct!atlantic, thin] (\prevx, \prevy) -- (\cx, \cy);
         \fi
     }
-    \draw[rose, thin, -{Stealth[length=2pt]}] \fieldpath;
 }
 
-\draw[warmgrey!30, thin] (-4, -3.5) rectangle (5, 3.5);
-\node[anchor=north west, font=\footnotesize, fill=white, inner sep=2pt]
-    at (-3.9, 3.4)
+% Mid-path arrowheads on select field lines
+\foreach \startAngle in {0, 72, 144, 216, 288} {
+    \pgfmathsetmacro{\startR}{0.18}
+    \pgfmathsetmacro{\mx}{\xA + \startR * cos(\startAngle)}
+    \pgfmathsetmacro{\my}{\yA + \startR * sin(\startAngle)}
+    \pgfmathsetmacro{\stepLen}{0.10}
+    % Step 20 positions to get midpoint
+    \foreach \step in {1, 2, ..., 20} {
+        \pgfmathsetmacro{\dxA}{\mx - \xA}
+        \pgfmathsetmacro{\dyA}{\my - \yA}
+        \pgfmathsetmacro{\rA}{max(sqrt(\dxA*\dxA + \dyA*\dyA), 0.15)}
+        \pgfmathsetmacro{\dxBv}{\mx - \xB}
+        \pgfmathsetmacro{\dyBv}{\my}
+        \pgfmathsetmacro{\rB}{max(sqrt(\dxBv*\dxBv + \dyBv*\dyBv), 0.15)}
+        \pgfmathsetmacro{\Exm}{(\mx-\xA)/(\rA*\rA*\rA) + \qsign*(\mx-\xB)/(\rB*\rB*\rB)}
+        \pgfmathsetmacro{\Eym}{(\my-\yA)/(\rA*\rA*\rA) + \qsign*\my/(\rB*\rB*\rB)}
+        \pgfmathsetmacro{\Emm}{max(sqrt(\Exm*\Exm + \Eym*\Eym), 0.001)}
+        \pgfmathsetmacro{\mx}{\mx + \Exm/\Emm*\stepLen}
+        \pgfmathsetmacro{\my}{\my + \Eym/\Emm*\stepLen}
+    }
+    \pgfmathparse{(abs(\mx) < 4.8) && (abs(\my) < 3.3) ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \pgfmathsetmacro{\dxA}{\mx - \xA}
+        \pgfmathsetmacro{\dyA}{\my - \yA}
+        \pgfmathsetmacro{\rA}{max(sqrt(\dxA*\dxA + \dyA*\dyA), 0.15)}
+        \pgfmathsetmacro{\dxBv}{\mx - \xB}
+        \pgfmathsetmacro{\dyBv}{\my}
+        \pgfmathsetmacro{\rB}{max(sqrt(\dxBv*\dxBv + \dyBv*\dyBv), 0.15)}
+        \pgfmathsetmacro{\Exm}{(\mx-\xA)/(\rA*\rA*\rA) + \qsign*(\mx-\xB)/(\rB*\rB*\rB)}
+        \pgfmathsetmacro{\Eym}{(\my-\yA)/(\rA*\rA*\rA) + \qsign*\my/(\rB*\rB*\rB)}
+        \pgfmathsetmacro{\Emm}{max(sqrt(\Exm*\Exm + \Eym*\Eym), 0.001)}
+        \pgfmathsetmacro{\adx}{\Exm/\Emm*0.2}
+        \pgfmathsetmacro{\ady}{\Eym/\Emm*0.2}
+        \draw[-{Stealth[length=3pt]}, garnet, thick]
+            (\mx, \my) -- ++({\adx}, {\ady});
+    \fi
+}
+
+% Draw charges on top
+\filldraw[garnet] (\xA, \yA) circle (6pt);
+\node[font=\bfseries\small, white] at (\xA, \yA) {$+$};
+\filldraw[atlantic] (\xB, 0) circle (6pt);
+\node[font=\bfseries\small, white] at (\xB, 0) {$-$};
+
+% Charge labels
+\node[font=\footnotesize, garnet, anchor=south] at (\xA, 0.3) {$+q$};
+\node[font=\footnotesize, atlantic, anchor=south] at (\xB, 0.3) {$-q$};
+
+% Distance readout between charges
+\pgfmathsetmacro{\chargeDist}{\xB - \xA}
+\draw[dashed, warmgrey, thin] (\xA, -0.5) -- (\xB, -0.5);
+\draw[warmgrey, thin] (\xA, -0.35) -- (\xA, -0.65);
+\draw[warmgrey, thin] (\xB, -0.35) -- (\xB, -0.65);
+\node[font=\tiny, warmgrey, anchor=north]
+    at ({(\xA+\xB)/2}, -0.55)
+    {$d = \pgfmathprintnumber[fixed,precision=2]{\chargeDist}$};
+
+% Info box
+\node[anchor=north west, font=\footnotesize, fill=white, inner sep=3pt,
+      draw=warmgrey!50, fill opacity=0.9, text opacity=1]
+    at (-4.1, 3.4)
     {$q_2$ at $x = \pgfmathprintnumber[fixed, precision=2]{\xB}$};
 
 \end{tikzpicture}

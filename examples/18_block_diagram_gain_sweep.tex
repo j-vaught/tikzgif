@@ -1,9 +1,10 @@
 % Example 18: Feedback Block Diagram with Gain Sweep
-% Negative-feedback control loop showing gain impact on step response.
+% Negative-feedback control loop with 2nd-order plant showing gain impact.
 % Parameter: \PARAM (proportional gain K, range 0.1..10.0)
 % Range: 0.1 to 10.0, recommended 30 frames
 % Difficulty: intermediate
-% Features demonstrated: block diagrams, feedback control, step response
+% Features demonstrated: block diagrams, feedback control, 2nd-order response,
+%   overshoot markers, settling band, error signal, color-coded gain
 
 \documentclass[border=5pt,tikz]{standalone}
 \usepackage{tikz}
@@ -11,6 +12,7 @@
 \usepackage{amsmath}
 \usetikzlibrary{arrows.meta, positioning, calc}
 \pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween}
 
 % USC Brand Colors
 \definecolor{garnet}{HTML}{73000A}
@@ -34,53 +36,116 @@
 
 \pgfmathsetmacro{\K}{\PARAM}
 
-% Block diagram
-\node[sumnode] (sum) at (0,0) {};
+% 2nd-order plant: G(s) = 1/(s(s+1)), closed-loop: K/(s^2+s+K)
+% wn = sqrt(K), zeta = 1/(2*sqrt(K))
+\pgfmathsetmacro{\wn}{sqrt(max(\K, 0.01))}
+\pgfmathsetmacro{\zeta}{1.0 / (2.0 * \wn)}
+\pgfmathsetmacro{\zetaC}{min(\zeta, 5.0)}
+\pgfmathsetmacro{\sigma}{\zetaC * \wn}
+\pgfmathsetmacro{\wdSq}{max(\wn*\wn - \sigma*\sigma, 0.001)}
+\pgfmathsetmacro{\wdamp}{sqrt(\wdSq)}
+
+% Gain fill intensity: 0% at K=0.1, 60% at K=10
+\pgfmathtruncatemacro{\fillpct}{min(round(6 * \K), 60)}
+\pgfmathtruncatemacro{\isunder}{\zetaC < 0.999 ? 1 : 0}
+\pgfmathsetmacro{\Mp}{\isunder > 0 ? exp(-3.14159*\zetaC / sqrt(max(1-\zetaC*\zetaC,0.001))) : 0}
+
+% ---- BLOCK DIAGRAM (top) ----
+\node[sumnode] (sum) at (0,3.5) {};
 \node[below left=0.5mm] at (sum.center) {\tiny $+$};
 \node[above left=0.5mm and -1mm] at (sum.south) {\tiny $-$};
 
-\node[block, right=1.2cm of sum, fill=atlantic!8] (gain)
+\node[block, right=1.2cm of sum, fill=atlantic!\fillpct] (gain)
     {$K = \pgfmathprintnumber[fixed, precision=2]{\K}$};
 \node[block, right=1.2cm of gain, fill=garnet!8] (plant)
-    {$\dfrac{1}{s+1}$};
+    {$\dfrac{1}{s(s\!+\!1)}$};
 
 \coordinate (output) at ($(plant.east) + (1.5,0)$);
 
 % Arrows
 \draw[->] ($(sum.west) + (-1.2, 0)$) -- node[above]{$R(s)$} (sum.west);
-\draw[->] (sum.east) -- (gain.west);
+\draw[->] (sum.east) -- node[above, font=\tiny]{$E$} (gain.west);
 \draw[->] (gain.east) -- (plant.west);
 \draw[->] (plant.east) -- node[above]{$Y(s)$} (output);
-\draw[-] ($(plant.east) + (1.0, 0)$) -- ++(0, -1.5);
-\draw[->] ($(plant.east) + (1.0, -1.5)$) -| (sum.south);
+\draw[-] ($(plant.east) + (1.0, 0)$) -- ++(0, -1.0);
+\draw[->] ($(plant.east) + (1.0, -1.0)$) -| (sum.south);
 \filldraw ($(plant.east) + (1.0, 0)$) circle (1.5pt);
 
-% Step response plot
-% Closed-loop: Y/R = K/(s + 1 + K), step = K/(1+K) * (1 - e^{-(1+K)t})
+% System info
+\node[font=\tiny, warmgrey, anchor=west] at ($(sum.west)+(-1.2,-0.5)$)
+    {$\zeta = \pgfmathprintnumber[fixed,precision=2]{\zetaC}$,\;
+     $\omega_n = \pgfmathprintnumber[fixed,precision=2]{\wn}$};
+
+% ---- STEP RESPONSE (bottom, larger) ----
 \begin{axis}[
-    at={(6.2cm, -1.6cm)},
-    anchor=south west,
-    width=5.5cm, height=4cm,
-    xmin=0, xmax=5, ymin=0, ymax=1.15,
-    xlabel={$t$ (s)},
-    ylabel={$y(t)$},
+    name=stepax,
+    at={(0cm, -0.5cm)}, anchor=north west,
+    width=9cm, height=5.5cm,
+    xmin=0, xmax=8, ymin=-0.15, ymax=1.8,
+    xlabel={$t$ (s)}, ylabel={$y(t)$},
     title={\footnotesize Step Response},
-    grid=major,
-    grid style={warmgrey!30},
-    thick,
+    grid=major, grid style={warmgrey!20}, thick,
     every axis title/.style={font=\footnotesize},
     tick label style={font=\tiny},
     label style={font=\footnotesize},
+    clip=false,
 ]
-    \pgfmathsetmacro{\KK}{\PARAM}
-    \pgfmathsetmacro{\dc}{\KK / (1 + \KK)}
-    \pgfmathsetmacro{\tau}{1 + \KK}
-    \addplot[domain=0:5, samples=100, atlantic, very thick]
-        {\dc * (1 - exp(-\tau * x))};
-    \addplot[domain=0:5, dashed, garnet, thin] {\dc};
-    \node[anchor=south east, font=\tiny, text=garnet]
-        at (axis cs:5, \dc)
-        {$y_{\mathrm{ss}} = \pgfmathprintnumber[fixed, precision=3]{\dc}$};
+    % 2% settling band
+    \addplot[domain=0:8, samples=2, name path=upper, draw=none] {1.02};
+    \addplot[domain=0:8, samples=2, name path=lower, draw=none] {0.98};
+    \addplot[fill=sandstorm, fill opacity=0.4] fill between[of=upper and lower];
+    \addplot[domain=0:8, samples=2, dashed, warmgrey!50, very thin] {1.02};
+    \addplot[domain=0:8, samples=2, dashed, warmgrey!50, very thin] {0.98};
+
+    % Reference
+    \addplot[domain=0:8, samples=2, dashed, black!40, thin] {1};
+
+    % Step response
+    \ifnum\isunder>0
+        \pgfmathsetmacro{\phiDeg}{acos(min(\zetaC,0.999))}
+        % Main response
+        \addplot[domain=0:8, samples=300, atlantic, very thick]
+            {1 - exp(-\sigma * x) / sqrt(max(1-\zetaC*\zetaC,0.001))
+             * sin(\wdamp * x * 180/3.14159 + \phiDeg)};
+        % Error signal
+        \addplot[domain=0:8, samples=200, rose, thin]
+            {exp(-\sigma * x) / sqrt(max(1-\zetaC*\zetaC,0.001))
+             * sin(\wdamp * x * 180/3.14159 + \phiDeg)};
+        \node[font=\tiny, rose] at (axis cs:1.0, 0.6) {$e(t)$};
+    \fi
+
+    % Critically damped
+    \pgfmathparse{(\zetaC >= 0.999) && (\zetaC <= 1.001) ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \addplot[domain=0:8, samples=300, garnet, very thick]
+            {1 - (1 + \wn*x) * exp(-\wn*x)};
+    \fi
+
+    % Overdamped
+    \pgfmathparse{\zetaC > 1.001 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \pgfmathsetmacro{\sqZ}{sqrt(\zetaC*\zetaC - 1)}
+        \pgfmathsetmacro{\sA}{(-\zetaC + \sqZ)*\wn}
+        \pgfmathsetmacro{\sB}{(-\zetaC - \sqZ)*\wn}
+        \pgfmathsetmacro{\cA}{\sB / (\sB - \sA)}
+        \pgfmathsetmacro{\cB}{\sA / (\sA - \sB)}
+        \addplot[domain=0:8, samples=300, horseshoe, very thick]
+            {1 + \cA * exp(\sA * x) + \cB * exp(\sB * x)};
+    \fi
+
+    % Overshoot marker (underdamped)
+    \ifnum\isunder>0
+        \pgfmathsetmacro{\tpeak}{3.14159 / \wdamp}
+        \pgfmathsetmacro{\tpC}{min(\tpeak, 7.5)}
+        % Horizontal Mp line
+        \addplot[dashed, garnet, very thin] coordinates {(0, {1+\Mp}) (\tpC, {1+\Mp})};
+        \draw[<->, garnet, thin]
+            (axis cs:{\tpC + 0.3}, 1) -- (axis cs:{\tpC + 0.3}, {1+\Mp});
+        \node[font=\tiny, garnet, anchor=west]
+            at (axis cs:{\tpC + 0.4}, {1+\Mp*0.5+1})
+            {$\pgfmathprintnumber[fixed,precision=0]{\MpPctV}\%$};
+        \pgfmathsetmacro{\MpPctV}{\Mp * 100}
+    \fi
 \end{axis}
 
 \end{tikzpicture}

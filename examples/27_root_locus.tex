@@ -3,7 +3,8 @@
 % Parameter: \PARAM (loop gain, range 0.0..20.0)
 % Range: 0.0 to 20.0, recommended 40 frames
 % Difficulty: advanced
-% Features demonstrated: control systems, root locus, pole movement, stability
+% Features demonstrated: control systems, root locus, pole movement,
+%   damping lines, frequency circles, breakaway point, pole ghost trail
 
 \documentclass[border=8pt,tikz]{standalone}
 \usepackage{tikz}
@@ -32,30 +33,78 @@
 
 % Grid
 \foreach \x in {-5,-4,-3,-2,-1,1} {
-    \draw[warmgrey!25] (\x, -4.2) -- (\x, 4.2);
+    \draw[warmgrey!20] (\x, -4.2) -- (\x, 4.2);
     \node[below, font=\tiny, warmgrey] at (\x, -4.3) {$\x$};
 }
 \foreach \y in {-4,-3,-2,-1,1,2,3,4} {
-    \draw[warmgrey!25] (-5.3, \y) -- (1.3, \y);
+    \draw[warmgrey!20] (-5.3, \y) -- (1.3, \y);
+}
+
+% Constant damping ratio lines (zeta = 0.3, 0.5, 0.7)
+\foreach \zetaL/\zetaLab in {0.3/0.3, 0.5/0.5, 0.7/0.7} {
+    \pgfmathsetmacro{\thetaL}{acos(\zetaL)}
+    \pgfmathsetmacro{\endR}{5.0}
+    \pgfmathsetmacro{\endX}{-\endR * cos(\thetaL)}
+    \pgfmathsetmacro{\endYp}{\endR * sin(\thetaL)}
+    \pgfmathsetmacro{\endYn}{-\endR * sin(\thetaL)}
+    \draw[dashed, horseshoe!50, very thin] (0,0) -- (\endX, \endYp);
+    \draw[dashed, horseshoe!50, very thin] (0,0) -- (\endX, \endYn);
+    \node[font=\tiny, horseshoe!60, anchor=south west] at (\endX, \endYp)
+        {$\zeta\!=\!\zetaLab$};
+}
+
+% Natural frequency semicircles (wn = 1, 2, 3, 4)
+\foreach \wnR in {1, 2, 3, 4} {
+    \draw[dashed, warmgrey!25, very thin] (0,0) ++(180:\wnR) arc (180:90:\wnR);
+    \draw[dashed, warmgrey!25, very thin] (0,0) ++(180:\wnR) arc (180:270:\wnR);
+    \node[font=\tiny, warmgrey!40, anchor=south] at (0, \wnR) {$\wnR$};
 }
 
 % Open-loop poles (crosses)
-\draw[thick] (-1, -0.12) -- (-1, 0.12);
-\draw[thick] (-1.12, 0) -- (-0.88, 0);
+\draw[thick] (-1, -0.15) -- (-1, 0.15);
+\draw[thick] (-1.15, 0) -- (-0.85, 0);
 \node[below=2mm, font=\footnotesize] at (-1, 0) {$-1$};
-\draw[thick] (-3, -0.12) -- (-3, 0.12);
-\draw[thick] (-3.12, 0) -- (-2.88, 0);
+\draw[thick] (-3, -0.15) -- (-3, 0.15);
+\draw[thick] (-3.15, 0) -- (-2.85, 0);
 \node[below=2mm, font=\footnotesize] at (-3, 0) {$-3$};
+
+% Breakaway point at s = -2 (K = 1)
+\node[mark size=3pt, font=\tiny] at (-2, 0) {};
+\filldraw[congaree] (-2, -0.08) -- (-1.92, 0.08) -- (-2.08, 0.08) -- cycle;
+\filldraw[congaree] (-2, 0.08) -- (-1.92, -0.08) -- (-2.08, -0.08) -- cycle;
+\node[font=\tiny, congaree, anchor=north west] at (-1.9, -0.15)
+    {Breakaway};
 
 % Characteristic equation: s^2 + 4s + 3 + K = 0
 % s = -2 +/- sqrt(1 - K)
+
+% Pole ghost trail: show faded circles at previous K values
+\foreach \gK/\gop in {0.2/8, 0.5/12, 1.0/16, 2.0/20, 4.0/24, 8.0/28, 12.0/32} {
+    \pgfmathparse{\gK <= \Kval ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \pgfmathparse{\gK <= 1.0 ? 1 : 0}
+        \ifnum\pgfmathresult=1
+            \pgfmathsetmacro{\gspread}{sqrt(max(1 - \gK, 0))}
+            \fill[warmgrey, opacity=0.\gop]
+                ({-2 + \gspread}, 0) circle (2pt);
+            \fill[warmgrey, opacity=0.\gop]
+                ({-2 - \gspread}, 0) circle (2pt);
+        \else
+            \pgfmathsetmacro{\gimag}{sqrt(\gK - 1)}
+            \fill[warmgrey, opacity=0.\gop]
+                (-2, \gimag) circle (2pt);
+            \fill[warmgrey, opacity=0.\gop]
+                (-2, -\gimag) circle (2pt);
+        \fi
+    \fi
+}
 
 % Real-axis segment (K=0 to K=1)
 \pgfmathparse{\Kval > 0.01 ? 1 : 0}
 \ifnum\pgfmathresult=1
     \pgfmathparse{min(\Kval, 1.0)}
     \pgfmathsetmacro{\Kclamp}{\pgfmathresult}
-    \pgfmathsetmacro{\realSpread}{sqrt(1 - \Kclamp)}
+    \pgfmathsetmacro{\realSpread}{sqrt(max(1 - \Kclamp, 0))}
     \draw[atlantic, thick] (-1, 0) -- ({-2 + \realSpread}, 0);
     \draw[atlantic, thick] (-3, 0) -- ({-2 - \realSpread}, 0);
 \fi
@@ -75,27 +124,42 @@
 \ifnum\pgfmathresult=1
     \pgfmathsetmacro{\poleA}{-2 + sqrt(max(1 - \Kval, 0))}
     \pgfmathsetmacro{\poleB}{-2 - sqrt(max(1 - \Kval, 0))}
-    \filldraw[garnet] (\poleA, 0) circle (3pt);
-    \filldraw[garnet] (\poleB, 0) circle (3pt);
+    \filldraw[garnet] (\poleA, 0) circle (3.5pt);
+    \filldraw[garnet] (\poleB, 0) circle (3.5pt);
 \fi
 \pgfmathparse{\Kval > 1.0 ? 1 : 0}
 \ifnum\pgfmathresult=1
     \pgfmathsetmacro{\imPart}{sqrt(\Kval - 1)}
-    \filldraw[garnet] (-2, \imPart) circle (3pt);
-    \filldraw[garnet] (-2, -\imPart) circle (3pt);
-    \draw[dashed, thin, warmgrey] (-2, \imPart) -- (-2, 0);
-    \draw[dashed, thin, warmgrey] (-2, -\imPart) -- (-2, 0);
+    \filldraw[garnet] (-2, \imPart) circle (3.5pt);
+    \filldraw[garnet] (-2, -\imPart) circle (3.5pt);
+
+    % Damping line from origin to upper pole
+    \draw[dashed, rose, thin] (0, 0) -- (-2, \imPart);
+
+    % Compute current zeta and wn
+    \pgfmathsetmacro{\curWn}{sqrt(4 + \imPart*\imPart)}
+    \pgfmathsetmacro{\curZeta}{2.0 / \curWn}
+    \node[font=\tiny, rose, anchor=south west]
+        at (-1.8, {\imPart*0.5})
+        {$\zeta\!=\!\pgfmathprintnumber[fixed,precision=2]{\curZeta}$};
 \fi
 
-% Label
+% K label
 \node[anchor=north west, font=\normalsize, fill=white, inner sep=3pt,
       draw=warmgrey!50]
     at (-5.3, 4.3)
     {$K = \pgfmathprintnumber[fixed, precision=1]{\Kval}$};
 
+% Transfer function label
 \node[anchor=south west, font=\footnotesize, text=warmgrey!70!black]
     at (-5.3, -4.3)
     {$G(s) = \dfrac{1}{(s+1)(s+3)}$};
+
+% Characteristic equation
+\node[anchor=south east, font=\tiny, text=warmgrey!60!black,
+      fill=white, fill opacity=0.8, text opacity=1, inner sep=2pt]
+    at (1.3, -4.3)
+    {$s^2 + 4s + 3 + K = 0$};
 
 \end{tikzpicture}
 \end{document}

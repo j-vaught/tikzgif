@@ -1,9 +1,11 @@
 % Example 23: Magnetic Field of a Current Loop
-% Cross-section of a current loop with field lines scaling with current magnitude.
+% Cross-section of a current loop with Euler-integrated dipole field lines.
 % Parameter: \PARAM (current I in amperes, range 0.5..5.0)
 % Range: 0.5 to 5.0, recommended 30 frames
 % Difficulty: intermediate
-% Features demonstrated: magnetic field, current loop, dipole, field visualization
+% Features demonstrated: magnetic field, Euler integration, heat map,
+%   multi-layer wire cross-sections, current arrows, B-field profile
+
 \documentclass[border=8pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{amsmath}
@@ -24,72 +26,106 @@
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
 \pgfmathsetmacro{\Ival}{\PARAM}
-\pgfmathsetmacro{\lineScale}{0.25 + 0.15 * \Ival}
-\pgfmathsetmacro{\nLines}{min(floor(\Ival * 2 + 1), 10)}
+\pgfmathsetmacro{\wireR}{1.0} % half-distance between wires
+
+% Field strength background heat map (coarse 16x12 pixel grid)
+\foreach \hx in {-3.6, -3.0, -2.4, -1.8, -1.2, -0.6, 0.0, 0.6, 1.2, 1.8, 2.4, 3.0, 3.6} {
+    \foreach \hy in {-2.7, -2.1, -1.5, -0.9, -0.3, 0.3, 0.9, 1.5, 2.1, 2.7} {
+        % B from right wire (out of page): Bx = -y/r^2, By = (x-1)/r^2
+        \pgfmathsetmacro{\drx}{\hx - \wireR}
+        \pgfmathsetmacro{\dry}{\hy}
+        \pgfmathsetmacro{\rrR}{max(sqrt(\drx*\drx + \dry*\dry), 0.3)}
+        % B from left wire (into page): opposite sign
+        \pgfmathsetmacro{\dlx}{\hx + \wireR}
+        \pgfmathsetmacro{\dly}{\hy}
+        \pgfmathsetmacro{\rrL}{max(sqrt(\dlx*\dlx + \dly*\dly), 0.3)}
+        % |B| proportional to I * (1/rR + 1/rL)
+        \pgfmathsetmacro{\Bmag}{\Ival * (1.0/\rrR + 1.0/\rrL) * 0.3}
+        \pgfmathtruncatemacro{\Bpct}{min(round(\Bmag * 15), 70)}
+        \fill[atlantic!\Bpct!sandstorm, opacity=0.35]
+            ({\hx-0.3}, {\hy-0.3}) rectangle ({\hx+0.3}, {\hy+0.3});
+    }
+}
 
 % Grid
-\draw[warmgrey!15, very thin, step=0.5] (-4.5,-3.5) grid (4.5,3.5);
+\draw[warmgrey!12, very thin, step=0.5] (-4.2,-3.2) grid (4.2,3.2);
 
+% Euler-integrated field lines from right wire (dipole superposition)
+\foreach \startAngle in {45, 90, 135, 225, 270, 315} {
+    \pgfmathsetmacro{\startR}{0.25}
+    \pgfmathsetmacro{\cx}{\wireR + \startR * cos(\startAngle)}
+    \pgfmathsetmacro{\cy}{\startR * sin(\startAngle)}
+    \pgfmathsetmacro{\stepLen}{0.12}
+    % Direction: CCW around right wire (out of page)
+    \pgfmathsetmacro{\prevx}{\cx}
+    \pgfmathsetmacro{\prevy}{\cy}
+    \foreach \step in {1, 2, ..., 55} {
+        % B-field from right wire (out of page, CCW)
+        \pgfmathsetmacro{\drx}{\cx - \wireR}
+        \pgfmathsetmacro{\dry}{\cy}
+        \pgfmathsetmacro{\rrR}{max(sqrt(\drx*\drx + \dry*\dry), 0.2)}
+        \pgfmathsetmacro{\BxR}{-\dry / (\rrR*\rrR)}
+        \pgfmathsetmacro{\ByR}{\drx / (\rrR*\rrR)}
+        % B-field from left wire (into page, CW)
+        \pgfmathsetmacro{\dlx}{\cx + \wireR}
+        \pgfmathsetmacro{\dly}{\cy}
+        \pgfmathsetmacro{\rrL}{max(sqrt(\dlx*\dlx + \dly*\dly), 0.2)}
+        \pgfmathsetmacro{\BxL}{\dly / (\rrL*\rrL)}
+        \pgfmathsetmacro{\ByL}{-\dlx / (\rrL*\rrL)}
+        % Superposition
+        \pgfmathsetmacro{\Bx}{\Ival * (\BxR + \BxL)}
+        \pgfmathsetmacro{\By}{\Ival * (\ByR + \ByL)}
+        \pgfmathsetmacro{\Bmag}{max(sqrt(\Bx*\Bx + \By*\By), 0.001)}
+        \pgfmathsetmacro{\prevx}{\cx}
+        \pgfmathsetmacro{\prevy}{\cy}
+        \pgfmathsetmacro{\cx}{\cx + \Bx/\Bmag * \stepLen}
+        \pgfmathsetmacro{\cy}{\cy + \By/\Bmag * \stepLen}
+        % Color by distance (close=garnet, far=atlantic)
+        \pgfmathsetmacro{\distCenter}{sqrt(\cx*\cx + \cy*\cy)}
+        \pgfmathtruncatemacro{\gpct}{min(max(round(100 - \distCenter*25), 10), 90)}
+        \pgfmathparse{(abs(\cx) < 4.0) && (abs(\cy) < 3.0) ? 1 : 0}
+        \ifnum\pgfmathresult=1
+            \draw[garnet!\gpct!atlantic, thin] (\prevx, \prevy) -- (\cx, \cy);
+        \fi
+    }
+}
+
+% Symmetry axis
+\draw[dashed, warmgrey!40, thin] (0, -3.0) -- (0, 3.0)
+    node[above, font=\tiny, warmgrey]{axis};
+
+% Multi-layer wire cross-sections
 % Right conductor (out of page)
-\filldraw[black!80] (1, 0) circle (6pt);
-\filldraw[white] (1, 0) circle (2pt);
-\node[below=5mm, font=\footnotesize] at (1, 0) {$\odot\; I$};
+\filldraw[black!60] (\wireR, 0) circle (8pt);       % insulation
+\filldraw[honeycomb!70] (\wireR, 0) circle (5pt);   % copper
+\filldraw[white] (\wireR, 0) circle (1.5pt);         % dot symbol
+\node[font=\tiny, anchor=north, yshift=-10pt] at (\wireR, 0) {$\odot$};
 
 % Left conductor (into page)
-\filldraw[black!80] (-1, 0) circle (6pt);
-\draw[white, thick] (-1.06, -0.06) -- (-0.94, 0.06);
-\draw[white, thick] (-1.06, 0.06) -- (-0.94, -0.06);
-\node[below=5mm, font=\footnotesize] at (-1, 0) {$\otimes\; I$};
+\filldraw[black!60] (-\wireR, 0) circle (8pt);      % insulation
+\filldraw[honeycomb!70] (-\wireR, 0) circle (5pt);  % copper
+\draw[white, thick] ({-\wireR-0.04}, -0.04) -- ({-\wireR+0.04}, 0.04);
+\draw[white, thick] ({-\wireR-0.04}, 0.04) -- ({-\wireR+0.04}, -0.04);
+\node[font=\tiny, anchor=north, yshift=-10pt] at (-\wireR, 0) {$\otimes$};
 
-% Local field lines around right conductor
-\foreach \k in {1, 2, ..., 6} {
-    \pgfmathsetmacro{\rr}{0.25 + \k * 0.2 * \lineScale}
-    \pgfmathparse{\k <= \nLines ? 1 : 0}
-    \ifnum\pgfmathresult=1
-        \draw[atlantic, thin,
-              decoration={markings,
-                  mark=at position 0.25 with {\arrow{Stealth[length=2.5pt]}},
-                  mark=at position 0.75 with {\arrow{Stealth[length=2.5pt]}}},
-              postaction={decorate}]
-            (1, 0) circle [x radius=\rr, y radius=\rr*0.9];
-    \fi
+% Current flow arrows around wire perimeter
+\pgfmathsetmacro{\arrowR}{0.38}
+\foreach \ca in {30, 150, 270} {
+    \draw[-{Stealth[length=2pt]}, atlantic, thick]
+        ({\wireR + \arrowR*cos(\ca)}, {\arrowR*sin(\ca)})
+        arc (\ca:{\ca+50}:\arrowR);
+}
+\foreach \ca in {30, 150, 270} {
+    \draw[-{Stealth[length=2pt]}, atlantic, thick]
+        ({-\wireR + \arrowR*cos(\ca+180)}, {\arrowR*sin(\ca+180)})
+        arc ({\ca+180}:{\ca+230}:\arrowR);
 }
 
-% Local field lines around left conductor
-\foreach \k in {1, 2, ..., 6} {
-    \pgfmathsetmacro{\rr}{0.25 + \k * 0.2 * \lineScale}
-    \pgfmathparse{\k <= \nLines ? 1 : 0}
-    \ifnum\pgfmathresult=1
-        \draw[atlantic, thin,
-              decoration={markings,
-                  mark=at position 0.25 with {\arrowreversed{Stealth[length=2.5pt]}},
-                  mark=at position 0.75 with {\arrowreversed{Stealth[length=2.5pt]}}},
-              postaction={decorate}]
-            (-1, 0) circle [x radius=\rr, y radius=\rr*0.9];
-    \fi
-}
-
-% Dipole field lines (encircling both)
-\foreach \k in {1, 2, ..., 5} {
-    \pgfmathsetmacro{\rx}{1.5 + \k * 0.45 * \lineScale}
-    \pgfmathsetmacro{\ry}{0.8 + \k * 0.4 * \lineScale}
-    \pgfmathparse{\k <= \nLines ? 1 : 0}
-    \ifnum\pgfmathresult=1
-        \draw[garnet, thin,
-              decoration={markings,
-                  mark=at position 0.0 with {\arrow{Stealth[length=2.5pt]}},
-                  mark=at position 0.5 with {\arrow{Stealth[length=2.5pt]}}},
-              postaction={decorate}]
-            (0, 0) ellipse [x radius=\rx, y radius=\ry];
-    \fi
-}
-
-\node[anchor=north west, font=\normalsize, fill=white, inner sep=3pt, draw=warmgrey]
-    at (-4.4, 3.4)
+% Info box
+\node[anchor=north west, font=\normalsize, fill=white, fill opacity=0.9,
+      text opacity=1, inner sep=4pt, draw=warmgrey!50, align=left]
+    at (-4.1, 3.1)
     {$I = \pgfmathprintnumber[fixed, precision=1]{\Ival}$ A};
-
-\draw[dashed, warmgrey!50, thin] (0, -3.3) -- (0, 3.3)
-    node[above, font=\tiny, gray]{axis};
 
 \end{tikzpicture}
 \end{document}

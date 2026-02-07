@@ -3,13 +3,15 @@
 % Parameter: \PARAM (DC gain, range 0.1..100.0)
 % Range: 0.1 to 100.0, recommended 30 frames
 % Difficulty: advanced
-% Features demonstrated: bode plots, frequency response, control systems
+% Features demonstrated: bode plots, frequency response, asymptotic
+%   approximation, gain crossover, phase margin, bandwidth shading
 
 \documentclass[border=5pt]{standalone}
 \usepackage{tikz}
 \usepackage{pgfplots}
 \usepackage{amsmath}
 \pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween}
 
 % USC Brand Colors
 \definecolor{garnet}{HTML}{73000A}
@@ -29,42 +31,115 @@
 \pgfmathsetmacro{\polef}{10.0}
 \pgfmathsetmacro{\KdB}{20 * log10(\K)}
 
-% Magnitude
+% Gain crossover frequency: |G(jw)| = 1 => K/sqrt(1+(w/p)^2) = 1
+% => w_gc = p * sqrt(K^2 - 1) (only exists when K > 1)
+\pgfmathtruncatemacro{\Kgt}{(\K > 1.01) ? 1 : 0}
+\pgfmathsetmacro{\wgc}{\Kgt > 0 ? \polef * sqrt(max(\K*\K - 1, 0.001)) : \polef}
+\pgfmathsetmacro{\wgcClamp}{min(\wgc, 900)}
+
+% Phase at gain crossover: phase(w_gc) = -atan(w_gc/p) in deg
+\pgfmathsetmacro{\phaseAtGC}{-atan(\wgcClamp/\polef) * 180 / 3.14159}
+\pgfmathsetmacro{\phaseMargin}{180 + \phaseAtGC}
+
+%% ---- MAGNITUDE PLOT ----
 \begin{axis}[
-    name=mag, width=10cm, height=4.5cm,
+    name=mag, width=11cm, height=5cm,
     xmode=log, xmin=0.1, xmax=1000,
     ymin=-60, ymax=60,
-    ylabel={$|G(j\omega)|$ (dB)},
+    ylabel={$|G|$ (dB)},
     title={Bode Plot:\; $G(s) = \dfrac{\pgfmathprintnumber[fixed,precision=1]{\K}}{s/\pgfmathprintnumber[fixed,precision=0]{\polef}+1}$},
-    grid=both, grid style={warmgrey!20}, thick,
+    grid=both, grid style={warmgrey!15}, thick,
     every axis title/.style={font=\small},
     tick label style={font=\tiny},
     label style={font=\footnotesize},
     xticklabels={},
+    clip=false,
 ]
-    \addplot[domain=0.1:1000, samples=200, atlantic, very thick]
+    % Bode magnitude asymptote: flat at KdB for w<p, then -20dB/dec
+    \addplot[domain=0.1:\polef, samples=2, dashed, horseshoe, thin] {\KdB};
+    \addplot[domain=\polef:1000, samples=100, dashed, horseshoe, thin]
+        {\KdB - 20*log10(x/\polef)};
+
+    % Actual magnitude curve
+    \addplot[domain=0.1:1000, samples=300, atlantic, very thick]
         {\KdB - 20*log10(sqrt(1 + (x/\polef)^2))};
-    \addplot[domain=0.1:1000, samples=2, dashed, black!40, thin] {0};
+
+    % 0 dB reference
+    \addplot[domain=0.1:1000, samples=2, black!30, thin] {0};
+
+    % Corner frequency callout
+    \pgfmathsetmacro{\magAtCorner}{\KdB - 20*log10(sqrt(2))}
+    \addplot[only marks, mark=diamond*, mark size=3pt, horseshoe]
+        coordinates {(\polef, \magAtCorner)};
+    \node[font=\tiny, horseshoe, anchor=south east]
+        at (axis cs:\polef, \magAtCorner) {$\omega_c$};
+
+    % Gain crossover marker (when K > 1)
+    \ifnum\Kgt>0
+        \addplot[dashed, garnet, thin] coordinates {(\wgcClamp, -60) (\wgcClamp, 0)};
+        \addplot[only marks, mark=*, mark size=2.5pt, garnet]
+            coordinates {(\wgcClamp, 0)};
+        \node[font=\tiny, garnet, anchor=south west]
+            at (axis cs:\wgcClamp, 1) {$\omega_{gc}$};
+    \fi
 \end{axis}
 
-% Phase
+%% ---- PHASE PLOT ----
 \begin{axis}[
+    name=phase,
     at=(mag.below south west), anchor=north west,
-    width=10cm, height=3.5cm,
+    width=11cm, height=4cm,
     xmode=log, xmin=0.1, xmax=1000,
     ymin=-100, ymax=10,
     xlabel={$\omega$ (rad/s)},
-    ylabel={$\angle G(j\omega)$ (deg)},
-    grid=both, grid style={warmgrey!20}, thick,
+    ylabel={$\angle G$ (deg)},
+    grid=both, grid style={warmgrey!15}, thick,
     tick label style={font=\tiny},
     label style={font=\footnotesize},
     ytick={0, -45, -90},
+    clip=false,
 ]
-    \addplot[domain=0.1:1000, samples=200, garnet, very thick]
+    % Phase asymptote: 0 for w < p/10, linear to -90 for w > 10*p
+    \pgfmathsetmacro{\plo}{\polef / 10}
+    \pgfmathsetmacro{\phi}{\polef * 10}
+    \addplot[domain=0.1:\plo, samples=2, dashed, horseshoe, thin] {0};
+    \addplot[domain=\plo:\phi, samples=2, dashed, horseshoe, thin]
+        {-45 * (ln(x/\plo)/ln(\phi/\plo))};
+    \addplot[domain=\phi:1000, samples=2, dashed, horseshoe, thin] {-90};
+
+    % Actual phase curve
+    \addplot[domain=0.1:1000, samples=300, garnet, very thick]
         {-atan(x/\polef) * 180 / 3.14159};
-    \addplot[domain=0.1:1000, samples=2, dashed, black!30, thin] {-45};
-    \addplot[domain=0.1:1000, samples=2, dashed, black!30, thin] {-90};
+
+    % Reference lines
+    \addplot[domain=0.1:1000, samples=2, dashed, black!20, thin] {-45};
+    \addplot[domain=0.1:1000, samples=2, dashed, black!20, thin] {-90};
+
+    % Corner frequency callout on phase
+    \addplot[only marks, mark=diamond*, mark size=3pt, horseshoe]
+        coordinates {(\polef, -45)};
+
+    % Gain crossover + phase margin (when K > 1)
+    \ifnum\Kgt>0
+        \addplot[dashed, garnet, thin]
+            coordinates {(\wgcClamp, -100) (\wgcClamp, 0)};
+        \addplot[only marks, mark=*, mark size=2.5pt, garnet]
+            coordinates {(\wgcClamp, \phaseAtGC)};
+
+        % Phase margin annotation
+        \node[font=\tiny, rose, anchor=west, align=left]
+            at (axis cs:{1.5*\wgcClamp}, {0.5*\phaseAtGC})
+            {PM $= \pgfmathprintnumber[fixed, precision=1]{\phaseMargin}^\circ$};
+    \fi
 \end{axis}
+
+% Info box
+\node[anchor=north east, fill=white, fill opacity=0.85, text opacity=1,
+      draw=warmgrey!50, inner sep=4pt, font=\footnotesize, align=left]
+    at ([shift={(-0.2cm,-0.2cm)}]mag.north east)
+    {$K = \pgfmathprintnumber[fixed, precision=1]{\K}$
+     \;($\pgfmathprintnumber[fixed, precision=1]{\KdB}$ dB)\\[1pt]
+     $\omega_c = \pgfmathprintnumber[fixed, precision=0]{\polef}$ rad/s};
 
 \end{tikzpicture}
 \end{document}

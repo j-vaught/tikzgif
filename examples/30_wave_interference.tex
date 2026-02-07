@@ -3,12 +3,15 @@
 % Parameter: \PARAM (phase difference in radians, range 0.0..6.283185)
 % Range: 0.0 to 6.283185, recommended 30 frames
 % Difficulty: advanced
-% Features demonstrated: wave interference, superposition, phase effects
+% Features demonstrated: wave interference, intensity profile, finer resolution,
+%   nodal lines, phase-coherent wavefronts, fringe order labels
 
 \documentclass[border=5pt,tikz]{standalone}
 \usepackage{tikz}
+\usepackage{pgfplots}
 \usepackage{amsmath}
 \usetikzlibrary{calc}
+\pgfplotsset{compat=1.18}
 
 % USC Brand Colors
 \definecolor{garnet}{HTML}{73000A}
@@ -28,24 +31,50 @@
 \pgfmathsetmacro{\separation}{2.0}
 \pgfmathsetmacro{\halfSep}{\separation / 2}
 \pgfmathsetmacro{\waveK}{3.0}
+\pgfmathsetmacro{\lambdaW}{6.28318 / \waveK}
 
 \pgfmathsetmacro{\xA}{-\halfSep}
 \pgfmathsetmacro{\xB}{\halfSep}
 
-% Interference pattern (pixelated color map)
-\foreach \xi in {-4.0, -3.8, ..., 3.8} {
-    \foreach \yi in {-3.0, -2.8, ..., 2.8} {
-        \pgfmathsetmacro{\px}{\xi + 0.1}
-        \pgfmathsetmacro{\py}{\yi + 0.1}
+% Interference pattern (finer pixel resolution: 0.15 step, garnet-to-atlantic ramp)
+\foreach \xi in {-4.0, -3.85, -3.7, ..., 3.85} {
+    \foreach \yi in {-3.0, -2.85, -2.7, ..., 2.85} {
+        \pgfmathsetmacro{\px}{\xi + 0.075}
+        \pgfmathsetmacro{\py}{\yi + 0.075}
         \pgfmathsetmacro{\rA}{sqrt((\px - \xA)*(\px - \xA) + \py*\py)}
         \pgfmathsetmacro{\rB}{sqrt((\px - \xB)*(\px - \xB) + \py*\py)}
         \pgfmathsetmacro{\valA}{cos(\waveK * \rA * 180 / 3.14159)}
         \pgfmathsetmacro{\valB}{cos(\waveK * \rB * 180 / 3.14159 + \deltaPhi * 180 / 3.14159)}
-        \pgfmathsetmacro{\amp}{\valA + \valB}
-        \pgfmathsetmacro{\intensity}{(\amp * \amp) / 4.0}
-        \pgfmathsetmacro{\colorVal}{100 * \intensity}
-        \fill[atlantic!\colorVal!black] (\xi, \yi) rectangle +(0.2, 0.2);
+        \pgfmathsetmacro{\ampl}{\valA + \valB}
+        \pgfmathsetmacro{\intensity}{(\ampl * \ampl) / 4.0}
+        \pgfmathtruncatemacro{\colorVal}{min(round(100 * \intensity), 100)}
+        \fill[garnet!\colorVal!atlantic] (\xi, \yi) rectangle +(0.15, 0.15);
     }
+}
+
+% Nodal lines: path difference = (m+0.5)*lambda for destructive interference
+% For two sources at +-d/2, locus of |r1-r2| = const are hyperbolas
+% Draw approximate nodal lines using dashed white curves
+\foreach \m in {-2, -1, 0, 1, 2} {
+    \pgfmathsetmacro{\pathDiff}{(\m + 0.5) * \lambdaW + \deltaPhi / \waveK}
+    \pgfmathsetmacro{\absPathDiff}{abs(\pathDiff)}
+    \pgfmathparse{\absPathDiff < \separation ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        % Hyperbola: x = pathDiff/2, semi-axis a = |pathDiff|/2
+        \pgfmathsetmacro{\ha}{\pathDiff / 2}
+        \pgfmathsetmacro{\hb}{sqrt(max(\halfSep*\halfSep - \ha*\ha, 0.001))}
+        \draw[white, dashed, opacity=0.4, thin, samples=40,
+              domain=-2.8:2.8, variable=\yy]
+            plot ({\ha * sqrt(1 + \yy*\yy/(\hb*\hb))}, {\yy});
+    \fi
+}
+
+% Phase-coherent wavefront rings
+\foreach \r in {0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5} {
+    \pgfmathsetmacro{\phaseFrac}{mod(\r * \waveK, 6.28318) / 6.28318}
+    \pgfmathsetmacro{\ringOp}{0.1 + 0.1 * cos(\phaseFrac * 360)}
+    \draw[white, opacity=\ringOp, thin] (\xA, 0) circle (\r);
+    \draw[white, opacity=\ringOp, thin] (\xB, 0) circle (\r);
 }
 
 % Source markers
@@ -54,16 +83,34 @@
 \node[below=3mm, font=\tiny, white] at (\xA, 0) {$S_1$};
 \node[below=3mm, font=\tiny, white] at (\xB, 0) {$S_2$};
 
-% Faint wavefronts
-\foreach \r in {0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0} {
-    \draw[white, opacity=0.15, thin] (\xA, 0) circle (\r);
-    \draw[white, opacity=0.15, thin] (\xB, 0) circle (\r);
+% Fringe order labels along right edge
+\foreach \m/\ypos in {0/0, 1/0.8, -1/-0.8, 2/1.7, -2/-1.7} {
+    \pgfmathparse{abs(\ypos) < 2.8 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \node[font=\tiny, white, anchor=west] at (3.9, \ypos) {$m\!=\!\m$};
+    \fi
 }
 
-% Title
+% Title / phase label
 \node[anchor=north west, font=\footnotesize, fill=black!70, text=white, inner sep=3pt]
     at (-4, 3)
     {$\Delta\phi = \pgfmathprintnumber[fixed, precision=2]{\deltaPhi}$ rad};
+
+% Intensity cross-section profile strip (below main pattern)
+\begin{scope}[shift={(0, -3.7)}]
+    \draw[warmgrey!30, thin] (-4.0, -0.0) rectangle (4.0, 0.8);
+    % Plot I(x) along y=2 as filled area
+    \foreach \xp in {-4.0, -3.85, -3.7, ..., 3.85} {
+        \pgfmathsetmacro{\rAs}{sqrt((\xp - \xA)*(\xp - \xA) + 4.0)}
+        \pgfmathsetmacro{\rBs}{sqrt((\xp - \xB)*(\xp - \xB) + 4.0)}
+        \pgfmathsetmacro{\vAs}{cos(\waveK * \rAs * 180 / 3.14159)}
+        \pgfmathsetmacro{\vBs}{cos(\waveK * \rBs * 180 / 3.14159 + \deltaPhi * 180 / 3.14159)}
+        \pgfmathsetmacro{\ampls}{\vAs + \vBs}
+        \pgfmathsetmacro{\Is}{(\ampls * \ampls) / 4.0}
+        \fill[garnet, opacity=0.5] (\xp, 0) rectangle +(0.15, {\Is * 0.75});
+    }
+    \node[font=\tiny, warmgrey, anchor=north west] at (-3.9, -0.05) {$I(x)$ at $y\!=\!2$};
+\end{scope}
 
 \end{tikzpicture}
 \end{document}
