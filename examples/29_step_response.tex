@@ -27,7 +27,7 @@
 
 \pgfmathsetmacro{\zeta}{\PARAM}
 \pgfmathsetmacro{\wn}{3.0}
-\pgfmathsetmacro{\wd}{\wn * sqrt(abs(1 - \zeta*\zeta))}
+\pgfmathsetmacro{\wdamp}{\wn * sqrt(abs(1 - \zeta*\zeta))}
 \pgfmathsetmacro{\sigma}{\zeta * \wn}
 
 \begin{axis}[
@@ -51,7 +51,7 @@
         \pgfmathsetmacro{\phirad}{acos(\zeta)}
         \addplot[domain=0:5, samples=200, atlantic, very thick]
             {1 - (exp(-\sigma * x) / sqrt(1 - \zeta*\zeta))
-             * sin(\wd * x * 180/3.14159 + \phirad)};
+             * sin(\wdamp * x * 180/3.14159 + \phirad)};
         \addlegendentry{Underdamped}
     \fi
 
@@ -80,7 +80,7 @@
     \pgfmathparse{\zeta < 0.999 ? 1 : 0}
     \ifnum\pgfmathresult=1
         \pgfmathsetmacro{\Mp}{exp(-3.14159*\zeta / sqrt(1-\zeta*\zeta))}
-        \pgfmathsetmacro{\tp}{3.14159 / \wd}
+        \pgfmathsetmacro{\tp}{3.14159 / \wdamp}
         \pgfmathsetmacro{\yp}{1 + \Mp}
         \draw[<-, thin, garnet]
             (axis cs:\tp, \yp) -- ++(axis direction cs:0.3,0.15)

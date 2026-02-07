@@ -37,7 +37,7 @@
 \pgfmathsetmacro{\zetaClamp}{min(\zetaEff, 3.0)}
 \pgfmathsetmacro{\sigmaD}{\zetaClamp * \wn}
 \pgfmathsetmacro{\wdSq}{max(\wn*\wn - \sigmaD*\sigmaD, 0.001)}
-\pgfmathsetmacro{\wd}{sqrt(\wdSq)}
+\pgfmathsetmacro{\wdamp}{sqrt(\wdSq)}
 
 \begin{axis}[
     name=response, width=9cm, height=6cm,
@@ -59,7 +59,7 @@
         \pgfmathsetmacro{\phiDeg}{acos(min(\zetaClamp,0.999))}
         \addplot[domain=0:8, samples=300, atlantic, very thick]
             {1 - exp(-\sigmaD * x) / sqrt(max(1-\zetaClamp*\zetaClamp, 0.001))
-             * sin(\wd * x * 180/3.14159 + \phiDeg)};
+             * sin(\wdamp * x * 180/3.14159 + \phiDeg)};
     \fi
     % Critically damped
     \pgfmathparse{(\zetaClamp >= 0.999) && (\zetaClamp <= 1.001) ? 1 : 0}
