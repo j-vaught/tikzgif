@@ -1,16 +1,16 @@
 % Example 06b: Selection Sort Visualization
-% Bars showing values being sorted via selection sort, step by step.
-% At each step, the minimum unsorted element is selected and placed.
+% Each swap animated individually — only one pair of bars moves at a time.
+% Pre-computed slot positions for each value across all 5 swap steps.
 % Initial array: [6, 2, 8, 4, 1, 7, 3, 5]
-% Parameter: \PARAM (progress 0 to 1, maps across 7 selection steps)
-% Range: 0 to 1, recommended 50 frames
+% Parameter: \PARAM (0 to 5, maps across 5 individual swaps)
+% Range: 0 to 5, recommended 80 frames at 24fps
 % Difficulty: intermediate
-% Features demonstrated: array encoding, interpolation, algorithm visualization
+% Features demonstrated: step-by-step algorithm visualization, interpolation
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
 
-% USC Brand Colors
+% Brand Colors
 \definecolor{garnet}{HTML}{73000A}
 \definecolor{rose}{HTML}{CC2E40}
 \definecolor{atlantic}{HTML}{466A9F}
@@ -23,53 +23,65 @@
 
 \begin{document}
 \begin{tikzpicture}
-  \useasboundingbox (-1,-2) rectangle (10,8);
+  \useasboundingbox (-1,-2.5) rectangle (10,8);
 
-  \pgfmathsetmacro{\progress}{\PARAM}
+  \pgfmathsetmacro{\raw}{\PARAM}
+  \pgfmathtruncatemacro{\sLo}{min(5, max(0, floor(\raw)))}
+  \pgfmathtruncatemacro{\sHi}{min(5, \sLo + 1)}
+  \pgfmathsetmacro{\interp}{max(0, min(1, \raw - \sLo))}
 
-  % 8 states (initial + 7 selection steps), indexed 0..7
-  \pgfmathsetmacro{\nstates}{8}
-  \pgfmathsetmacro{\state}{\progress * (\nstates - 1)}
-  \pgfmathtruncatemacro{\sLo}{floor(\state)}
-  \pgfmathtruncatemacro{\sHi}{min(\nstates - 1, ceil(\state))}
-  \pgfmathsetmacro{\interp}{\state - \sLo}
+  % Swap slot pairs for each of the 5 transitions (index 0..4)
+  % State 1: swap(0,4) — min=1
+  % State 2: swap(2,6) — min=3
+  % State 3: swap(4,7) — min=5
+  % State 4: swap(5,7) — min=6
+  % State 5: swap(6,7) — min=7
+  \pgfmathtruncatemacro{\safeIdx}{min(4, \sLo)}
+  \pgfmathparse{array({0,2,4,5,6}, \safeIdx)}
+  \pgfmathtruncatemacro{\swpA}{\pgfmathresult}
+  \pgfmathparse{array({4,6,7,7,7}, \safeIdx)}
+  \pgfmathtruncatemacro{\swpB}{\pgfmathresult}
 
+  % Position of each value (1-8) across 6 states (initial + 5 post-swap).
   % Selection sort of [6,2,8,4,1,7,3,5]:
-  % State 0: [6,2,8,4,1,7,3,5]  (initial)
-  % State 1: [1,2,8,4,6,7,3,5]  (select min=1, swap pos 0,4)
-  % State 2: [1,2,8,4,6,7,3,5]  (select min=2, already at pos 1)
-  % State 3: [1,2,3,4,6,7,8,5]  (select min=3, swap pos 2,6)
-  % State 4: [1,2,3,4,6,7,8,5]  (select min=4, already at pos 3)
-  % State 5: [1,2,3,4,5,7,8,6]  (select min=5, swap pos 4,7)
-  % State 6: [1,2,3,4,5,6,8,7]  (select min=6, swap pos 5,7)
-  % State 7: [1,2,3,4,5,6,7,8]  (select min=7, swap pos 6,7)
-
-  % Sorted boundary: after step k, leftmost k elements are sorted
-  \ifnum\sLo>0
-    \fill[horseshoe!8] (-0.3, -0.15) rectangle ({\sLo * 1.15 + 0.05}, 6.6);
-  \fi
-
-  % Draw each bar
+  %   State 0: [6,2,8,4,1,7,3,5]  initial
+  %   State 1: [1,2,8,4,6,7,3,5]  swap(0,4) — select min=1
+  %   State 2: [1,2,3,4,6,7,8,5]  swap(2,6) — select min=3
+  %   State 3: [1,2,3,4,5,7,8,6]  swap(4,7) — select min=5
+  %   State 4: [1,2,3,4,5,6,8,7]  swap(5,7) — select min=6
+  %   State 5: [1,2,3,4,5,6,7,8]  swap(6,7) — select min=7
   \foreach \val/\slots in {
-    1/{4,0,0,0,0,0,0,0},
-    2/{1,1,1,1,1,1,1,1},
-    3/{6,6,6,2,2,2,2,2},
-    4/{3,3,3,3,3,3,3,3},
-    5/{7,7,7,7,7,4,4,4},
-    6/{0,4,4,4,4,7,5,5},
-    7/{5,5,5,5,5,5,7,6},
-    8/{2,2,2,6,6,6,6,7}%
+    1/{4,0,0,0,0,0},
+    2/{1,1,1,1,1,1},
+    3/{6,6,2,2,2,2},
+    4/{3,3,3,3,3,3},
+    5/{7,7,7,4,4,4},
+    6/{0,4,4,7,5,5},
+    7/{5,5,5,5,7,6},
+    8/{2,2,6,6,6,7}%
   } {
     \pgfmathparse{array({\slots}, \sLo)}
     \pgfmathsetmacro{\posLo}{\pgfmathresult}
     \pgfmathparse{array({\slots}, \sHi)}
     \pgfmathsetmacro{\posHi}{\pgfmathresult}
-    \pgfmathsetmacro{\xpos}{(\posLo * (1 - \interp) + \posHi * \interp) * 1.15 + 0.5}
+    \pgfmathsetmacro{\xpos}{(\posLo*(1-\interp) + \posHi*\interp) * 1.15 + 0.5}
     \pgfmathsetmacro{\barht}{\val * 0.75}
 
+    % Detect if this bar is actively being swapped
+    \pgfmathtruncatemacro{\posLoInt}{round(\posLo)}
+    \pgfmathtruncatemacro{\isActive}{%
+      (\sLo<5 && \interp>0.01 && (\posLoInt==\swpA || \posLoInt==\swpB)) ? 1 : 0}
+
+    % Color: gradient from atlantic (low) to garnet (high)
     \pgfmathtruncatemacro{\cpct}{min(100, max(0, \val * 12.5))}
-    \fill[garnet!\cpct!atlantic] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
-    \draw[black!70, thick] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
+
+    \ifnum\isActive=1
+      \fill[garnet!\cpct!atlantic] (\xpos-0.4, 0) rectangle (\xpos+0.4, \barht);
+      \draw[rose, very thick] (\xpos-0.4, 0) rectangle (\xpos+0.4, \barht);
+    \else
+      \fill[garnet!\cpct!atlantic] (\xpos-0.4, 0) rectangle (\xpos+0.4, \barht);
+      \draw[black!70, thick] (\xpos-0.4, 0) rectangle (\xpos+0.4, \barht);
+    \fi
     \node[above, font=\small\bfseries] at (\xpos, \barht) {\val};
   }
 
@@ -79,16 +91,17 @@
   % Title
   \node[font=\large\bfseries, garnet] at (4.5, 7.2) {Selection Sort};
 
-  % Step indicator
-  \pgfmathtruncatemacro{\stepnum}{\sLo}
-  \ifnum\stepnum=0
-    \node[font=\small] at (4.5, -1) {Initial array};
+  % Pass indicator (original selection sort passes: 1,3,5,6,7)
+  \pgfmathtruncatemacro{\passnum}{array({1,3,5,6,7}, \safeIdx)}
+  \ifnum\sLo<5
+    \node[font=\small] at (4.5, -1.0) {Pass \passnum\ of 7};
   \else
-    \ifnum\stepnum>6
-      \node[font=\small, horseshoe] at (4.5, -1) {Sorted!};
-    \else
-      \node[font=\small] at (4.5, -1) {Step \stepnum\ of 7 --- select minimum};
-    \fi
+    \node[font=\small, horseshoe] at (4.5, -1.0) {Sorted!};
   \fi
+
+  % Step counter
+  \pgfmathtruncatemacro{\stepdisp}{min(5, \sLo + 1)}
+  \node[font=\tiny, warmgrey] at (4.5, -1.7) {Step \stepdisp\ of 5};
+
 \end{tikzpicture}
 \end{document}

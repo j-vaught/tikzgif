@@ -1,16 +1,34 @@
 % Example 06c: Insertion Sort Visualization
-% Bars showing values being sorted via insertion sort, step by step.
-% At each step, the next element is inserted into its correct position.
+% Each swap animated individually — only one pair of bars moves at a time.
+% Pre-computed slot positions for each value across all 15 swap steps.
 % Initial array: [6, 2, 8, 4, 1, 7, 3, 5]
-% Parameter: \PARAM (progress 0 to 1, maps across 7 insertion steps)
-% Range: 0 to 1, recommended 50 frames
+% Parameter: \PARAM (0 to 15, maps across 15 individual swaps)
+% Range: 0 to 15, recommended 180 frames at 24fps
 % Difficulty: intermediate
-% Features demonstrated: array encoding, interpolation, algorithm visualization
+% Features demonstrated: step-by-step algorithm visualization, interpolation
+%
+% Algorithm trace — each insertion broken into adjacent swaps:
+%   State 0:  [6,2,8,4,1,7,3,5] initial
+%   State 1:  [2,6,8,4,1,7,3,5] swap(0,1) — insert 2
+%   State 2:  [2,6,4,8,1,7,3,5] swap(2,3) — insert 4
+%   State 3:  [2,4,6,8,1,7,3,5] swap(1,2) — insert 4
+%   State 4:  [2,4,6,1,8,7,3,5] swap(3,4) — insert 1
+%   State 5:  [2,4,1,6,8,7,3,5] swap(2,3) — insert 1
+%   State 6:  [2,1,4,6,8,7,3,5] swap(1,2) — insert 1
+%   State 7:  [1,2,4,6,8,7,3,5] swap(0,1) — insert 1
+%   State 8:  [1,2,4,6,7,8,3,5] swap(4,5) — insert 7
+%   State 9:  [1,2,4,6,7,3,8,5] swap(5,6) — insert 3
+%   State 10: [1,2,4,6,3,7,8,5] swap(4,5) — insert 3
+%   State 11: [1,2,4,3,6,7,8,5] swap(3,4) — insert 3
+%   State 12: [1,2,3,4,6,7,8,5] swap(2,3) — insert 3
+%   State 13: [1,2,3,4,6,7,5,8] swap(6,7) — insert 5
+%   State 14: [1,2,3,4,6,5,7,8] swap(5,6) — insert 5
+%   State 15: [1,2,3,4,5,6,7,8] swap(4,5) — insert 5
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
 
-% USC Brand Colors
+% Brand Colors
 \definecolor{garnet}{HTML}{73000A}
 \definecolor{rose}{HTML}{CC2E40}
 \definecolor{atlantic}{HTML}{466A9F}
@@ -23,52 +41,80 @@
 
 \begin{document}
 \begin{tikzpicture}
-  \useasboundingbox (-1,-2) rectangle (10,8);
+  \useasboundingbox (-1,-2.5) rectangle (10,8);
 
-  \pgfmathsetmacro{\progress}{\PARAM}
+  \pgfmathsetmacro{\raw}{\PARAM}
+  \pgfmathtruncatemacro{\sLo}{min(15, max(0, floor(\raw)))}
+  \pgfmathtruncatemacro{\sHi}{min(15, \sLo + 1)}
+  \pgfmathsetmacro{\interp}{max(0, min(1, \raw - \sLo))}
 
-  % 8 states (initial + 7 insertion steps), indexed 0..7
-  \pgfmathsetmacro{\nstates}{8}
-  \pgfmathsetmacro{\state}{\progress * (\nstates - 1)}
-  \pgfmathtruncatemacro{\sLo}{floor(\state)}
-  \pgfmathtruncatemacro{\sHi}{min(\nstates - 1, ceil(\state))}
-  \pgfmathsetmacro{\interp}{\state - \sLo}
+  % Swap slot pairs for each of the 15 transitions (index 0..14)
+  % Transition 0: inserting 2 (pass 1)
+  % Transitions 1-2: inserting 4 (pass 2)
+  % Transitions 3-6: inserting 1 (pass 3)
+  % Transition 7: inserting 7 (pass 4)
+  % Transitions 8-11: inserting 3 (pass 5)
+  % Transitions 12-14: inserting 5 (pass 6)
+  \pgfmathtruncatemacro{\safeIdx}{min(14, \sLo)}
+  \pgfmathparse{array({0,2,1,3,2,1,0,4,5,4,3,2,6,5,4}, \safeIdx)}
+  \pgfmathtruncatemacro{\swpA}{\pgfmathresult}
+  \pgfmathparse{array({1,3,2,4,3,2,1,5,6,5,4,3,7,6,5}, \safeIdx)}
+  \pgfmathtruncatemacro{\swpB}{\pgfmathresult}
 
+  % Pass number: transitions 0=Pass1, 1-2=Pass2, 3-6=Pass3, 7=Pass4, 8-11=Pass5, 12-14=Pass6
+  \pgfmathtruncatemacro{\passnum}{%
+    (\sLo<1) ? 1 : (\sLo<3) ? 2 : (\sLo<7) ? 3 : (\sLo<8) ? 4 : (\sLo<12) ? 5 : (\sLo<15) ? 6 : 6}
+
+  % Position of each value (1-8) across 16 states (initial + 15 post-swap).
   % Insertion sort of [6,2,8,4,1,7,3,5]:
-  % State 0: [6,2,8,4,1,7,3,5]  (initial, sorted region = [6])
-  % State 1: [2,6,8,4,1,7,3,5]  (insert 2 before 6)
-  % State 2: [2,6,8,4,1,7,3,5]  (insert 8, stays in place)
-  % State 3: [2,4,6,8,1,7,3,5]  (insert 4 between 2 and 6)
-  % State 4: [1,2,4,6,8,7,3,5]  (insert 1 at front)
-  % State 5: [1,2,4,6,7,8,3,5]  (insert 7 between 6 and 8)
-  % State 6: [1,2,3,4,6,7,8,5]  (insert 3 between 2 and 4)
-  % State 7: [1,2,3,4,5,6,7,8]  (insert 5 between 4 and 6)
-
-  % Sorted boundary: after step k, leftmost k+1 elements are sorted
-  \pgfmathtruncatemacro{\sortedCount}{\sLo + 1}
-  \fill[horseshoe!8] (-0.3, -0.15) rectangle ({\sortedCount * 1.15 + 0.05}, 6.6);
-
-  % Draw each bar
+  %   State 0:  [6,2,8,4,1,7,3,5]  initial
+  %   State 1:  [2,6,8,4,1,7,3,5]  swap(0,1)
+  %   State 2:  [2,6,4,8,1,7,3,5]  swap(2,3)
+  %   State 3:  [2,4,6,8,1,7,3,5]  swap(1,2)
+  %   State 4:  [2,4,6,1,8,7,3,5]  swap(3,4)
+  %   State 5:  [2,4,1,6,8,7,3,5]  swap(2,3)
+  %   State 6:  [2,1,4,6,8,7,3,5]  swap(1,2)
+  %   State 7:  [1,2,4,6,8,7,3,5]  swap(0,1)
+  %   State 8:  [1,2,4,6,7,8,3,5]  swap(4,5)
+  %   State 9:  [1,2,4,6,7,3,8,5]  swap(5,6)
+  %   State 10: [1,2,4,6,3,7,8,5]  swap(4,5)
+  %   State 11: [1,2,4,3,6,7,8,5]  swap(3,4)
+  %   State 12: [1,2,3,4,6,7,8,5]  swap(2,3)
+  %   State 13: [1,2,3,4,6,7,5,8]  swap(6,7)
+  %   State 14: [1,2,3,4,6,5,7,8]  swap(5,6)
+  %   State 15: [1,2,3,4,5,6,7,8]  swap(4,5) sorted!
   \foreach \val/\slots in {
-    1/{4,4,4,4,0,0,0,0},
-    2/{1,0,0,0,1,1,1,1},
-    3/{6,6,6,6,6,6,2,2},
-    4/{3,3,3,1,2,2,3,3},
-    5/{7,7,7,7,7,7,7,4},
-    6/{0,1,1,2,3,3,4,5},
-    7/{5,5,5,5,5,4,5,6},
-    8/{2,2,2,3,4,5,6,7}%
+    1/{4,4,4,4,3,2,1,0,0,0,0,0,0,0,0,0},
+    2/{1,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1},
+    3/{6,6,6,6,6,6,6,6,6,5,4,3,2,2,2,2},
+    4/{3,3,2,1,1,1,2,2,2,2,2,2,3,3,3,3},
+    5/{7,7,7,7,7,7,7,7,7,7,7,7,7,6,5,4},
+    6/{0,1,1,2,2,3,3,3,3,3,3,4,4,4,4,5},
+    7/{5,5,5,5,5,5,5,5,4,4,5,5,5,5,6,6},
+    8/{2,2,3,3,4,4,4,4,5,6,6,6,6,7,7,7}%
   } {
     \pgfmathparse{array({\slots}, \sLo)}
     \pgfmathsetmacro{\posLo}{\pgfmathresult}
     \pgfmathparse{array({\slots}, \sHi)}
     \pgfmathsetmacro{\posHi}{\pgfmathresult}
-    \pgfmathsetmacro{\xpos}{(\posLo * (1 - \interp) + \posHi * \interp) * 1.15 + 0.5}
+    \pgfmathsetmacro{\xpos}{(\posLo*(1-\interp) + \posHi*\interp) * 1.15 + 0.5}
     \pgfmathsetmacro{\barht}{\val * 0.75}
 
+    % Detect if this bar is actively being swapped
+    \pgfmathtruncatemacro{\posLoInt}{round(\posLo)}
+    \pgfmathtruncatemacro{\isActive}{%
+      (\sLo<15 && \interp>0.01 && (\posLoInt==\swpA || \posLoInt==\swpB)) ? 1 : 0}
+
+    % Color: gradient from atlantic (low) to garnet (high)
     \pgfmathtruncatemacro{\cpct}{min(100, max(0, \val * 12.5))}
-    \fill[garnet!\cpct!atlantic] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
-    \draw[black!70, thick] (\xpos - 0.4, 0) rectangle (\xpos + 0.4, \barht);
+
+    \ifnum\isActive=1
+      \fill[garnet!\cpct!atlantic] (\xpos-0.4, 0) rectangle (\xpos+0.4, \barht);
+      \draw[rose, very thick] (\xpos-0.4, 0) rectangle (\xpos+0.4, \barht);
+    \else
+      \fill[garnet!\cpct!atlantic] (\xpos-0.4, 0) rectangle (\xpos+0.4, \barht);
+      \draw[black!70, thick] (\xpos-0.4, 0) rectangle (\xpos+0.4, \barht);
+    \fi
     \node[above, font=\small\bfseries] at (\xpos, \barht) {\val};
   }
 
@@ -78,16 +124,22 @@
   % Title
   \node[font=\large\bfseries, garnet] at (4.5, 7.2) {Insertion Sort};
 
-  % Step indicator
-  \pgfmathtruncatemacro{\stepnum}{\sLo}
-  \ifnum\stepnum=0
-    \node[font=\small] at (4.5, -1) {Initial array};
+  % Inserting value for each transition
+  \pgfmathtruncatemacro{\insertVal}{array({2,4,4,1,1,1,1,7,3,3,3,3,5,5,5}, \safeIdx)}
+
+  % Pass number
+  \pgfmathtruncatemacro{\passIdx}{array({1,2,2,3,3,3,3,4,5,5,5,5,6,6,6}, \safeIdx)}
+
+  % Pass indicator
+  \ifnum\sLo<15
+    \node[font=\small] at (4.5, -1.0) {Inserting \insertVal\ (Pass \passIdx\ of 6)};
   \else
-    \ifnum\stepnum>6
-      \node[font=\small, horseshoe] at (4.5, -1) {Sorted!};
-    \else
-      \node[font=\small] at (4.5, -1) {Step \stepnum\ of 7 --- insert next element};
-    \fi
+    \node[font=\small, horseshoe] at (4.5, -1.0) {Sorted!};
   \fi
+
+  % Step counter
+  \pgfmathtruncatemacro{\stepdisp}{min(15, \sLo + 1)}
+  \node[font=\tiny, warmgrey] at (4.5, -1.7) {Step \stepdisp\ of 15};
+
 \end{tikzpicture}
 \end{document}
