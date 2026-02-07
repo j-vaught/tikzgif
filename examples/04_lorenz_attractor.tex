@@ -1,9 +1,9 @@
 % Example 04: Lorenz Attractor — Sensitive Dependence on Initial Conditions
-% Two trajectories with nearly identical starting points (x0=1.000 vs x0=1.001)
+% Two side-by-side panels with nearly identical starting points (x0=1.000 vs x0=1.001)
 % diverge chaotically, demonstrating the butterfly effect.
-% Full paths are drawn using pgf path accumulation in a \loop (no group boundaries).
-% Parameter: \PARAM (integer step count, 0 to 1500)
-% Range: 0 to 1500, recommended 150 frames (step by 10)
+% Full paths drawn via pgf path accumulation in \loop (no group boundaries).
+% Parameter: \PARAM (integer step count, 0 to 2000)
+% Range: 0 to 2000, recommended 150 frames
 % Difficulty: advanced
 % Features demonstrated: Euler integration, 3D projection, pgf path accumulation
 \documentclass[tikz]{standalone}
@@ -25,101 +25,119 @@
 
 \begin{document}
 \begin{tikzpicture}
-  \useasboundingbox (-5.5,-6.5) rectangle (5.5,7.5);
+  \useasboundingbox (-11,-6.5) rectangle (11,7.5);
 
   % Lorenz parameters
   \pgfmathsetmacro{\sig}{10}
   \pgfmathsetmacro{\rh}{28}
   \pgfmathsetmacro{\bet}{2.667}
-  \pgfmathsetmacro{\dt}{0.008}
+  \pgfmathsetmacro{\dt}{0.01}
   \pgfmathtruncatemacro{\nsteps}{\PARAM}
 
   % Projection: 3D oblique to 2D
-  \pgfmathsetmacro{\sx}{0.11}
-  \pgfmathsetmacro{\sy}{-0.05}
-  \pgfmathsetmacro{\sz}{0.16}
-  \pgfmathsetmacro{\zoff}{-4.0}
+  \pgfmathsetmacro{\sx}{0.10}
+  \pgfmathsetmacro{\sy}{-0.045}
+  \pgfmathsetmacro{\sz}{0.15}
+  \pgfmathsetmacro{\zoff}{-3.8}
 
-  % Background z-axis
-  \draw[->, warmgrey!30, thin] (0,\zoff) -- (0,5.8)
-    node[above, font=\tiny, warmgrey] {$z$};
+  % Title
+  \node[font=\bfseries\small, warmgrey] at (0,7.0)
+    {Sensitive Dependence on Initial Conditions};
 
-  %% ========== TRAJECTORY A: x0 = 1.000 (garnet) ==========
-  \pgfmathsetmacro{\ax}{1.0}
-  \pgfmathsetmacro{\ay}{1.0}
-  \pgfmathsetmacro{\az}{1.0}
-  \pgfmathsetmacro{\apx}{\ax*\sx + \ay*\sy}
-  \pgfmathsetmacro{\apy}{\az*\sz + \zoff}
-  \pgfpathmoveto{\pgfpointxy{\apx}{\apy}}
-
-  \stepcount=0
-  \ifnum\nsteps>0\relax
-    \loop
-      \advance\stepcount by 1
-      \pgfmathsetmacro{\dx}{\sig * (\ay - \ax) * \dt}
-      \pgfmathsetmacro{\dy}{(\ax * (\rh - \az) - \ay) * \dt}
-      \pgfmathsetmacro{\dz}{(\ax * \ay - \bet * \az) * \dt}
-      \pgfmathsetmacro{\ax}{\ax + \dx}
-      \pgfmathsetmacro{\ay}{\ay + \dy}
-      \pgfmathsetmacro{\az}{\az + \dz}
-      \pgfmathsetmacro{\apx}{\ax*\sx + \ay*\sy}
-      \pgfmathsetmacro{\apy}{\az*\sz + \zoff}
-      \pgfpathlineto{\pgfpointxy{\apx}{\apy}}
-    \ifnum\stepcount<\nsteps\relax \repeat
-  \fi
-
-  \pgfsetlinewidth{0.6pt}
-  \pgfsetstrokecolor{garnet}
-  \pgfsetstrokeopacity{0.75}
-  \pgfusepath{stroke}
-
-  % Endpoint dot
-  \fill[white] (\apx, \apy) circle (3.5pt);
-  \fill[garnet] (\apx, \apy) circle (2.5pt);
-
-  %% ========== TRAJECTORY B: x0 = 1.001 (atlantic) ==========
-  \pgfmathsetmacro{\bx}{1.001}
-  \pgfmathsetmacro{\by}{1.0}
-  \pgfmathsetmacro{\bz}{1.0}
-  \pgfmathsetmacro{\bpx}{\bx*\sx + \by*\sy}
-  \pgfmathsetmacro{\bpy}{\bz*\sz + \zoff}
-  \pgfpathmoveto{\pgfpointxy{\bpx}{\bpy}}
-
-  \stepcount=0
-  \ifnum\nsteps>0\relax
-    \loop
-      \advance\stepcount by 1
-      \pgfmathsetmacro{\dx}{\sig * (\by - \bx) * \dt}
-      \pgfmathsetmacro{\dy}{(\bx * (\rh - \bz) - \by) * \dt}
-      \pgfmathsetmacro{\dz}{(\bx * \by - \bet * \bz) * \dt}
-      \pgfmathsetmacro{\bx}{\bx + \dx}
-      \pgfmathsetmacro{\by}{\by + \dy}
-      \pgfmathsetmacro{\bz}{\bz + \dz}
-      \pgfmathsetmacro{\bpx}{\bx*\sx + \by*\sy}
-      \pgfmathsetmacro{\bpy}{\bz*\sz + \zoff}
-      \pgfpathlineto{\pgfpointxy{\bpx}{\bpy}}
-    \ifnum\stepcount<\nsteps\relax \repeat
-  \fi
-
-  \pgfsetlinewidth{0.6pt}
-  \pgfsetstrokecolor{atlantic}
-  \pgfsetstrokeopacity{0.75}
-  \pgfusepath{stroke}
-
-  % Endpoint dot
-  \fill[white] (\bpx, \bpy) circle (3.5pt);
-  \fill[atlantic] (\bpx, \bpy) circle (2.5pt);
-
-  %% ========== LEGEND ==========
-  \fill[garnet] (-4.5, 6.8) circle (2.5pt);
-  \node[right, font=\footnotesize] at (-4.2, 6.8) {$x_0 = 1.000$};
-  \fill[atlantic] (-4.5, 6.2) circle (2.5pt);
-  \node[right, font=\footnotesize] at (-4.2, 6.2) {$x_0 = 1.001$};
-
-  %% ========== TIME DISPLAY ==========
+  % Time display
   \pgfmathsetmacro{\tval}{\nsteps * \dt}
   \node[font=\small, warmgrey] at (0,-5.8)
     {$t = \pgfmathprintnumber[fixed, precision=1]{\tval}$};
+
+  %% ========== LEFT PANEL: x0 = 1.000 (garnet) ==========
+  \begin{scope}[xshift=-5.5cm]
+    % z-axis
+    \draw[->, warmgrey!30, thin] (0,\zoff) -- (0,5.5)
+      node[above, font=\tiny, warmgrey] {$z$};
+
+    \pgfmathsetmacro{\ax}{1.0}
+    \pgfmathsetmacro{\ay}{1.0}
+    \pgfmathsetmacro{\az}{1.0}
+    \pgfmathsetmacro{\apx}{\ax*\sx + \ay*\sy}
+    \pgfmathsetmacro{\apy}{\az*\sz + \zoff}
+    \global\let\apx\apx \global\let\apy\apy
+
+    \pgfpathmoveto{\pgfpointxy{\apx}{\apy}}
+
+    \stepcount=0
+    \ifnum\nsteps>0\relax
+      \loop
+        \advance\stepcount by 1
+        \pgfmathsetmacro{\dx}{\sig * (\ay - \ax) * \dt}
+        \pgfmathsetmacro{\dy}{(\ax * (\rh - \az) - \ay) * \dt}
+        \pgfmathsetmacro{\dz}{(\ax * \ay - \bet * \az) * \dt}
+        \pgfmathsetmacro{\ax}{\ax + \dx}
+        \pgfmathsetmacro{\ay}{\ay + \dy}
+        \pgfmathsetmacro{\az}{\az + \dz}
+        \pgfmathsetmacro{\apx}{\ax*\sx + \ay*\sy}
+        \pgfmathsetmacro{\apy}{\az*\sz + \zoff}
+        \pgfpathlineto{\pgfpointxy{\apx}{\apy}}
+        \global\let\apx\apx \global\let\apy\apy
+      \ifnum\stepcount<\nsteps\relax \repeat
+    \fi
+
+    \pgfsetlinewidth{0.6pt}
+    \pgfsetstrokecolor{garnet}
+    \pgfsetstrokeopacity{0.8}
+    \pgfusepath{stroke}
+
+    % Endpoint dot
+    \fill[white] (\apx, \apy) circle (3.5pt);
+    \fill[garnet] (\apx, \apy) circle (2.5pt);
+
+    % Label
+    \node[font=\footnotesize, garnet] at (0,-5.0) {$x_0 = 1.000$};
+  \end{scope}
+
+  %% ========== RIGHT PANEL: x0 = 1.001 (atlantic) ==========
+  \begin{scope}[xshift=5.5cm]
+    % z-axis
+    \draw[->, warmgrey!30, thin] (0,\zoff) -- (0,5.5)
+      node[above, font=\tiny, warmgrey] {$z$};
+
+    \pgfmathsetmacro{\bx}{1.001}
+    \pgfmathsetmacro{\by}{1.0}
+    \pgfmathsetmacro{\bz}{1.0}
+    \pgfmathsetmacro{\bpx}{\bx*\sx + \by*\sy}
+    \pgfmathsetmacro{\bpy}{\bz*\sz + \zoff}
+    \global\let\bpx\bpx \global\let\bpy\bpy
+
+    \pgfpathmoveto{\pgfpointxy{\bpx}{\bpy}}
+
+    \stepcount=0
+    \ifnum\nsteps>0\relax
+      \loop
+        \advance\stepcount by 1
+        \pgfmathsetmacro{\dx}{\sig * (\by - \bx) * \dt}
+        \pgfmathsetmacro{\dy}{(\bx * (\rh - \bz) - \by) * \dt}
+        \pgfmathsetmacro{\dz}{(\bx * \by - \bet * \bz) * \dt}
+        \pgfmathsetmacro{\bx}{\bx + \dx}
+        \pgfmathsetmacro{\by}{\by + \dy}
+        \pgfmathsetmacro{\bz}{\bz + \dz}
+        \pgfmathsetmacro{\bpx}{\bx*\sx + \by*\sy}
+        \pgfmathsetmacro{\bpy}{\bz*\sz + \zoff}
+        \pgfpathlineto{\pgfpointxy{\bpx}{\bpy}}
+        \global\let\bpx\bpx \global\let\bpy\bpy
+      \ifnum\stepcount<\nsteps\relax \repeat
+    \fi
+
+    \pgfsetlinewidth{0.6pt}
+    \pgfsetstrokecolor{atlantic}
+    \pgfsetstrokeopacity{0.8}
+    \pgfusepath{stroke}
+
+    % Endpoint dot
+    \fill[white] (\bpx, \bpy) circle (3.5pt);
+    \fill[atlantic] (\bpx, \bpy) circle (2.5pt);
+
+    % Label
+    \node[font=\footnotesize, atlantic] at (0,-5.0) {$x_0 = 1.001$};
+  \end{scope}
 
 \end{tikzpicture}
 \end{document}
