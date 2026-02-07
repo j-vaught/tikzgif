@@ -1,34 +1,61 @@
 % Example 02: Bouncing Ball
 % Parabolic trajectory with shadow on the ground plane.
-% Parameter: \PARAM (time in range 0..1, one full bounce cycle)
-% Range: 0 to 1, recommended 40 frames
+% Two full bounces with a fading trail of past positions.
+% Parameter: \PARAM (time in range 0..1, two full bounce cycles)
+% Range: 0 to 1, recommended 60 frames
 % Difficulty: beginner
-% Features demonstrated: mathematical expressions in coordinates, shadows
+% Features demonstrated: mathematical expressions, shadows, trail effect
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \begin{document}
 \begin{tikzpicture}
-  \useasboundingbox (-0.5,-0.5) rectangle (8.5,5.5);
+  \useasboundingbox (-0.5,-0.8) rectangle (10.5,5.5);
+
   % Ground
-  \fill[black!10] (-0.5,-0.5) rectangle (8.5,0);
-  \draw[thick] (-0.5,0) -- (8.5,0);
-  % Horizontal position: linear in time
-  \pgfmathsetmacro{\xpos}{\PARAM * 8}
-  % Vertical position: parabolic (peak at t=0.5)
-  \pgfmathsetmacro{\ypos}{4 * 4 * \PARAM * (1 - \PARAM)}
-  % Shadow size inversely proportional to height
-  \pgfmathsetmacro{\shadowscale}{1 - 0.6 * 4 * \PARAM * (1 - \PARAM)}
-  \pgfmathsetmacro{\shadowalpha}{80 - 50 * 4 * \PARAM * (1 - \PARAM) / 4}
-  % Shadow on the ground
+  \fill[black!10] (-0.5,-0.8) rectangle (10.5,0);
+  \draw[thick] (-0.5,0) -- (10.5,0);
+
+  % Trajectory guide (faint) -- two arcs
+  \draw[dashed, gray!40, thin]
+    plot[domain=0:0.5, samples=40, variable=\t]
+    ({\t * 20}, {4 * 4 * (2*\t) * (1 - 2*\t)});
+  \draw[dashed, gray!40, thin]
+    plot[domain=0.5:1, samples=40, variable=\t]
+    ({\t * 20 - 10}, {4 * 4 * (2*\t - 1) * (1 - (2*\t - 1))});
+
+  % Helper macro: compute y height from global time t in [0,1]
+  % Two bounces: local_t = frac(2*t), y = 4*4*local_t*(1-local_t)
+  % x position is always linear: x = t * 10
+
+  % Trail: draw past positions as fading circles
+  \foreach \k in {1,2,...,15} {
+    \pgfmathsetmacro{\tpast}{max(\PARAM - \k * 0.012, 0)}
+    \pgfmathsetmacro{\xpast}{\tpast * 10}
+    % local time for bounce: frac(2*t)
+    \pgfmathsetmacro{\tlocal}{2*\tpast - floor(2*\tpast)}
+    \pgfmathsetmacro{\ypast}{4 * 4 * \tlocal * (1 - \tlocal)}
+    \pgfmathsetmacro{\opac}{0.35 * (1 - \k/16)}
+    \pgfmathsetmacro{\sz}{0.28 * (1 - \k/20)}
+    \fill[red!50!black, opacity=\opac] (\xpast, \ypast) circle (\sz);
+  }
+
+  % Current position
+  \pgfmathsetmacro{\xpos}{\PARAM * 10}
+  % Two bounces: local time wraps twice in [0,1]
+  \pgfmathsetmacro{\tlocal}{2*\PARAM - floor(2*\PARAM)}
+  \pgfmathsetmacro{\ypos}{4 * 4 * \tlocal * (1 - \tlocal)}
+
+  % Shadow on the ground (shrinks when ball is high)
+  \pgfmathsetmacro{\shadowscale}{1 - 0.5 * \ypos / 4}
+  \pgfmathsetmacro{\shadowalpha}{70 - 40 * \ypos / 4}
   \fill[black!\shadowalpha, opacity=0.4]
     (\xpos, 0) ellipse ({\shadowscale * 0.5} and 0.08);
+
   % Ball
   \shade[ball color=red!70!black] (\xpos, \ypos) circle (0.35);
-  % Trajectory guide (faint)
-  \draw[dashed, gray!50, thin]
-    plot[domain=0:1, samples=50, variable=\t]
-    ({\t * 8}, {4 * 4 * \t * (1 - \t)});
+
   % Label
-  \node[below right] at (0.2,5.2) {\small $t = \PARAM$};
+  \node[below right, font=\small] at (0.2,5.2)
+    {$t = \pgfmathprintnumber[fixed, precision=2]{\PARAM}$};
 \end{tikzpicture}
 \end{document}
