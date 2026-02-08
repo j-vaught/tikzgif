@@ -33,43 +33,55 @@
   % #1=startX, #2=startY, #3=angle, #4=length, #5=depth, #6=thickness
   \newcommand{\branch}[6]{%
     \pgfmathtruncatemacro{\dep}{#5}%
-    \ifnum\dep<\maxdepth
+    %
+    % BASE CASE: terminal leaf node
+    \ifnum\dep=\maxdepth
+      % Consume 3 rnd values for deterministic RNG sequence
+      \pgfmathsetmacro{\leafsz}{0.06 + 0.03 * rnd}%
+      \pgfmathsetmacro{\leafclr}{40 + 30 * rnd}%
+      \pgfmathsetmacro{\leafopa}{0.6 + 0.3 * rnd}%
+      % Draw leaf if parent depth is visible
+      \pgfmathsetmacro{\parentvis}{(\dep - 1) < \currentdepth ? 1 : 0}%
+      \ifdim\parentvis pt>0.5pt
+        \pgfmathsetmacro{\parentgrow}{min(1, \currentdepth - (\dep - 1))}%
+        \pgfmathsetmacro{\finalopa}{\leafopa * \parentgrow}%
+        \fill[horseshoe!\leafclr!grass, opacity=\finalopa] (#1, #2) circle (\leafsz);%
+      \fi
+    \else
+      % Check if this depth is visible yet
       \pgfmathsetmacro{\branchvisible}{\dep < \currentdepth ? 1 : 0}%
       \ifdim\branchvisible pt>0.5pt
-        \pgfmathsetmacro{\growfactor}{min(1, \currentdepth - \dep)}%
-        \pgfmathsetmacro{\ex}{#1 + #4 * sin(#3)}%
-        \pgfmathsetmacro{\ey}{#2 + #4 * cos(#3)}%
-        \pgfmathsetmacro{\ix}{#1 + \growfactor * #4 * sin(#3)}%
-        \pgfmathsetmacro{\iy}{#2 + \growfactor * #4 * cos(#3)}%
+        % Consume 2 rand values for jitter
+        \pgfmathsetmacro{\angleJitter}{5 * rand}%
+        \pgfmathsetmacro{\lenJitter}{1 + 0.15 * rand}%
         %
-        % Color: fast transition to green (depth 2+ fully green)
-        \pgfmathtruncatemacro{\greenpct}{min(100, max(0, \dep * 50))}%
-        \draw[line width=#6 pt, line cap=round, horseshoe!\greenpct!warmgrey]
+        \pgfmathsetmacro{\growfactor}{min(1, \currentdepth - \dep)}%
+        \pgfmathsetmacro{\adjlen}{#4 * \lenJitter}%
+        \pgfmathsetmacro{\ix}{#1 + \growfactor * \adjlen * sin(#3 + \angleJitter)}%
+        \pgfmathsetmacro{\iy}{#2 + \growfactor * \adjlen * cos(#3 + \angleJitter)}%
+        %
+        % Color: gradual transition from brown trunk to green tips
+        \pgfmathtruncatemacro{\greenpct}{min(100, max(0, \dep * 15))}%
+        \draw[line width=#6 pt, line cap=round, horseshoe!\greenpct!warmgrey!80!black]
           (#1, #2) -- (\ix, \iy);%
         %
-        % Recurse if fully grown
+        % Recurse into children only when fully grown
         \ifdim\growfactor pt>0.99pt
-          \pgfmathsetmacro{\newlen}{#4 * 0.7}%
-          \pgfmathsetmacro{\newthick}{max(0.2, #6 * 0.65)}%
+          \pgfmathsetmacro{\ex}{#1 + \adjlen * sin(#3 + \angleJitter)}%
+          \pgfmathsetmacro{\ey}{#2 + \adjlen * cos(#3 + \angleJitter)}%
+          \pgfmathsetmacro{\newlen}{#4 * 0.68}%
+          \pgfmathsetmacro{\newthick}{max(0.15, #6 * 0.62)}%
           \pgfmathtruncatemacro{\newdep}{\dep + 1}%
-          % Moderate splay, slightly increasing for canopy spread
-          \pgfmathsetmacro{\splay}{18 + \dep * 1.5}%
-          \pgfmathsetmacro{\skew}{2 * (-1)^\dep}%
+          \pgfmathsetmacro{\splay}{22 - \dep * 0.5}%
           %
-          \pgfmathsetmacro{\angleL}{#3 - \splay + \skew}%
+          \pgfmathsetmacro{\angleL}{#3 + \angleJitter - \splay}%
+          \pgfmathsetmacro{\angleR}{#3 + \angleJitter + \splay}%
           \begingroup
             \branch{\ex}{\ey}{\angleL}{\newlen}{\newdep}{\newthick}%
           \endgroup
-          \pgfmathsetmacro{\angleR}{#3 + \splay + \skew}%
-          \branch{\ex}{\ey}{\angleR}{\newlen}{\newdep}{\newthick}%
-        \fi
-        %
-        % Leaf dots at outer depths
-        \ifnum\dep>4
-          \ifdim\growfactor pt>0.5pt
-            \pgfmathsetmacro{\leafsz}{0.04 + 0.005 * \dep}%
-            \fill[horseshoe!45!grass, opacity=0.75] (\ix, \iy) circle (\leafsz);%
-          \fi
+          \begingroup
+            \branch{\ex}{\ey}{\angleR}{\newlen}{\newdep}{\newthick}%
+          \endgroup
         \fi
       \fi
     \fi
@@ -79,17 +91,17 @@
   \fill[horseshoe!30!warmgrey!20] (-5, -0.3) rectangle (5, 0);
   \draw[warmgrey, thick] (-5, 0) -- (5, 0);
 
-  % Short thick trunk
-  \pgfmathsetmacro{\trunktop}{0.9}
-  \draw[line width=7pt, line cap=round, warmgrey!60!black] (0, 0) -- (0, \trunktop);
+  % Trunk
+  \pgfmathsetmacro{\trunktop}{1.1}
+  \draw[line width=8pt, line cap=round, warmgrey!60!black] (0, 0) -- (0, \trunktop);
 
-  % Three main limbs for a full dome shape:
-  % Center limb (tallest, fills the V gap)
-  \branch{0}{\trunktop}{0}{1.5}{0}{3.8}
-  % Left limb (starts at depth 1 so it has one fewer level = shorter)
-  \branch{0}{\trunktop}{-32}{1.1}{1}{2.4}
+  % Three main limbs for a full crown
+  % Center limb (tallest, fills the gap between side limbs)
+  \branch{0}{\trunktop}{0}{1.6}{0}{4.0}
+  % Left limb (starts at depth 1 so it's shorter)
+  \branch{0}{\trunktop}{-24}{1.2}{1}{2.8}
   % Right limb
-  \branch{0}{\trunktop}{32}{1.1}{1}{2.4}
+  \branch{0}{\trunktop}{24}{1.2}{1}{2.8}
 
   % Label
   \node[below, font=\small] at (0, -0.8)
