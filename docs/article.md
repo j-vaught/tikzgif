@@ -46,3 +46,18 @@ That sounds obvious, but it forced a lot of early decisions:
 I intentionally did not build a new drawing DSL or ask people to abandon TikZ habits. If you already know how to author diagrams in TeX, this should feel like adding one small convention, not adopting a new ecosystem.
 
 ![Gear Train](../outputs/12_gear_train.gif)
+
+## 4. How the Pipeline Actually Runs
+
+At a high level, `tikzgif` turns one parameterized source into an ordered list of frame results, then assembles them.
+
+1. Parse template and detect package/tool requirements.
+2. Generate frame specs by replacing the parameter token with interpolated values.
+3. Compile frames in parallel in isolated directories.
+4. Estimate a stable bounding envelope and normalize output extents.
+5. Convert resulting PDFs to images through the best available backend.
+6. Assemble target format (GIF/MP4/WebP/APNG/SVG/spritesheet/PDF animation).
+
+The pipeline boundary choices mattered more than any individual trick. Keeping stages explicit made it easier to reason about failure handling (`abort`, `skip`, `retry`) and easier to test each part independently.
+
+I also leaned into deterministic structure where possible: frame index ordering, content hashing, and predictable naming all make debugging far less painful than shell-script style glue.
