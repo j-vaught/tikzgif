@@ -137,3 +137,33 @@ Then assembly (`tikzgif/assembly.py`) targets multiple destinations:
 I try to treat format choice as a product decision, not a codec religion problem. If the artifact is going to GitHub, GIF is often enough. If it is going into a talk deck or a polished demo, MP4/WebP usually wins on quality-per-byte.
 
 ![Phase Portrait](../outputs/25_phase_portrait.gif)
+
+## 8. Why It Feels Fast: Parallelism, Caching, and Stable Bounds
+
+Three design decisions changed this project from “useful script” to “daily tool.”
+
+### Parallel compilation
+
+Frames compile with a process pool so work scales with available CPU cores. This is not an optimization garnish; it is the baseline strategy for anything beyond toy animations.
+
+```python
+with ProcessPoolExecutor(max_workers=workers) as ex:
+    futures = [ex.submit(_compile_single_frame, ... ) for spec in to_compile]
+```
+
+### Content-addressable cache
+
+Each frame source gets a SHA-256 hash. If the generated content for a frame did not change, I skip recompilation and reuse cached artifacts. That makes iterative style edits and partial reruns dramatically cheaper.
+
+### Bounding-box normalization
+
+A small per-frame extent change causes visible jitter in animations. The two-pass envelope strategy probes representative frames, unions bounds, and applies a consistent canvas envelope.
+
+```python
+# Probe subset, union all bboxes, then normalize every frame to envelope.
+envelope = compute_envelope(probe_boxes).padded(config.bbox_padding_bp)
+```
+
+This trio is the difference between “I can render this once” and “I can iterate creatively without dreading reruns.”
+
+![Four-Bar Linkage](../outputs/31_four_bar_linkage.gif)
