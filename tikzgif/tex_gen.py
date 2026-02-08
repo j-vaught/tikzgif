@@ -223,12 +223,18 @@ def _build_frame_body(
     body = body.replace(parsed.param_token, value_str)
 
     if enforced_bbox is not None and not parsed.has_bounding_box:
-        bbox_cmd = "  " + enforced_bbox.to_tikz_clip() + "\n"
-        pattern = re.compile(r"(\\begin\s*\{tikzpicture\}[^\n]*\n)")
-        m = pattern.search(body)
+        # Inject bbox BEFORE \end{tikzpicture} using \pgfresetboundingbox
+        # to avoid conflicting with pgfplots' internal axis calculations.
+        # Placing \useasboundingbox before axes causes "Dimension too large"
+        # errors because it interferes with pgfplots corner computation.
+        bbox_reset = (
+            "  \\pgfresetboundingbox\n"
+            "  " + enforced_bbox.to_tikz_clip() + "\n"
+        )
+        end_tikz = re.compile(r"(\\end\s*\{tikzpicture\})")
+        m = end_tikz.search(body)
         if m:
-            insert_pos = m.end()
-            body = body[:insert_pos] + bbox_cmd + body[insert_pos:]
+            body = body[:m.start()] + bbox_reset + body[m.start():]
 
     return body
 

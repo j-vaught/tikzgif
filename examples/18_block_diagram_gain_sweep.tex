@@ -39,8 +39,8 @@
 % 2nd-order plant: G(s) = 1/(s(s+1)), closed-loop: K/(s^2+s+K)
 % wn = sqrt(K), zeta = 1/(2*sqrt(K))
 \pgfmathsetmacro{\wn}{sqrt(max(\K, 0.01))}
-\pgfmathsetmacro{\zeta}{1.0 / (2.0 * \wn)}
-\pgfmathsetmacro{\zetaC}{min(\zeta, 5.0)}
+\pgfmathsetmacro{\zetaRaw}{1.0 / (2.0 * \wn)}
+\pgfmathsetmacro{\zetaC}{min(\zetaRaw, 5.0)}
 \pgfmathsetmacro{\sigma}{\zetaC * \wn}
 \pgfmathsetmacro{\wdSq}{max(\wn*\wn - \sigma*\sigma, 0.001)}
 \pgfmathsetmacro{\wdamp}{sqrt(\wdSq)}
@@ -127,8 +127,8 @@
         \pgfmathsetmacro{\sqZ}{sqrt(\zetaC*\zetaC - 1)}
         \pgfmathsetmacro{\sA}{(-\zetaC + \sqZ)*\wn}
         \pgfmathsetmacro{\sB}{(-\zetaC - \sqZ)*\wn}
-        \pgfmathsetmacro{\cA}{\sB / (\sB - \sA)}
-        \pgfmathsetmacro{\cB}{\sA / (\sA - \sB)}
+        \pgfmathsetmacro{\cA}{\sB / (\sA - \sB)}
+        \pgfmathsetmacro{\cB}{\sA / (\sB - \sA)}
         \addplot[domain=0:8, samples=300, horseshoe, very thick]
             {1 + \cA * exp(\sA * x) + \cB * exp(\sB * x)};
     \fi
@@ -137,14 +137,14 @@
     \ifnum\isunder>0
         \pgfmathsetmacro{\tpeak}{3.14159 / \wdamp}
         \pgfmathsetmacro{\tpC}{min(\tpeak, 7.5)}
+        \pgfmathsetmacro{\MpPctV}{\Mp * 100}
         % Horizontal Mp line
         \addplot[dashed, garnet, very thin] coordinates {(0, {1+\Mp}) (\tpC, {1+\Mp})};
         \draw[<->, garnet, thin]
             (axis cs:{\tpC + 0.3}, 1) -- (axis cs:{\tpC + 0.3}, {1+\Mp});
         \node[font=\tiny, garnet, anchor=west]
-            at (axis cs:{\tpC + 0.4}, {1+\Mp*0.5+1})
+            at (axis cs:{\tpC + 0.4}, {1 + \Mp*0.5})
             {$\pgfmathprintnumber[fixed,precision=0]{\MpPctV}\%$};
-        \pgfmathsetmacro{\MpPctV}{\Mp * 100}
     \fi
 \end{axis}
 
