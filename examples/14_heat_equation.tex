@@ -25,13 +25,13 @@
 
 \begin{document}
 \begin{tikzpicture}
-  \useasboundingbox (-8bp, -16bp) rectangle (310bp, 230bp);
+  \useasboundingbox (-8bp, -16bp) rectangle (310bp, 210bp);
   \pgfmathsetmacro{\wt}{\PARAM}  % phase angle wt
 
   % --- Top Panel: Temperature Profile T(x) ---
   \begin{axis}[
     name=topplot,
-    at={(0.8cm,1.9cm)},
+    at={(1.2cm,1.9cm)},
     width=10cm, height=5.5cm,
     domain=0:5,
     samples=200,
