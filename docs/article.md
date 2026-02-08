@@ -30,3 +30,19 @@ The core issue was not “LaTeX is slow.” The issue was **coordination overhea
 - If I changed one line in the template, I still paid near-full compile cost.
 
 I wanted to keep TikZ itself as the authoring interface, but automate everything around it: frame generation, compilation strategy, caching, conversion, and assembly.
+
+## 3. The Design Target: One Command, Many Outputs
+
+The design goal for `tikzgif` was strict: **I should be able to hand someone a single `.tex` file and one CLI command, and they should get a usable animation artifact**.
+
+That sounds obvious, but it forced a lot of early decisions:
+
+- Keep parameterization dead simple (`\PARAM` token by default).
+- Make frame compilation parallel by default.
+- Normalize frame extents so output is stable.
+- Support more than GIF from day one.
+- Auto-detect toolchains and degrade gracefully where possible.
+
+I intentionally did not build a new drawing DSL or ask people to abandon TikZ habits. If you already know how to author diagrams in TeX, this should feel like adding one small convention, not adopting a new ecosystem.
+
+![Gear Train](../outputs/12_gear_train.gif)
