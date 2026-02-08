@@ -1,15 +1,16 @@
-% Example 16: Antenna Radiation Pattern
-% Polar radiation pattern f(theta) = |sin(theta)|^n with variable directivity.
-% Parameter: \PARAM (radiation pattern exponent, range 1.0..8.0)
-% Range: 1.0 to 8.0, recommended 30 frames
-% Difficulty: intermediate
-% Features demonstrated: polar plots, dB-scale grid, half-power beamwidth,
-%   ghost reference pattern, directivity readout, sidelobe fill distinction
+% Example 16: Dual Antenna Radiation Patterns vs Frequency
+% Side-by-side microstrip patch and dipole antennas with polar radiation
+% patterns that evolve as frequency sweeps from f/f0 = 1.0 to 3.0.
+% Parameter: \PARAM (frequency ratio f/f0, range 1.0..3.0)
+% Range: 1.0 to 3.0, recommended 60 frames at 15 fps
+% Difficulty: advanced
+% Features demonstrated: dual polar plots, antenna schematics, frequency sweep,
+%   narrowband vs broadband behavior, ghost reference patterns, dB-scale grid
 
-\documentclass[border=10pt,tikz]{standalone}
+\documentclass[border=5pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{amsmath}
-\usetikzlibrary{arrows.meta}
+\usetikzlibrary{arrows.meta,patterns,decorations.markings}
 
 % USC Brand Colors
 \definecolor{garnet}{HTML}{73000A}
@@ -25,79 +26,267 @@
 \begin{document}
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
-\pgfmathsetmacro{\nExp}{\PARAM}
-\pgfmathsetmacro{\Rmax}{3.5}
+% Clip to bounding box
+\clip (-9,-8) rectangle (9,6);
+\path[use as bounding box] (-9,-8) rectangle (9,6);
 
-% dB-scale concentric grid rings: -3dB, -10dB, -20dB, 0dB
-% Map: R = Rmax * 10^(dB/20)
+% ============================================================
+% PARAMETER SETUP
+% ============================================================
+\pgfmathsetmacro{\freqRatio}{\PARAM}
+\pgfmathsetmacro{\Rmax}{2.8}
+\pgfmathsetmacro{\Qfactor}{10}
+
+% Patch efficiency: eta = 1 / (1 + Q^2*(f/f0 - f0/f)^2)
+\pgfmathsetmacro{\mismatchArg}{\freqRatio - 1.0/\freqRatio}
+\pgfmathsetmacro{\etaVal}{1.0 / (1.0 + \Qfactor*\Qfactor*\mismatchArg*\mismatchArg)}
+\pgfmathsetmacro{\sqrtEta}{sqrt(\etaVal)}
+\pgfmathsetmacro{\etaPct}{\etaVal * 100}
+
+% Dipole electrical length in wavelengths
+\pgfmathsetmacro{\elecLen}{0.5 * \freqRatio}
+
+% uDeg for dipole: 90 * freqRatio (= pi/2 * f/f0 in radians, but pgfmath uses degrees)
+\pgfmathsetmacro{\uDeg}{90.0 * \freqRatio}
+
+% patchArg for patch: 90 * freqRatio
+\pgfmathsetmacro{\patchArg}{90.0 * \freqRatio}
+
+% dB-scale grid ring radii
 \pgfmathsetmacro{\RdBzero}{\Rmax}
-\pgfmathsetmacro{\RdBthree}{\Rmax * 0.7079}  % 10^(-3/20)
-\pgfmathsetmacro{\RdBten}{\Rmax * 0.3162}    % 10^(-10/20)
-\pgfmathsetmacro{\RdBtwenty}{\Rmax * 0.1}    % 10^(-20/20)
+\pgfmathsetmacro{\RdBthree}{\Rmax * 0.7079}
+\pgfmathsetmacro{\RdBten}{\Rmax * 0.3162}
+\pgfmathsetmacro{\RdBtwenty}{\Rmax * 0.1}
 
-% Draw dB rings
-\draw[warmgrey!30, thin] (0,0) circle (\RdBzero);
-\node[font=\tiny, warmgrey!50, anchor=south west] at ({\RdBzero*0.707}, {\RdBzero*0.707}) {0\,dB};
-\draw[warmgrey!30, thin] (0,0) circle (\RdBthree);
-\node[font=\tiny, warmgrey!50, anchor=south west] at ({\RdBthree*0.707}, {\RdBthree*0.707}) {-3};
-\draw[warmgrey!25, thin] (0,0) circle (\RdBten);
-\node[font=\tiny, warmgrey!40, anchor=south west] at ({\RdBten*0.707}, {\RdBten*0.707}) {-10};
-\draw[warmgrey!20, thin] (0,0) circle (\RdBtwenty);
-\node[font=\tiny, warmgrey!30, anchor=south west] at ({\RdBtwenty*0.707}, {\RdBtwenty*0.707}) {-20};
+% ============================================================
+% COORDINATE CONVENTION
+% ============================================================
+% TikZ polar angle \t: 0=right, 90=up, 180=left, 270=down
+% Physical angle theta_phys (from dipole/vertical axis):
+%   theta_phys = 90 - \t, so cos(theta_phys)=sin(\t), sin(theta_phys)=cos(\t)
+%
+% DIPOLE (vertical axis = up):
+%   E = [cos(u*cos(theta_phys)) - cos(u)] / sin(theta_phys)
+%     = [cos(u*sin(\t)) - cos(u)] / cos(\t)
+%   Nulls at \t=90,270 (along dipole axis). Peaks at \t=0,180 (broadside).
+%
+% PATCH (radiates upward = broadside):
+%   E = sqrt(eta) * |cos(patchArg * sin(theta_phys))| * |cos(theta_phys)|
+%     = sqrt(eta) * |cos(patchArg * cos(\t))| * |sin(\t)|
+%   Peaks at \t=90 (up). Zero in lower hemisphere (\t in 181..359).
 
-% Angle markers
-\foreach \a in {0, 30, 60, ..., 330} {
-    \draw[warmgrey!20, thin] (0,0) -- (\a:\Rmax+0.2);
-    \node[font=\tiny, warmgrey!50] at (\a:\Rmax+0.5) {$\a^\circ$};
-}
+% ============================================================
+% DIPOLE NORMALIZATION - sample at multiple TikZ angles to find peak
+% ============================================================
+% Sampling at \t = 0 (broadside), 15, 30, 36, 45, 60, 75 degrees
+% where cos(\t) is safely > 0
+\pgfmathsetmacro{\dipSampA}{abs(cos(0)) > 0.1 ? abs((cos(\uDeg * sin(0)) - cos(\uDeg)) / cos(0)) : 0}
+\pgfmathsetmacro{\dipSampB}{abs(cos(15)) > 0.1 ? abs((cos(\uDeg * sin(15)) - cos(\uDeg)) / cos(15)) : 0}
+\pgfmathsetmacro{\dipSampC}{abs(cos(30)) > 0.1 ? abs((cos(\uDeg * sin(30)) - cos(\uDeg)) / cos(30)) : 0}
+\pgfmathsetmacro{\dipSampD}{abs(cos(36)) > 0.1 ? abs((cos(\uDeg * sin(36)) - cos(\uDeg)) / cos(36)) : 0}
+\pgfmathsetmacro{\dipSampE}{abs(cos(45)) > 0.1 ? abs((cos(\uDeg * sin(45)) - cos(\uDeg)) / cos(45)) : 0}
+\pgfmathsetmacro{\dipSampF}{abs(cos(60)) > 0.1 ? abs((cos(\uDeg * sin(60)) - cos(\uDeg)) / cos(60)) : 0}
+\pgfmathsetmacro{\dipSampG}{abs(cos(75)) > 0.1 ? abs((cos(\uDeg * sin(75)) - cos(\uDeg)) / cos(75)) : 0}
+\pgfmathsetmacro{\dipNorm}{max(max(max(\dipSampA,\dipSampB),max(\dipSampC,\dipSampD)),max(max(\dipSampE,\dipSampF),\dipSampG))}
+\pgfmathsetmacro{\dipNorm}{max(\dipNorm, 0.001)}
 
-% Ghost reference pattern (n=1 dipole, faint)
-\fill[warmgrey!10, opacity=0.4, samples=360, domain=0:360, variable=\t]
-    plot ({\t}: {\Rmax * abs(sin(\t))}) -- cycle;
+% ============================================================
+% TITLE
+% ============================================================
+\node[font=\large\bfseries, anchor=north] at (0, 5.8)
+    {Antenna Radiation Patterns vs.\ Frequency};
 
-% Main pattern fill — main lobe in garnet, sidelobes in atlantic
-% For sin^n, when n>=2 sidelobes are smaller; use single color for simplicity
-% Main lobe fill
-\fill[garnet!15, opacity=0.4, samples=360, domain=0:360, variable=\t]
-    plot ({\t}: {\Rmax * (abs(sin(\t)) > 0.001 ? pow(abs(sin(\t)), \nExp) : 0)})
-    -- cycle;
+% ============================================================
+% PANEL LABELS
+% ============================================================
+\node[font=\normalsize\bfseries, garnet, anchor=south] at (-4.5, 5.0)
+    {Microstrip Patch};
+\node[font=\normalsize\bfseries, atlantic, anchor=south] at (4.5, 5.0)
+    {Dipole};
 
-% Main pattern outline
-\draw[garnet, very thick, samples=360, domain=0:360, variable=\t]
-    plot ({\t}: {\Rmax * (abs(sin(\t)) > 0.001 ? pow(abs(sin(\t)), \nExp) : 0)});
+% ============================================================
+% PATCH ANTENNA DRAWING (left, centered at x=-4.5, y~2.5..4.5)
+% ============================================================
+\begin{scope}[shift={(-4.5, 3.2)}]
+    % Ground plane
+    \fill[warmgrey!50] (-2.2, -0.9) rectangle (2.2, -0.7);
+    \draw[warmgrey!70, thick] (-2.2, -0.7) -- (2.2, -0.7);
+    % Hatching on ground
+    \foreach \gx in {-2.0,-1.6,...,2.0} {
+        \draw[warmgrey!40, thin] (\gx, -0.9) -- (\gx+0.2, -0.7);
+    }
+    \node[font=\tiny, warmgrey, anchor=west] at (2.3, -0.8) {Ground};
 
-% Half-power beamwidth arc
-% theta_3dB = asin(0.5^(1/n)) in degrees
-\pgfmathsetmacro{\halfPowerAngle}{asin(pow(0.5, 1.0/\nExp))}
-\pgfmathsetmacro{\thetaUpper}{90 - \halfPowerAngle}
-\pgfmathsetmacro{\thetaLower}{90 + \halfPowerAngle}
-\pgfmathsetmacro{\beamWidth}{2.0 * \halfPowerAngle}
-% Draw arc at the -3dB radius
-\draw[rose, thick] (\thetaUpper:\RdBthree)
-    arc (\thetaUpper:\thetaLower:\RdBthree);
-% Radial lines showing beamwidth
-\draw[rose, thin, dashed] (0,0) -- (\thetaUpper:\Rmax*0.85);
-\draw[rose, thin, dashed] (0,0) -- (\thetaLower:\Rmax*0.85);
-% Beamwidth label
-\node[font=\tiny, rose, anchor=west]
-    at ({(\RdBthree+0.15)*cos(90)}, {(\RdBthree+0.15)*sin(\thetaLower)})
-    {BW $= \pgfmathprintnumber[fixed,precision=1]{\beamWidth}^\circ$};
+    % Substrate
+    \fill[sandstorm] (-1.6, -0.7) rectangle (1.6, -0.2);
+    \draw[warmgrey!50, thin] (-1.6, -0.7) rectangle (1.6, -0.2);
+    \node[font=\tiny, warmgrey, anchor=west] at (1.7, -0.45) {Substrate};
 
-% Dipole antenna
-\draw[black!80, line width=2pt] (0, -0.35) -- (0, 0.35);
-\filldraw[black] (0, 0.35) circle (1.5pt);
-\filldraw[black] (0, -0.35) circle (1.5pt);
+    % Patch element
+    \fill[garnet!25] (-1.2, -0.2) rectangle (1.2, 0.1);
+    \draw[garnet, thick] (-1.2, -0.2) rectangle (1.2, 0.1);
+    \node[font=\tiny, garnet, anchor=west] at (1.3, -0.05) {Patch};
 
-% Directivity readout: D = 2n+1 for sin^n pattern (approximate)
-\pgfmathsetmacro{\Dval}{2*\nExp + 1}
-\pgfmathsetmacro{\DdBi}{10 * ln(\Dval) / ln(10)}
+    % Feed probe
+    \draw[black!70, thick] (0, -0.9) -- (0, -0.2);
+    \filldraw[black!70] (0, -0.2) circle (1.2pt);
 
-% Info box
-\node[anchor=south west, font=\footnotesize, fill=white, inner sep=4pt,
-      draw=warmgrey!50, fill opacity=0.9, text opacity=1, align=left]
-    at (-\Rmax-0.8, -\Rmax-0.3)
-    {$f(\theta) = |\sin\theta|^{\pgfmathprintnumber[fixed,precision=1]{\nExp}}$\\[2pt]
-     $D \approx \pgfmathprintnumber[fixed,precision=1]{\DdBi}$ dBi};
+    % E-field arrows from patch edges (opacity scaled by sqrtEta)
+    \foreach \ey in {-0.15, -0.05, 0.05} {
+        \draw[rose, thick, ->, opacity=\sqrtEta] (-1.2, \ey) -- (-1.7, \ey+0.15);
+        \draw[rose, thick, ->, opacity=\sqrtEta] (1.2, \ey) -- (1.7, \ey+0.15);
+    }
+\end{scope}
+
+% ============================================================
+% DIPOLE ANTENNA DRAWING (right, centered at x=4.5, y~2.5..4.5)
+% ============================================================
+\begin{scope}[shift={(4.5, 3.2)}]
+    % Upper arm
+    \draw[atlantic, line width=3pt, line cap=round] (0, 0.15) -- (0, 1.3);
+    % Lower arm
+    \draw[atlantic, line width=3pt, line cap=round] (0, -0.15) -- (0, -1.3);
+
+    % Feed gap
+    \filldraw[atlantic] (0, 0.15) circle (2pt);
+    \filldraw[atlantic] (0, -0.15) circle (2pt);
+    % Source symbol
+    \node[font=\small, atlantic] at (0.35, 0) {$\sim$};
+
+    % Current distribution (sinusoidal standing wave)
+    \pgfmathsetmacro{\halfSins}{\freqRatio}
+    \draw[congaree!40, thick, samples=80, domain=-1.3:1.3, variable=\yy]
+        plot ({0.4 * sin(180 * \halfSins * (\yy + 1.3) / 2.6)}, {\yy});
+
+    % Length label
+    \draw[black!60, thin, |->|] (-0.7, -1.3) -- (-0.7, 1.3);
+    \node[font=\tiny, black!60, anchor=east, align=right] at (-0.8, 0)
+        {$L = 0.5\lambda_0$};
+
+    % Electrical length (updates with frequency)
+    \node[font=\tiny, congaree, anchor=west] at (0.7, -0.8)
+        {$= \pgfmathprintnumber[fixed, precision=1]{\elecLen}\lambda$};
+\end{scope}
+
+% ============================================================
+% PATCH POLAR PLOT (left panel, centered at (-4.5, -3.0))
+% ============================================================
+\begin{scope}[shift={(-4.5, -3.0)}]
+    % dB grid rings
+    \draw[warmgrey!30, thin] (0,0) circle (\RdBzero);
+    \draw[warmgrey!30, thin] (0,0) circle (\RdBthree);
+    \draw[warmgrey!25, thin] (0,0) circle (\RdBten);
+    \draw[warmgrey!20, thin] (0,0) circle (\RdBtwenty);
+
+    % dB labels
+    \node[font=\tiny, warmgrey!50, anchor=south west] at ({\RdBzero*0.707}, {\RdBzero*0.707}) {0\,dB};
+    \node[font=\tiny, warmgrey!50, anchor=south west] at ({\RdBthree*0.707}, {\RdBthree*0.707}) {$-3$};
+    \node[font=\tiny, warmgrey!40, anchor=south west] at ({\RdBten*0.707}, {\RdBten*0.707}) {$-10$};
+
+    % Angle markers
+    \foreach \a in {0, 30, 60, ..., 330} {
+        \draw[warmgrey!20, thin] (0,0) -- (\a:\Rmax+0.15);
+        \node[font=\tiny, warmgrey!40] at (\a:\Rmax+0.4) {$\a^\circ$};
+    }
+
+    % Ghost reference pattern (f/f0=1, patch at resonance)
+    % E = |cos(90*cos(\t))| * |sin(\t)|, upper hemisphere only (\t in 1..179)
+    \fill[warmgrey!10, opacity=0.4, samples=360, domain=0:360, variable=\t]
+        plot ({\t}: {
+            (\t > 1 && \t < 179) ?
+                \Rmax * abs(cos(90 * cos(\t))) * abs(sin(\t))
+            : 0
+        }) -- cycle;
+
+    % Main patch pattern
+    % E = sqrtEta * |cos(patchArg*cos(\t))| * |sin(\t)|, upper hemisphere only
+    \fill[garnet!15, opacity=0.4, samples=360, domain=0:360, variable=\t]
+        plot ({\t}: {
+            (\t > 1 && \t < 179) ?
+                \Rmax * \sqrtEta * abs(cos(\patchArg * cos(\t))) * abs(sin(\t))
+            : 0
+        }) -- cycle;
+
+    \draw[garnet, very thick, samples=360, domain=0:360, variable=\t]
+        plot ({\t}: {
+            (\t > 1 && \t < 179) ?
+                \Rmax * \sqrtEta * abs(cos(\patchArg * cos(\t))) * abs(sin(\t))
+            : 0
+        });
+
+    % Efficiency label
+    \node[anchor=north, font=\tiny, fill=white, fill opacity=0.8, text opacity=1,
+          inner sep=2pt, draw=warmgrey!30] at (0, -\Rmax-0.3)
+        {$\eta = \pgfmathprintnumber[fixed,precision=0]{\etaPct}\%$};
+\end{scope}
+
+% ============================================================
+% DIPOLE POLAR PLOT (right panel, centered at (4.5, -3.0))
+% ============================================================
+\begin{scope}[shift={(4.5, -3.0)}]
+    % dB grid rings
+    \draw[warmgrey!30, thin] (0,0) circle (\RdBzero);
+    \draw[warmgrey!30, thin] (0,0) circle (\RdBthree);
+    \draw[warmgrey!25, thin] (0,0) circle (\RdBten);
+    \draw[warmgrey!20, thin] (0,0) circle (\RdBtwenty);
+
+    % dB labels
+    \node[font=\tiny, warmgrey!50, anchor=south west] at ({\RdBzero*0.707}, {\RdBzero*0.707}) {0\,dB};
+    \node[font=\tiny, warmgrey!50, anchor=south west] at ({\RdBthree*0.707}, {\RdBthree*0.707}) {$-3$};
+    \node[font=\tiny, warmgrey!40, anchor=south west] at ({\RdBten*0.707}, {\RdBten*0.707}) {$-10$};
+
+    % Angle markers
+    \foreach \a in {0, 30, 60, ..., 330} {
+        \draw[warmgrey!20, thin] (0,0) -- (\a:\Rmax+0.15);
+        \node[font=\tiny, warmgrey!40] at (\a:\Rmax+0.4) {$\a^\circ$};
+    }
+
+    % Ghost reference pattern (f/f0=1, half-wave dipole)
+    % E = |cos(90*sin(\t)) / cos(\t)|, with denominator clamped
+    % At f/f0=1: cos(u)=cos(90)=0, so E = |cos(90*sin(\t))| / |cos(\t)|
+    \fill[warmgrey!10, opacity=0.4, samples=360, domain=0:360, variable=\t]
+        plot ({\t}: {
+            abs(cos(\t)) > 0.08 ?
+                \Rmax * abs(cos(90 * sin(\t))) / max(abs(cos(\t)), 0.08)
+            : 0
+        }) -- cycle;
+
+    % Main dipole pattern
+    % E = |[cos(u*sin(\t)) - cos(u)] / cos(\t)| / dipNorm
+    \fill[atlantic!15, opacity=0.4, samples=360, domain=0:360, variable=\t]
+        plot ({\t}: {
+            abs(cos(\t)) > 0.08 ?
+                min(\Rmax * abs(cos(\uDeg * sin(\t)) - cos(\uDeg)) / max(abs(cos(\t)), 0.08) / \dipNorm, \Rmax)
+            : 0
+        }) -- cycle;
+
+    \draw[atlantic, very thick, samples=360, domain=0:360, variable=\t]
+        plot ({\t}: {
+            abs(cos(\t)) > 0.08 ?
+                min(\Rmax * abs(cos(\uDeg * sin(\t)) - cos(\uDeg)) / max(abs(cos(\t)), 0.08) / \dipNorm, \Rmax)
+            : 0
+        });
+
+    % Electrical length label
+    \node[anchor=north, font=\tiny, fill=white, fill opacity=0.8, text opacity=1,
+          inner sep=2pt, draw=warmgrey!30] at (0, -\Rmax-0.3)
+        {$L = \pgfmathprintnumber[fixed,precision=1]{\elecLen}\lambda$};
+\end{scope}
+
+% ============================================================
+% FREQUENCY READOUT AND PROGRESS BAR
+% ============================================================
+% Frequency label
+\node[font=\normalsize, anchor=north] at (0, -7.0)
+    {$f\,/\,f_0 = \pgfmathprintnumber[fixed,fixed zerofill,precision=2]{\freqRatio}$};
+
+% Progress bar background
+\fill[warmgrey!20] (-3, -7.55) rectangle (3, -7.35);
+% Progress bar fill
+\pgfmathsetmacro{\barFill}{(\freqRatio - 1.0) / (3.0 - 1.0)}
+\fill[honeycomb] (-3, -7.55) rectangle ({-3 + 6*\barFill}, -7.35);
+% Progress bar border
+\draw[warmgrey!50, thin] (-3, -7.55) rectangle (3, -7.35);
 
 \end{tikzpicture}
 \end{document}
