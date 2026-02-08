@@ -83,3 +83,28 @@ These are some of the outputs that made me confident the pipeline was doing the 
 ![Fourier Series](../outputs/21_fourier_series.gif)
 
 For me, this was a major design lesson: the easiest systems to trust are the ones where each stage has visible artifacts and crisp boundaries.
+
+## 6. Engine Decisions: `pdflatex`, `xelatex`, or `lualatex`
+
+Engine support was non-negotiable because TikZ users do not all live in the same TeX world.
+
+- `pdflatex` is usually the fastest default for pure TikZ and pgfplots workflows.
+- `xelatex` and `lualatex` are necessary when templates depend on Unicode/font packages like `fontspec`.
+- Some packages effectively force LuaLaTeX (`luacode`, `luatexbase`, `tikz-feynman`).
+
+The engine resolver in `tikzgif/engine.py` follows this pattern:
+
+```python
+unicode_packages = {"fontspec", "unicode-math", "luacode", "luatexbase"}
+lua_only = {"luacode", "luatexbase", "tikz-feynman"}
+
+if needs_lua:
+    return LatexEngine.LUALATEX
+if needs_unicode:
+    return LatexEngine.XELATEX or LatexEngine.LUALATEX
+return LatexEngine.PDFLATEX
+```
+
+That choice avoids an annoying class of user errors where “the tool works for some templates but silently breaks on others.” If a package implies an engine constraint, I want the tool to honor that explicitly.
+
+This is also why I kept manual override support: auto-selection should be smart, not authoritarian.
