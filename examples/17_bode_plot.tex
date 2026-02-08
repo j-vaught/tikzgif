@@ -1,8 +1,8 @@
 % Example 17: Base-Excited Mass-Spring-Damper with Bode Plot
 % Vertical SMD with base excitation (left) and Bode magnitude + phase (right).
 % Frequency ratio r = w/w_n sweeps to show resonance and vibration isolation.
-% Parameter: \PARAM (frequency ratio r = w/w_n, range 0.2..3.0)
-% Range: 0.2 to 3.0, recommended 60 frames at 15fps
+% Parameter: \PARAM (frequency ratio r = w/w_n, range 0.2..5.0)
+% Range: 0.2 to 5.0, recommended 60 frames at 15fps
 % Difficulty: advanced
 % Features demonstrated: mechanical diagrams, frequency response, resonance,
 %   vibration isolation, Bode plots, pgfplots
@@ -32,7 +32,7 @@
 % ── Parameters ──
 \pgfmathsetmacro{\rNow}{\PARAM}          % frequency ratio r = w/w_n
 \pgfmathsetmacro{\zetaVal}{0.20}          % damping ratio
-\pgfmathsetmacro{\Azero}{0.6}            % base excitation amplitude (cm)
+\pgfmathsetmacro{\Azero}{0.4}            % base excitation amplitude (cm)
 
 % ── Transmissibility magnitude ──
 \pgfmathsetmacro{\rSq}{\rNow*\rNow}
@@ -46,14 +46,18 @@
 % ── Transmissibility phase ──
 \pgfmathsetmacro{\Hreal}{1 - \rSq + 4*\zetaVal*\zetaVal*\rSq}
 \pgfmathsetmacro{\Himag}{-2*\zetaVal*\rNow*\rNow*\rNow}
-\pgfmathsetmacro{\phaseNow}{%
-  (\Hreal >= 0) ? atan(\Himag / max(\Hreal, 0.001)) : (atan(\Himag / \Hreal) - 180)}
+% Use atan2-style: clamp ratio to avoid pgfmath overflow in ternary
+\pgfmathsetmacro{\HrealSafe}{abs(\Hreal) < 0.001 ? -0.001 : \Hreal}
+\pgfmathsetmacro{\ratioVal}{\Himag / \HrealSafe}
+\pgfmathsetmacro{\ratioClamp}{max(min(\ratioVal, 1000), -1000)}
+\pgfmathsetmacro{\baseAngle}{atan(\ratioClamp)}
+\pgfmathsetmacro{\phaseNow}{\Hreal >= 0 ? \baseAngle : (\baseAngle - 180)}
 
 % ── Animation phase (creates visible oscillation across frames) ──
-\pgfmathsetmacro{\animPhase}{360 * 5 * (\rNow - 0.2) / 2.8}
+\pgfmathsetmacro{\animPhase}{360 * 5 * (\rNow - 0.2) / 4.8}
 \pgfmathsetmacro{\yBase}{\Azero * sin(\animPhase)}
 \pgfmathsetmacro{\yMassRaw}{\Azero * \Tmag * sin(\animPhase + \phaseNow)}
-\pgfmathsetmacro{\yMass}{max(min(\yMassRaw, 1.8), -1.8)}
+\pgfmathsetmacro{\yMass}{max(min(\yMassRaw, 1.0), -1.0)}
 
 % ── SMD Equilibrium positions ──
 \pgfmathsetmacro{\baseEq}{-2.5}          % equilibrium base y
@@ -86,28 +90,34 @@
   (1.0, \springBot) -- (1.0, \springTop);
 
 % ── Damper (right side, x ~ 3.0) ──
-\pgfmathsetmacro{\damperBot}{\baseY + 0.15}
-\pgfmathsetmacro{\damperTop}{\massY - 0.4}
-\pgfmathsetmacro{\damperMid}{(\damperBot + \damperTop) / 2}
-\pgfmathsetmacro{\cylH}{0.18}
-\pgfmathsetmacro{\cylHalfW}{0.7}
+% Cylinder anchored to base (closed bottom, open top).
+% Piston rod extends from mass down into cylinder.
+\pgfmathsetmacro{\cylW}{0.18}           % cylinder half-width
+\pgfmathsetmacro{\cylHeight}{1.6}       % fixed cylinder height
+\pgfmathsetmacro{\cylBot}{\baseY + 0.15}
+\pgfmathsetmacro{\cylTop}{\cylBot + \cylHeight}
 
-% Rod from base to cylinder bottom
-\draw[thick, black!70] (3.0, \damperBot) -- (3.0, {\damperMid - \cylHalfW});
-
-% Cylinder body (open at top, closed at bottom)
+% Cylinder body (closed bottom, open top)
 \draw[thick, black!70]
-  ({3.0 - \cylH}, {\damperMid - \cylHalfW}) -- ({3.0 + \cylH}, {\damperMid - \cylHalfW})
-  ({3.0 - \cylH}, {\damperMid - \cylHalfW}) -- ({3.0 - \cylH}, {\damperMid + \cylHalfW})
-  ({3.0 + \cylH}, {\damperMid - \cylHalfW}) -- ({3.0 + \cylH}, {\damperMid + \cylHalfW});
+  ({3.0 - \cylW}, \cylBot) -- ({3.0 + \cylW}, \cylBot)
+  ({3.0 - \cylW}, \cylBot) -- ({3.0 - \cylW}, \cylTop)
+  ({3.0 + \cylW}, \cylBot) -- ({3.0 + \cylW}, \cylTop);
 
-% Piston head inside cylinder
-\pgfmathsetmacro{\pistonY}{\damperMid + (\yMass - \yBase) / \eqLen * \cylHalfW}
+% Piston head: tracks relative displacement, scaled to stay inside cylinder
+\pgfmathsetmacro{\devFromEq}{\yMass - \yBase}
+\pgfmathsetmacro{\maxDev}{1.5}
+\pgfmathsetmacro{\pistonMid}{(\cylBot + \cylTop) / 2}
+\pgfmathsetmacro{\pistonTravel}{(\cylHeight / 2) - 0.12}
+\pgfmathsetmacro{\pistonY}{max(min(
+  \pistonMid + \devFromEq / \maxDev * \pistonTravel,
+  \cylTop - 0.1), \cylBot + 0.1)}
+
+% Piston head
 \draw[very thick, black!80]
-  ({3.0 - \cylH + 0.02}, \pistonY) -- ({3.0 + \cylH - 0.02}, \pistonY);
+  ({3.0 - \cylW + 0.02}, \pistonY) -- ({3.0 + \cylW - 0.02}, \pistonY);
 
-% Piston rod from piston head to mass
-\draw[thick, black!70] (3.0, \pistonY) -- (3.0, \damperTop);
+% Piston rod from mass down through open top to piston head
+\draw[thick, black!70] (3.0, {\massY - 0.4}) -- (3.0, \pistonY);
 
 % ── Mass block ──
 \pgfmathsetmacro{\massLeft}{0.6}
@@ -122,7 +132,7 @@
 
 % ── Labels ──
 \node[font=\scriptsize, black!60, left] at (0.65, {(\springBot + \springTop)/2}) {$k$};
-\node[font=\scriptsize, black!60, right] at (3.35, {\damperMid}) {$c$};
+\node[font=\scriptsize, black!60, right] at (3.35, {\pistonMid}) {$c$};
 
 % ── Base motion arrow ──
 \pgfmathsetmacro{\arrowDir}{(\yBase >= 0) ? 1 : -1}
@@ -156,23 +166,23 @@
   name=mag,
   at={(5.5cm, 0.3cm)}, anchor=south west,
   width=8.5cm, height=5cm,
-  xmode=log, xmin=0.1, xmax=5,
-  ymin=-30, ymax=15,
+  xmode=log, xmin=0.1, xmax=10,
+  ymin=-35, ymax=15,
   ylabel={$|T|$ (dB)},
   grid=both, grid style={warmgrey!15},
   thick,
   tick label style={font=\tiny},
   label style={font=\footnotesize},
   xticklabels={},
-  xtick={0.1, 0.2, 0.5, 1, 2, 5},
+  xtick={0.1, 0.2, 0.5, 1, 2, 5, 10},
   ytick={-30, -20, -10, 0, 10},
   clip=false,
 ]
   % 0 dB reference line
-  \addplot[dashed, warmgrey, thin, domain=0.1:5, samples=2] {0};
+  \addplot[dashed, warmgrey, thin, domain=0.1:10, samples=2] {0};
 
   % Full transmissibility magnitude curve
-  \addplot[domain=0.1:5, samples=400, atlantic, very thick]
+  \addplot[domain=0.1:10, samples=400, atlantic, very thick]
     {10 * ln( max((1 + (2*\zetaVal*x)^2) / max((1 - x*x)^2 + (2*\zetaVal*x)^2, 0.0001), 0.0001) ) / ln(10)};
 
   % Tracking dot at current frequency ratio
@@ -196,7 +206,7 @@
   name=phase,
   at=(mag.below south west), anchor=north west,
   width=8.5cm, height=4.5cm,
-  xmode=log, xmin=0.1, xmax=5,
+  xmode=log, xmin=0.1, xmax=10,
   ymin=-180, ymax=10,
   xlabel={Frequency ratio $r = \omega/\omega_n$},
   ylabel={$\angle T$ (deg)},
@@ -204,19 +214,22 @@
   thick,
   tick label style={font=\tiny},
   label style={font=\footnotesize},
-  xtick={0.1, 0.2, 0.5, 1, 2, 5},
-  xticklabels={0.1, 0.2, 0.5, 1, 2, 5},
+  xtick={0.1, 0.2, 0.5, 1, 2, 5, 10},
+  xticklabels={0.1, 0.2, 0.5, 1, 2, 5, 10},
   ytick={0, -45, -90, -135, -180},
   clip=false,
 ]
   % -90 deg reference line
-  \addplot[dashed, warmgrey, thin, domain=0.1:5, samples=2] {-90};
+  \addplot[dashed, warmgrey, thin, domain=0.1:10, samples=2] {-90};
 
   % Full transmissibility phase curve
-  \addplot[domain=0.1:5, samples=400, garnet, very thick]
-    {(1 - x*x + 4*\zetaVal*\zetaVal*x*x >= 0)
-      ? atan((-2*\zetaVal*x*x*x) / max(1 - x*x + 4*\zetaVal*\zetaVal*x*x, 0.001))
-      : (atan((-2*\zetaVal*x*x*x) / (1 - x*x + 4*\zetaVal*\zetaVal*x*x)) - 180)};
+  % Use safe ratio clamped to avoid pgfmath overflow
+  \addplot[domain=0.1:10, samples=400, garnet, very thick]
+    {atan(max(min((-2*\zetaVal*x*x*x) /
+      ((abs(1 - x*x + 4*\zetaVal*\zetaVal*x*x) < 0.001) ? -0.001
+       : (1 - x*x + 4*\zetaVal*\zetaVal*x*x)),
+      1000), -1000))
+    + ((1 - x*x + 4*\zetaVal*\zetaVal*x*x < 0) ? -180 : 0)};
 
   % Tracking dot at current frequency ratio
   \addplot[only marks, mark=*, mark size=3pt, atlantic]
