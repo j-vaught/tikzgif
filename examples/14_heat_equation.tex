@@ -25,13 +25,13 @@
 
 \begin{document}
 \begin{tikzpicture}
-  \useasboundingbox (-2bp, -16bp) rectangle (310bp, 230bp);
+  \useasboundingbox (-8bp, -16bp) rectangle (310bp, 230bp);
   \pgfmathsetmacro{\wt}{\PARAM}  % phase angle wt
 
   % --- Top Panel: Temperature Profile T(x) ---
   \begin{axis}[
     name=topplot,
-    at={(0,1.9cm)},
+    at={(0.4cm,1.9cm)},
     width=10cm, height=5.5cm,
     domain=0:5,
     samples=200,
@@ -42,6 +42,7 @@
     xmin=0, xmax=5,
     xtick={1,2,3,4,5},
     ytick={-1,-0.5,0,0.5,1},
+    yticklabel style={/pgf/number format/fixed, /pgf/number format/precision=1},
     grid=major,
     grid style={warmgrey!15},
     title={\small Periodic Heating: $T = e^{-x/\delta}\sin(\omega t - x/\delta)$},
