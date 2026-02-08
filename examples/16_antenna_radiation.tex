@@ -27,8 +27,8 @@
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
 % Fix bounding box so tikzgif does not crop
-\useasboundingbox (-9,-8) rectangle (9,6);
-\clip (-9,-8) rectangle (9,6);
+\useasboundingbox (-9,-7.5) rectangle (9,5.5);
+\clip (-9,-7.5) rectangle (9,5.5);
 
 % ============================================================
 % PARAMETER SETUP
@@ -89,12 +89,6 @@
 \pgfmathsetmacro{\dipSampG}{abs(cos(75)) > 0.1 ? abs((cos(\uDeg * sin(75)) - cos(\uDeg)) / cos(75)) : 0}
 \pgfmathsetmacro{\dipNorm}{max(max(max(\dipSampA,\dipSampB),max(\dipSampC,\dipSampD)),max(max(\dipSampE,\dipSampF),\dipSampG))}
 \pgfmathsetmacro{\dipNorm}{max(\dipNorm, 0.001)}
-
-% ============================================================
-% TITLE
-% ============================================================
-\node[font=\large\bfseries, anchor=north] at (0, 5.8)
-    {Antenna Radiation Patterns vs.\ Frequency};
 
 % ============================================================
 % PANEL LABELS
@@ -274,19 +268,10 @@
 \end{scope}
 
 % ============================================================
-% FREQUENCY READOUT AND PROGRESS BAR
+% FREQUENCY READOUT
 % ============================================================
-% Frequency label
 \node[font=\normalsize, anchor=north] at (0, -7.0)
     {$f\,/\,f_0 = \pgfmathprintnumber[fixed,fixed zerofill,precision=2]{\freqRatio}$};
-
-% Progress bar background
-\fill[warmgrey!20] (-3, -7.55) rectangle (3, -7.35);
-% Progress bar fill
-\pgfmathsetmacro{\barFill}{(\freqRatio - 1.0) / (3.0 - 1.0)}
-\fill[honeycomb] (-3, -7.55) rectangle ({-3 + 6*\barFill}, -7.35);
-% Progress bar border
-\draw[warmgrey!50, thin] (-3, -7.55) rectangle (3, -7.35);
 
 \end{tikzpicture}
 \end{document}
