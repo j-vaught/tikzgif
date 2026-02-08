@@ -167,3 +167,31 @@ envelope = compute_envelope(probe_boxes).padded(config.bbox_padding_bp)
 This trio is the difference between “I can render this once” and “I can iterate creatively without dreading reruns.”
 
 ![Four-Bar Linkage](../outputs/31_four_bar_linkage.gif)
+
+## 9. A Light Benchmark Snapshot (Measured Locally)
+
+I ran a small benchmark pass on **February 8, 2026** in this repo to ground performance claims in numbers instead of vibes. These are not universal benchmarks, but they are useful directional data.
+
+### Single-frame compile timings from `tests/benchmarks/test_benchmarks.py`
+
+| Template tier | Measured compile time | PDF size |
+|---|---:|---:|
+| Simple | 0.205 s | 17,820 B |
+| Medium | 0.694 s | 38,233 B |
+| Heavy | 2.257 s | 65,581 B |
+
+### Engine comparison on `examples/01_rotating_square.tex` (3-run average)
+
+| Engine | Avg compile time |
+|---|---:|
+| `pdflatex` | 0.240 s |
+| `xelatex` | 0.256 s |
+| `lualatex` | 0.542 s |
+
+Interpretation:
+
+- For simple TikZ-only cases, `pdflatex` remained the fastest in this environment.
+- `xelatex` was close enough that feature requirements (fonts/Unicode) should drive the decision more than tiny speed differences.
+- `lualatex` was slower here, but it is still the correct engine when a template requires Lua-side capabilities.
+
+I treat these numbers as “planning-grade” and not a formal benchmark paper. The useful takeaway is relative behavior, not absolute milliseconds.
