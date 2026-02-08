@@ -11,3 +11,22 @@ That frustration became this project: `tikzgif`, a pipeline that takes a paramet
 ![Bouncing Ball](../outputs/02_bouncing_ball.gif)
 
 The promise I wanted for myself was simple: if I can draw it in TikZ, I should be able to animate it without inventing a new workflow each time.
+
+## 2. What Was Broken in My Old Process
+
+Before this repo, my animation loop usually looked like this:
+
+1. Hand-edit parameter values in TeX.
+2. Run LaTeX repeatedly.
+3. Convert PDFs to PNGs with ad hoc commands.
+4. Stitch images with ImageMagick flags I had to keep rediscovering.
+5. Re-run everything when the bounding box shifted or one frame failed.
+
+The core issue was not “LaTeX is slow.” The issue was **coordination overhead**. Every stage had separate failure modes and separate tooling assumptions.
+
+- If two frames had slightly different extents, the final animation jittered.
+- If one frame failed late, I often re-ran too much work.
+- If I switched machines, I had to remember toolchain differences again.
+- If I changed one line in the template, I still paid near-full compile cost.
+
+I wanted to keep TikZ itself as the authoring interface, but automate everything around it: frame generation, compilation strategy, caching, conversion, and assembly.
