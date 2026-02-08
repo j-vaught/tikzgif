@@ -59,8 +59,11 @@
 % ====================================================================
 % Fan rotation angle  (integral of omega ~ Vc)
 % ====================================================================
-% omega_max * tau chosen so full charge gives ~3 rotations (1080 deg)
-\pgfmathsetmacro{\rotScale}{1080}
+% rotScale = omega_max * tau.  Per-frame rotation at max speed must stay
+% below 60 deg (half the 120 deg blade spacing) to avoid strobing.
+% With 80 frames over [0,10]: du = 10/79 ≈ 0.127, so rotScale < 474.
+% 270 gives ~34 deg/frame at peak, ~3 full rotations during charge.
+\pgfmathsetmacro{\rotScale}{270}
 
 % Charging:  angle = rotScale * [ t/tau + exp(-t/tau) - 1 ]
 \pgfmathsetmacro{\angleCharge}{\rotScale * (\ttau + exp(-\ttau) - 1)}
