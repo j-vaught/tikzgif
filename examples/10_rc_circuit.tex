@@ -30,7 +30,7 @@
 % ====================================================================
 % Bounding box — keeps every frame the same size
 % ====================================================================
-\useasboundingbox (-0.6,-1.0) rectangle (15.8,7.0);
+\useasboundingbox (-0.8, -0.2) rectangle (15.8,7.0);
 
 % ====================================================================
 % Electrical parameters
@@ -113,11 +113,6 @@
   \fill[black!80] (2.6, -1.2) circle (1.5pt);
   \fill[black!80] (3.8, -1.2) circle (1.5pt);
 
-  % ---------- Current arrow (on top wire, thickness ~ |I|) ----------
-  \pgfmathsetmacro{\arrwd}{max(0.3, \Ic * 2.5)}
-  \draw[->, garnet, line width=\arrwd pt] (-0.2, 3.55) -- (0.6, 3.55);
-  \node[above, font=\tiny, garnet] at (0.2, 3.6) {$i(t)$};
-
   % ---------- Battery ----------
   \draw[black!80, line width=1.2pt] (-2.95, 0.8) -- (-2.25, 0.8);  % short plate (-)
   \draw[black!80, line width=0.6pt] (-3.1, 1.2) -- (-2.1, 1.2);   % long plate (+)
@@ -126,7 +121,7 @@
   % polarity
   \node[font=\scriptsize] at (-3.25, 1.4) {$+$};
   \node[font=\scriptsize] at (-3.25, 0.6) {$-$};
-  \node[left, font=\small] at (-3.15, 1.0) {$V_s$};
+  \node[left, font=\small] at (-2.95, 1.0) {$V_s$};
 
   % ---------- Switch ----------
   \fill[black!80] (-1.6, 3.2) circle (2.0pt);
