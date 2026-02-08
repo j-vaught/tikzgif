@@ -1,8 +1,8 @@
 % Example 17: Base-Excited Mass-Spring-Damper with Bode Plot
 % Vertical SMD with base excitation (left) and Bode magnitude + phase (right).
 % Frequency ratio r = w/w_n sweeps to show resonance and vibration isolation.
-% Parameter: \PARAM (frequency ratio r = w/w_n, range 0.2..10.0)
-% Range: 0.2 to 10.0, recommended 120 frames at 15fps
+% Parameter: \PARAM (frequency ratio r = w/w_n, range 0.2..20.0)
+% Range: 0.2 to 20.0, recommended 120 frames at 15fps
 % Difficulty: advanced
 % Features demonstrated: mechanical diagrams, frequency response, resonance,
 %   vibration isolation, Bode plots, pgfplots
@@ -38,10 +38,13 @@
 \pgfmathsetmacro{\rSq}{\rNow*\rNow}
 \pgfmathsetmacro{\twoZR}{2*\zetaVal*\rNow}
 \pgfmathsetmacro{\num}{1 + \twoZR*\twoZR}
-\pgfmathsetmacro{\den}{(1 - \rSq)*(1 - \rSq) + \twoZR*\twoZR}
-\pgfmathsetmacro{\denSafe}{max(\den, 0.0001)}
-\pgfmathsetmacro{\Tmag}{sqrt(\num / \denSafe)}
-\pgfmathsetmacro{\TdBnow}{10 * ln(\num / \denSafe) / ln(10)}
+% Log-domain: factor r^4 from den to avoid (1-r^2)^2 overflow at large r
+% den = r^4 * ((1/r^2 - 1)^2 + 4*z^2/r^2), so ln(den) = 4*ln(r) + ln(denNorm)
+\pgfmathsetmacro{\invRSq}{1/max(\rSq, 0.0001)}
+\pgfmathsetmacro{\denNorm}{(\invRSq - 1)*(\invRSq - 1) + 4*\zetaVal*\zetaVal*\invRSq}
+\pgfmathsetmacro{\lnDen}{4*ln(max(\rNow, 0.001)) + ln(max(\denNorm, 0.0001))}
+\pgfmathsetmacro{\Tmag}{exp(0.5 * (ln(\num) - \lnDen))}
+\pgfmathsetmacro{\TdBnow}{10 * (ln(\num) - \lnDen) / ln(10)}
 
 % ── Transmissibility phase ──
 \pgfmathsetmacro{\Hreal}{1 - \rSq + 4*\zetaVal*\zetaVal*\rSq}
@@ -54,7 +57,7 @@
 \pgfmathsetmacro{\phaseNow}{\Hreal >= 0 ? \baseAngle : (\baseAngle - 180)}
 
 % ── Animation phase (creates visible oscillation across frames) ──
-\pgfmathsetmacro{\animPhase}{(\rNow - 0.2) / 9.8 * 1800}
+\pgfmathsetmacro{\animPhase}{(\rNow - 0.2) / 19.8 * 1800}
 \pgfmathsetmacro{\yBase}{\Azero * sin(\animPhase)}
 \pgfmathsetmacro{\yMassRaw}{\Azero * \Tmag * sin(\animPhase + \phaseNow)}
 \pgfmathsetmacro{\yMass}{max(min(\yMassRaw, 1.0), -1.0)}
@@ -162,7 +165,7 @@
   name=mag,
   at={(5.5cm, 0.3cm)}, anchor=south west,
   width=8.5cm, height=5cm,
-  xmode=log, xmin=0.1, xmax=10,
+  xmode=log, xmin=0.2, xmax=20,
   ymin=-35, ymax=15,
   ylabel={$|T|$ (dB)},
   grid=both, grid style={warmgrey!15},
@@ -170,16 +173,20 @@
   tick label style={font=\tiny},
   label style={font=\footnotesize},
   xticklabels={},
-  xtick={0.1, 0.2, 0.5, 1, 2, 5, 10},
+  xtick={0.2, 0.5, 1, 2, 5, 10, 20},
   ytick={-30, -20, -10, 0, 10},
   clip=false,
 ]
   % 0 dB reference line
-  \addplot[dashed, warmgrey, thin, domain=0.1:10, samples=2] {0};
+  \addplot[dashed, warmgrey, thin, domain=0.2:20, samples=2] {0};
 
-  % Full transmissibility magnitude curve
-  \addplot[domain=0.1:10, samples=400, atlantic, very thick]
-    {10 * ln( max((1 + (2*\zetaVal*x)^2) / max((1 - x*x)^2 + (2*\zetaVal*x)^2, 0.0001), 0.0001) ) / ln(10)};
+  % Full transmissibility magnitude curve (log-domain to avoid (1-x^2)^2 overflow)
+  \addplot[domain=0.2:20, samples=400, atlantic, very thick]
+    {10 * (ln(max(1 + (2*\zetaVal*x)*(2*\zetaVal*x), 0.0001))
+         - 4*ln(x)
+         - ln(max((1/(x*x) - 1)*(1/(x*x) - 1)
+                + 4*\zetaVal*\zetaVal/(x*x), 0.0001)))
+     / ln(10)};
 
   % Tracking dot at current frequency ratio
   \addplot[only marks, mark=*, mark size=3pt, garnet]
@@ -202,7 +209,7 @@
   name=phase,
   at=(mag.below south west), anchor=north west,
   width=8.5cm, height=4.5cm,
-  xmode=log, xmin=0.1, xmax=10,
+  xmode=log, xmin=0.2, xmax=20,
   ymin=-180, ymax=10,
   xlabel={Frequency ratio $r = \omega/\omega_n$},
   ylabel={$\angle T$ (deg)},
@@ -210,17 +217,17 @@
   thick,
   tick label style={font=\tiny},
   label style={font=\footnotesize},
-  xtick={0.1, 0.2, 0.5, 1, 2, 5, 10},
-  xticklabels={0.1, 0.2, 0.5, 1, 2, 5, 10},
+  xtick={0.2, 0.5, 1, 2, 5, 10, 20},
+  xticklabels={0.2, 0.5, 1, 2, 5, 10, 20},
   ytick={0, -45, -90, -135, -180},
   clip=false,
 ]
   % -90 deg reference line
-  \addplot[dashed, warmgrey, thin, domain=0.1:10, samples=2] {-90};
+  \addplot[dashed, warmgrey, thin, domain=0.2:20, samples=2] {-90};
 
   % Full transmissibility phase curve
   % Use safe ratio clamped to avoid pgfmath overflow
-  \addplot[domain=0.1:10, samples=400, garnet, very thick]
+  \addplot[domain=0.2:20, samples=400, garnet, very thick]
     {atan(max(min((-2*\zetaVal*x*x*x) /
       ((abs(1 - x*x + 4*\zetaVal*\zetaVal*x*x) < 0.001) ? -0.001
        : (1 - x*x + 4*\zetaVal*\zetaVal*x*x)),
