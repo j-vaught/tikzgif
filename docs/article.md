@@ -252,3 +252,17 @@ What I like most is that these examples all come from the same core workflow. I 
 I also care about how this looks to someone discovering the project for the first time. A diverse gallery signals that this is not a one-off script written for one demo. It is a reusable system that has been pushed against real use cases: heavy math, engineering diagrams, and algorithm storytelling.
 
 ![Wave Interference](../outputs/30_wave_interference.gif)
+
+## 13. Positioning, Scope, and What I’d Improve Next
+
+There are other ways to animate TikZ, including manual shell-script workflows and older one-format utilities. I still use those references for ideas, but I wanted a stronger default developer experience: one CLI, clear error policy, multiple output targets, and test-backed behavior.
+
+I also kept scope boundaries intentionally tight. This project is about **parameterized TikZ-to-animation workflows**, not a replacement for full motion-graphics tooling. The goal is to make technical visuals easier to generate and iterate, not to recreate video-editing software in Python.
+
+If I continue evolving this, the most valuable upgrades are likely:
+
+1. Better structured diagnostics for failed frames and missing dependencies.
+2. More reproducible benchmark harnesses across machines and engines.
+3. Additional template metadata tooling for discoverability and education.
+
+For now, I’m treating this as a flagship story and a practical tool, not a content treadmill. I would rather keep one good long-form explanation current than publish shallow updates on a fixed schedule.
