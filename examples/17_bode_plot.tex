@@ -99,6 +99,9 @@
 \pgfmathsetmacro{\cylTop}{\cylBot + \cylHeight}
 \pgfmathsetmacro{\pistonY}{\massY - 0.4 - \rodLen}
 
+% Rod from base up to cylinder bottom
+\draw[thick, black!70] (3.0, \baseY) -- (3.0, \cylBot);
+
 % Cylinder body (closed bottom, open top)
 \draw[thick, black!70]
   ({3.0 - \cylW}, \cylBot) -- ({3.0 + \cylW}, \cylBot)
