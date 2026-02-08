@@ -61,3 +61,25 @@ At a high level, `tikzgif` turns one parameterized source into an ordered list o
 The pipeline boundary choices mattered more than any individual trick. Keeping stages explicit made it easier to reason about failure handling (`abort`, `skip`, `retry`) and easier to test each part independently.
 
 I also leaned into deterministic structure where possible: frame index ordering, content hashing, and predictable naming all make debugging far less painful than shell-script style glue.
+
+## 5. Outputs Along the Way, Not Just at the End
+
+One important shift in this repo is that I stopped treating animation as a single opaque output step. I now think in intermediate products:
+
+- **Template source**: the human-readable truth.
+- **Per-frame TeX**: generated, explicit, inspectable.
+- **Per-frame PDF**: compilation artifact with good debugging value.
+- **Per-frame image**: rendering artifact before final encoding.
+- **Final animation**: format-specific artifact tuned for destination.
+
+That separation made debugging dramatically easier. If something looks wrong, I can ask: was the math wrong in TeX, did compilation fail, did conversion alter color/alpha, or did assembly quantization introduce artifacts?
+
+These are some of the outputs that made me confident the pipeline was doing the right thing across domains:
+
+![Lorenz Attractor](../outputs/04_lorenz_attractor.gif)
+
+![Bode Plot](../outputs/17_bode_plot.gif)
+
+![Fourier Series](../outputs/21_fourier_series.gif)
+
+For me, this was a major design lesson: the easiest systems to trust are the ones where each stage has visible artifacts and crisp boundaries.
