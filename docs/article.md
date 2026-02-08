@@ -234,3 +234,21 @@ Mitigations I actually use:
 - Keep fallback formats available so one backend issue does not block delivery.
 
 Being explicit about these limits has helped me trust the tool more, not less.
+
+## 12. What I’m Most Proud Of in the Output Set
+
+The feature list matters, but the output set is where the project really proves itself for me. I wanted examples that were not just pretty loops, but useful teaching and communication artifacts across multiple domains.
+
+- In controls, animations like step response and root locus make parameter sweeps legible in a way static side-by-side plots often are not.
+- In algorithms, even simple sort visualizations become easier to explain when motion encodes state transitions directly.
+- In physics and EM, animated field behavior communicates change over time without narration-heavy slides.
+
+![Bubble Sort](../outputs/06a_bubble_sort.gif)
+
+![3D Rotation](../outputs/28_rotation_3d.gif)
+
+What I like most is that these examples all come from the same core workflow. I do not need one pipeline for teaching visuals, another for social previews, and another for internal experiments. I can stay in TeX, keep the source readable, and still produce motion artifacts that are easy to distribute.
+
+I also care about how this looks to someone discovering the project for the first time. A diverse gallery signals that this is not a one-off script written for one demo. It is a reusable system that has been pushed against real use cases: heavy math, engineering diagrams, and algorithm storytelling.
+
+![Wave Interference](../outputs/30_wave_interference.gif)
