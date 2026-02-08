@@ -120,11 +120,13 @@
     \draw[thick, black!70, decorate, decoration={zigzag, segment length=\segLen pt, amplitude=2.5pt}]
       (\wallX, \springY) -- (\massLeft, \springY);
 
-    % ── Damper (proper dashpot with cylinder and piston) ──
-    \pgfmathsetmacro{\cylW}{0.6}
+    % ── Damper (proper dashpot, cylinder sized for 1:1 piston travel) ──
     \pgfmathsetmacro{\cylH}{0.15}
-    \pgfmathsetmacro{\rodLen}{0.45}
     \pgfmathsetmacro{\margin}{0.04}
+    % Cylinder width = full displacement range + margins
+    \pgfmathsetmacro{\cylW}{#6 * \dispScale + 2*\margin}
+    % Rod fills remaining space between wall and cylinder
+    \pgfmathsetmacro{\rodLen}{\eqX - \massW/2 - \cylW}
 
     % Cylinder position (fixed to wall side)
     \pgfmathsetmacro{\cylLeft}{\wallX + \rodLen}
@@ -139,9 +141,8 @@
       (\cylLeft, {\damperY + \cylH}) -- (\cylRight, {\damperY + \cylH})
       (\cylLeft, {\damperY - \cylH}) -- (\cylRight, {\damperY - \cylH});
 
-    % Piston head position: interpolates inside cylinder based on y/yMax
-    \pgfmathsetmacro{\pistonFrac}{#3 / #6}
-    \pgfmathsetmacro{\pistonX}{\cylLeft + \margin + \pistonFrac * (\cylW - 2*\margin)}
+    % Piston head: moves 1:1 with mass displacement
+    \pgfmathsetmacro{\pistonX}{\cylLeft + \margin + #3 * \dispScale}
 
     % Piston head (vertical bar inside cylinder)
     \draw[very thick, black!80]
