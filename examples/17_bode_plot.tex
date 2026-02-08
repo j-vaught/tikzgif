@@ -57,7 +57,9 @@
 \pgfmathsetmacro{\phaseNow}{\Hreal >= 0 ? \baseAngle : (\baseAngle - 180)}
 
 % ── Animation phase (creates visible oscillation across frames) ──
-\pgfmathsetmacro{\animPhase}{(\rNow - 0.2) / 19.8 * 1800}
+% Quadratic+linear blend: base oscillates faster at higher r (higher driving freq)
+\pgfmathsetmacro{\rFrac}{(\rNow - 0.2) / 19.8}
+\pgfmathsetmacro{\animPhase}{1080*\rFrac + 1800*\rFrac*\rFrac}
 \pgfmathsetmacro{\yBase}{\Azero * sin(\animPhase)}
 \pgfmathsetmacro{\yMassRaw}{\Azero * \Tmag * sin(\animPhase + \phaseNow)}
 \pgfmathsetmacro{\yMass}{max(min(\yMassRaw, 1.0), -1.0)}
