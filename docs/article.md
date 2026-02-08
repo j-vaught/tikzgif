@@ -215,3 +215,22 @@ A lot of quality in this project came from saying “no” to attractive but hig
 - Treating GIF as the only serious output format.
 
 The rejected items were not bad ideas. They were just wrong ordering. I wanted correctness, reproducibility, and predictable ergonomics before adding polish layers.
+
+## 11. Limitations and Rough Edges (Candidly)
+
+This project works well for my use cases, but it is not magic. These are real constraints I still account for.
+
+- **Environment sensitivity**: external tools (`pdflatex`, `pdftoppm`, `ffmpeg`, etc.) are still dependencies, and missing tools can limit output paths.
+- **Heavy-template cost**: some TikZ workloads (dense pgfplots surfaces, iterative math inside TeX loops) are expensive per frame even with parallelism.
+- **Backend variance**: image conversion backends differ in speed and availability across operating systems.
+- **Python ecosystem drift**: some library combinations can be unstable on bleeding-edge interpreters (for example, I observed a PyMuPDF-related crash under Python 3.14 during backend probing, while this project targets Python 3.10-3.13).
+- **No free lunch on output quality**: compact files and maximum fidelity usually pull in opposite directions.
+
+Mitigations I actually use:
+
+- Start with `pdflatex` unless package requirements force otherwise.
+- Use smaller frame counts and DPI while iterating; scale up only for final render.
+- Prefer `pdftoppm` when available for consistent conversion behavior.
+- Keep fallback formats available so one backend issue does not block delivery.
+
+Being explicit about these limits has helped me trust the tool more, not less.
