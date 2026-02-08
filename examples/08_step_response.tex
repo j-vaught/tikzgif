@@ -120,19 +120,17 @@
     \draw[thick, black!70, decorate, decoration={zigzag, segment length=\segLen pt, amplitude=2.5pt}]
       (\wallX, \springY) -- (\massLeft, \springY);
 
-    % ── Damper (proper dashpot, cylinder sized for 1:1 piston travel) ──
-    \pgfmathsetmacro{\cylH}{0.15}
+    % ── Damper (fixed-rod dashpot, cylinder anchored to wall) ──
+    % Piston rod is fixed length, moves with mass.
+    % Piston head slides inside cylinder.
+    \pgfmathsetmacro{\cylH}{0.15}           % cylinder half-height
     \pgfmathsetmacro{\margin}{0.04}
-    % Cylinder width = full displacement range + margins
-    \pgfmathsetmacro{\cylW}{#6 * \dispScale + 2*\margin}
-    % Rod fills remaining space between wall and cylinder
-    \pgfmathsetmacro{\rodLen}{\eqX - \massW/2 - \cylW}
+    \pgfmathsetmacro{\cylWidth}{#6 * \dispScale + 2*\margin}  % sized for max travel
+    \pgfmathsetmacro{\cylLeft}{\eqX - \massW/2 - \cylWidth}
+    \pgfmathsetmacro{\cylRight}{\cylLeft + \cylWidth}
+    \pgfmathsetmacro{\pistonRodLen}{\cylWidth - \margin}       % fixed rod length
 
-    % Cylinder position (fixed to wall side)
-    \pgfmathsetmacro{\cylLeft}{\wallX + \rodLen}
-    \pgfmathsetmacro{\cylRight}{\cylLeft + \cylW}
-
-    % Rod from wall to cylinder closed end
+    % Rod from wall to cylinder closed end (fixed length)
     \draw[thick, black!70] (\wallX, \damperY) -- (\cylLeft, \damperY);
 
     % Cylinder body (closed on left, open on right)
@@ -141,14 +139,14 @@
       (\cylLeft, {\damperY + \cylH}) -- (\cylRight, {\damperY + \cylH})
       (\cylLeft, {\damperY - \cylH}) -- (\cylRight, {\damperY - \cylH});
 
-    % Piston head: moves 1:1 with mass displacement
-    \pgfmathsetmacro{\pistonX}{\cylLeft + \margin + #3 * \dispScale}
+    % Piston head: fixed rod from mass, slides inside cylinder
+    \pgfmathsetmacro{\pistonX}{\massLeft - \pistonRodLen}
 
     % Piston head (vertical bar inside cylinder)
     \draw[very thick, black!80]
       (\pistonX, {\damperY - \cylH + 0.02}) -- (\pistonX, {\damperY + \cylH - 0.02});
 
-    % Piston rod from piston head to mass
+    % Piston rod from piston to mass (fixed length)
     \draw[thick, black!70] (\pistonX, \damperY) -- (\massLeft, \damperY);
 
     % ── Mass block ──

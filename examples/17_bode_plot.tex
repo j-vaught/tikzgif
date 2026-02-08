@@ -91,11 +91,13 @@
 
 % ── Damper (right side, x ~ 3.0) ──
 % Cylinder anchored to base (closed bottom, open top).
-% Piston rod extends from mass down into cylinder.
+% Piston rod is fixed length, anchored to mass, moves with mass.
 \pgfmathsetmacro{\cylW}{0.18}           % cylinder half-width
-\pgfmathsetmacro{\cylHeight}{1.6}       % fixed cylinder height
+\pgfmathsetmacro{\cylHeight}{2.4}       % fixed cylinder height
+\pgfmathsetmacro{\rodLen}{2.5}          % fixed piston rod length
 \pgfmathsetmacro{\cylBot}{\baseY + 0.15}
 \pgfmathsetmacro{\cylTop}{\cylBot + \cylHeight}
+\pgfmathsetmacro{\pistonY}{\massY - 0.4 - \rodLen}
 
 % Cylinder body (closed bottom, open top)
 \draw[thick, black!70]
@@ -103,20 +105,11 @@
   ({3.0 - \cylW}, \cylBot) -- ({3.0 - \cylW}, \cylTop)
   ({3.0 + \cylW}, \cylBot) -- ({3.0 + \cylW}, \cylTop);
 
-% Piston head: tracks relative displacement, scaled to stay inside cylinder
-\pgfmathsetmacro{\devFromEq}{\yMass - \yBase}
-\pgfmathsetmacro{\maxDev}{1.5}
-\pgfmathsetmacro{\pistonMid}{(\cylBot + \cylTop) / 2}
-\pgfmathsetmacro{\pistonTravel}{(\cylHeight / 2) - 0.12}
-\pgfmathsetmacro{\pistonY}{max(min(
-  \pistonMid + \devFromEq / \maxDev * \pistonTravel,
-  \cylTop - 0.1), \cylBot + 0.1)}
-
-% Piston head
+% Piston head (fixed to rod, slides inside cylinder)
 \draw[very thick, black!80]
   ({3.0 - \cylW + 0.02}, \pistonY) -- ({3.0 + \cylW - 0.02}, \pistonY);
 
-% Piston rod from mass down through open top to piston head
+% Piston rod from mass down to piston head (fixed length)
 \draw[thick, black!70] (3.0, {\massY - 0.4}) -- (3.0, \pistonY);
 
 % ── Mass block ──
@@ -132,7 +125,7 @@
 
 % ── Labels ──
 \node[font=\scriptsize, black!60, left] at (0.65, {(\springBot + \springTop)/2}) {$k$};
-\node[font=\scriptsize, black!60, right] at (3.35, {\pistonMid}) {$c$};
+\node[font=\scriptsize, black!60, right] at (3.35, {(\cylBot + \cylTop)/2}) {$c$};
 
 % ── Base motion arrow ──
 \pgfmathsetmacro{\arrowDir}{(\yBase >= 0) ? 1 : -1}
