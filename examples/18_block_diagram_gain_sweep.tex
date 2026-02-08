@@ -50,6 +50,10 @@
 \pgfmathtruncatemacro{\isunder}{\zetaC < 0.999 ? 1 : 0}
 \pgfmathsetmacro{\Mp}{\isunder > 0 ? exp(-3.14159*\zetaC / sqrt(max(1-\zetaC*\zetaC,0.001))) : 0}
 
+% Gauge needle value: peak step response
+\pgfmathsetmacro{\needleVal}{1 + \Mp}
+\pgfmathsetmacro{\needleAngle}{180 * (1 - min(\needleVal, 1.8) / 1.8)}
+
 % ---- BLOCK DIAGRAM (top) ----
 \node[sumnode] (sum) at (0,3.5) {};
 \node[below left=0.5mm] at (sum.center) {\tiny $+$};
@@ -71,16 +75,80 @@
 \draw[->] ($(plant.east) + (1.0, -1.0)$) -| (sum.south);
 \filldraw ($(plant.east) + (1.0, 0)$) circle (1.5pt);
 
+% Connection arrow to gauge
+\draw[->, warmgrey, thick] (output) -- (10.0, 3.0);
+
 % System info
 \node[font=\tiny, warmgrey, anchor=west] at ($(sum.west)+(-1.2,-0.5)$)
     {$\zeta = \pgfmathprintnumber[fixed,precision=2]{\zetaC}$,\;
      $\omega_n = \pgfmathprintnumber[fixed,precision=2]{\wn}$};
 
+% ---- GAUGE / SPEEDOMETER ----
+\begin{scope}[shift={(10.0, 3.0)}]
+    % Color bands (arc segments)
+    % warmgrey!30: y=0..0.9 (angles 180..90)
+    \draw[warmgrey!30, line width=2.5mm]
+        ({1.8*cos(180)},{1.8*sin(180)}) arc (180:90:1.8);
+    % horseshoe!50: y=0.9..1.1 (angles 90..70)
+    \draw[horseshoe!50, line width=2.5mm]
+        ({1.8*cos(90)},{1.8*sin(90)}) arc (90:70:1.8);
+    % honeycomb!50: y=1.1..1.4 (angles 70..40)
+    \draw[honeycomb!50, line width=2.5mm]
+        ({1.8*cos(70)},{1.8*sin(70)}) arc (70:40:1.8);
+    % rose!50: y=1.4..1.8 (angles 40..0)
+    \draw[rose!50, line width=2.5mm]
+        ({1.8*cos(40)},{1.8*sin(40)}) arc (40:0:1.8);
+
+    % Outer arc
+    \draw[black!70, thick] ({1.8*cos(180)},{1.8*sin(180)}) arc (180:0:1.8);
+
+    % Baseline
+    \draw[black!30, thin] (-1.8, 0) -- (1.8, 0);
+
+    % Setpoint marker at y=1.0 (angle 80)
+    \draw[atlantic, dashed, thin] (0,0) -- ({1.17*cos(80)},{1.17*sin(80)});
+    \fill[atlantic] ({1.65*cos(80)},{1.65*sin(80)})
+        -- ({1.95*cos(83)},{1.95*sin(83)})
+        -- ({1.95*cos(77)},{1.95*sin(77)}) -- cycle;
+    \node[font=\tiny, atlantic] at ({1.35*cos(80)+0.15},{1.35*sin(80)+0.1}) {SP};
+
+    % Major ticks with labels: 0, 0.5, 1.0, 1.5
+    \foreach \val/\ang in {0/180, 0.5/130, 1.0/80, 1.5/30} {
+        \draw[black!70, thick]
+            ({1.65*cos(\ang)},{1.65*sin(\ang)}) -- ({1.95*cos(\ang)},{1.95*sin(\ang)});
+        \node[font=\tiny, black!70] at ({1.45*cos(\ang)},{1.45*sin(\ang)})
+            {\pgfmathprintnumber[fixed,precision=1]{\val}};
+    }
+
+    % Minor ticks at 0.1 increments
+    \foreach \v in {0.1,0.2,0.3,0.4,0.6,0.7,0.8,0.9,1.1,1.2,1.3,1.4,1.6,1.7} {
+        \pgfmathsetmacro{\mang}{180*(1-\v/1.8)}
+        \draw[black!40, thin]
+            ({1.72*cos(\mang)},{1.72*sin(\mang)}) -- ({1.88*cos(\mang)},{1.88*sin(\mang)});
+    }
+
+    % Needle (garnet triangle)
+    \fill[garnet] (0,0)
+        -- ({1.65*cos(\needleAngle+1.5)},{1.65*sin(\needleAngle+1.5)})
+        -- ({1.65*cos(\needleAngle-1.5)},{1.65*sin(\needleAngle-1.5)})
+        -- cycle;
+
+    % Hub
+    \fill[black!80] (0,0) circle (2.5pt);
+
+    % Title
+    \node[font=\footnotesize, black, anchor=south] at (0, 2.15) {\textbf{Output}};
+
+    % Digital readout
+    \node[font=\tiny, garnet, anchor=north] at (0, -0.2)
+        {$y_{\mathrm{peak}} = \pgfmathprintnumber[fixed,precision=2]{\needleVal}$};
+\end{scope}
+
 % ---- STEP RESPONSE (bottom, larger) ----
 \begin{axis}[
     name=stepax,
     at={(0cm, -0.5cm)}, anchor=north west,
-    width=9cm, height=5.5cm,
+    width=12.5cm, height=5.5cm,
     xmin=0, xmax=8, ymin=-0.15, ymax=1.8,
     xlabel={$t$ (s)}, ylabel={$y(t)$},
     title={\footnotesize Step Response},
