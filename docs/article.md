@@ -195,3 +195,23 @@ Interpretation:
 - `lualatex` was slower here, but it is still the correct engine when a template requires Lua-side capabilities.
 
 I treat these numbers as “planning-grade” and not a formal benchmark paper. The useful takeaway is relative behavior, not absolute milliseconds.
+
+## 10. Design Decisions I Kept, and Ones I Rejected
+
+A lot of quality in this project came from saying “no” to attractive but high-friction ideas.
+
+### Decisions I kept
+
+- **Keep TikZ as the authoring language** instead of introducing a new template DSL.
+- **Keep the CLI explicit** with practical flags (`--frames`, `--fps`, `--engine`, `--error-policy`).
+- **Keep module boundaries clear** (`compiler.py`, `backends.py`, `assembly.py`, `engine.py`).
+- **Keep test tiers separate** (smoke, compile, end-to-end, benchmarks) so failures are diagnosable.
+
+### Decisions I rejected
+
+- Building an editor-first GUI before the compile pipeline stabilized.
+- Hiding every intermediate artifact for a “clean” user experience.
+- Optimizing for one operating system or one conversion backend.
+- Treating GIF as the only serious output format.
+
+The rejected items were not bad ideas. They were just wrong ordering. I wanted correctness, reproducibility, and predictable ergonomics before adding polish layers.
