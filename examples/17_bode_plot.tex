@@ -1,19 +1,19 @@
-% Example 17: Bode Plot Parameter Sweep
-% Bode magnitude and phase of G(s) = K / (s/p + 1) as K varies.
-% Parameter: \PARAM (DC gain, range 0.1..100.0)
-% Range: 0.1 to 100.0, recommended 30 frames
+% Example 17: Base-Excited Mass-Spring-Damper with Bode Plot
+% Vertical SMD with base excitation (left) and Bode magnitude + phase (right).
+% Frequency ratio r = w/w_n sweeps to show resonance and vibration isolation.
+% Parameter: \PARAM (frequency ratio r = w/w_n, range 0.2..3.0)
+% Range: 0.2 to 3.0, recommended 60 frames at 15fps
 % Difficulty: advanced
-% Features demonstrated: bode plots, frequency response, asymptotic
-%   approximation, gain crossover, phase margin, bandwidth shading
+% Features demonstrated: mechanical diagrams, frequency response, resonance,
+%   vibration isolation, Bode plots, pgfplots
 
-\documentclass[border=5pt]{standalone}
-\usepackage{tikz}
+\documentclass[tikz]{standalone}
 \usepackage{pgfplots}
 \usepackage{amsmath}
 \pgfplotsset{compat=1.18}
-\usepgfplotslibrary{fillbetween}
+\usetikzlibrary{decorations.pathmorphing, decorations.markings, calc}
 
-% USC Brand Colors
+% Brand Colors
 \definecolor{garnet}{HTML}{73000A}
 \definecolor{rose}{HTML}{CC2E40}
 \definecolor{atlantic}{HTML}{466A9F}
@@ -27,119 +27,212 @@
 \begin{document}
 \begin{tikzpicture}
 
-\pgfmathsetmacro{\K}{\PARAM}
-\pgfmathsetmacro{\polef}{10.0}
-\pgfmathsetmacro{\KdB}{20 * log10(\K)}
+\useasboundingbox (-0.5, -5.5) rectangle (13.5, 5.5);
 
-% Gain crossover frequency: |G(jw)| = 1 => K/sqrt(1+(w/p)^2) = 1
-% => w_gc = p * sqrt(K^2 - 1) (only exists when K > 1)
-\pgfmathtruncatemacro{\Kgt}{(\K > 1.01) ? 1 : 0}
-\pgfmathsetmacro{\wgc}{\Kgt > 0 ? \polef * sqrt(max(\K*\K - 1, 0.001)) : \polef}
-\pgfmathsetmacro{\wgcClamp}{min(\wgc, 900)}
+% ── Parameters ──
+\pgfmathsetmacro{\rNow}{\PARAM}          % frequency ratio r = w/w_n
+\pgfmathsetmacro{\zetaVal}{0.20}          % damping ratio
+\pgfmathsetmacro{\Azero}{0.6}            % base excitation amplitude (cm)
 
-% Phase at gain crossover: phase(w_gc) = -atan(w_gc/p) in deg
-\pgfmathsetmacro{\phaseAtGC}{-atan(\wgcClamp/\polef) * 180 / 3.14159}
-\pgfmathsetmacro{\phaseMargin}{180 + \phaseAtGC}
+% ── Transmissibility magnitude ──
+\pgfmathsetmacro{\rSq}{\rNow*\rNow}
+\pgfmathsetmacro{\twoZR}{2*\zetaVal*\rNow}
+\pgfmathsetmacro{\num}{1 + \twoZR*\twoZR}
+\pgfmathsetmacro{\den}{(1 - \rSq)*(1 - \rSq) + \twoZR*\twoZR}
+\pgfmathsetmacro{\denSafe}{max(\den, 0.0001)}
+\pgfmathsetmacro{\Tmag}{sqrt(\num / \denSafe)}
+\pgfmathsetmacro{\TdBnow}{10 * ln(\num / \denSafe) / ln(10)}
 
-%% ---- MAGNITUDE PLOT ----
+% ── Transmissibility phase ──
+\pgfmathsetmacro{\Hreal}{1 - \rSq + 4*\zetaVal*\zetaVal*\rSq}
+\pgfmathsetmacro{\Himag}{-2*\zetaVal*\rNow*\rNow*\rNow}
+\pgfmathsetmacro{\phaseNow}{%
+  (\Hreal >= 0) ? atan(\Himag / max(\Hreal, 0.001)) : (atan(\Himag / \Hreal) - 180)}
+
+% ── Animation phase (creates visible oscillation across frames) ──
+\pgfmathsetmacro{\animPhase}{360 * 5 * (\rNow - 0.2) / 2.8}
+\pgfmathsetmacro{\yBase}{\Azero * sin(\animPhase)}
+\pgfmathsetmacro{\yMassRaw}{\Azero * \Tmag * sin(\animPhase + \phaseNow)}
+\pgfmathsetmacro{\yMass}{max(min(\yMassRaw, 1.8), -1.8)}
+
+% ── SMD Equilibrium positions ──
+\pgfmathsetmacro{\baseEq}{-2.5}          % equilibrium base y
+\pgfmathsetmacro{\massEq}{1.5}           % equilibrium mass y
+\pgfmathsetmacro{\eqLen}{4.0}            % equilibrium spring/damper length
+
+% ── Actual positions ──
+\pgfmathsetmacro{\baseY}{\baseEq + \yBase}
+\pgfmathsetmacro{\massY}{\massEq + \yMass}
+\pgfmathsetmacro{\springLen}{\massY - \baseY}
+
+% ════════════════════════════════════════════════════════════════
+%  LEFT: Vertical Mass-Spring-Damper Diagram (x = 0..4, y = -4..4)
+% ════════════════════════════════════════════════════════════════
+
+% ── Base platform (moves vertically) ──
+\draw[very thick, black!80] (-0.2, \baseY) -- (4.2, \baseY);
+% Ground hatching below base
+\foreach \xx in {0.0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8, 3.2, 3.6, 4.0} {
+  \draw[thin, warmgrey] (\xx, \baseY) -- ({\xx - 0.25}, {\baseY - 0.3});
+}
+
+% ── Spring (left side, x ~ 1.0) ──
+\pgfmathsetmacro{\springBot}{\baseY + 0.15}
+\pgfmathsetmacro{\springTop}{\massY - 0.4}
+\pgfmathsetmacro{\springDrawLen}{\springTop - \springBot}
+\pgfmathsetmacro{\segLen}{max(\springDrawLen/6*28.3465, 4)}
+\draw[thick, black!70, decorate,
+  decoration={zigzag, segment length=\segLen pt, amplitude=2.5pt}]
+  (1.0, \springBot) -- (1.0, \springTop);
+
+% ── Damper (right side, x ~ 3.0) ──
+\pgfmathsetmacro{\damperBot}{\baseY + 0.15}
+\pgfmathsetmacro{\damperTop}{\massY - 0.4}
+\pgfmathsetmacro{\damperMid}{(\damperBot + \damperTop) / 2}
+\pgfmathsetmacro{\cylH}{0.18}
+\pgfmathsetmacro{\cylHalfW}{0.7}
+
+% Rod from base to cylinder bottom
+\draw[thick, black!70] (3.0, \damperBot) -- (3.0, {\damperMid - \cylHalfW});
+
+% Cylinder body (open at top, closed at bottom)
+\draw[thick, black!70]
+  ({3.0 - \cylH}, {\damperMid - \cylHalfW}) -- ({3.0 + \cylH}, {\damperMid - \cylHalfW})
+  ({3.0 - \cylH}, {\damperMid - \cylHalfW}) -- ({3.0 - \cylH}, {\damperMid + \cylHalfW})
+  ({3.0 + \cylH}, {\damperMid - \cylHalfW}) -- ({3.0 + \cylH}, {\damperMid + \cylHalfW});
+
+% Piston head inside cylinder
+\pgfmathsetmacro{\pistonY}{\damperMid + (\yMass - \yBase) / \eqLen * \cylHalfW}
+\draw[very thick, black!80]
+  ({3.0 - \cylH + 0.02}, \pistonY) -- ({3.0 + \cylH - 0.02}, \pistonY);
+
+% Piston rod from piston head to mass
+\draw[thick, black!70] (3.0, \pistonY) -- (3.0, \damperTop);
+
+% ── Mass block ──
+\pgfmathsetmacro{\massLeft}{0.6}
+\pgfmathsetmacro{\massRight}{3.4}
+\pgfmathsetmacro{\massBot}{\massY - 0.4}
+\pgfmathsetmacro{\massTop}{\massY + 0.4}
+\fill[garnet, opacity=0.85]
+  (\massLeft, \massBot) rectangle (\massRight, \massTop);
+\draw[thick, black!80]
+  (\massLeft, \massBot) rectangle (\massRight, \massTop);
+\node[font=\bfseries\small, white] at (2.0, \massY) {$m$};
+
+% ── Labels ──
+\node[font=\scriptsize, black!60, left] at (0.65, {(\springBot + \springTop)/2}) {$k$};
+\node[font=\scriptsize, black!60, right] at (3.35, {\damperMid}) {$c$};
+
+% ── Base motion arrow ──
+\pgfmathsetmacro{\arrowDir}{(\yBase >= 0) ? 1 : -1}
+\pgfmathsetmacro{\absYBase}{abs(\yBase)}
+\pgfmathparse{\absYBase > 0.05 ? 1 : 0}
+\ifnum\pgfmathresult=1
+  \draw[->, rose, thick] (-0.35, \baseY) -- (-0.35, {\baseY + 0.5*\arrowDir});
+\fi
+\node[font=\tiny, rose, anchor=west, align=center] at (0.0, {\baseEq - 0.85})
+  {$Y_0\!\sin(\omega t)$};
+
+% ── Mass motion arrow ──
+\pgfmathsetmacro{\arrowDirM}{(\yMass >= 0) ? 1 : -1}
+\pgfmathsetmacro{\absYMass}{abs(\yMass)}
+\pgfmathparse{\absYMass > 0.05 ? 1 : 0}
+\ifnum\pgfmathresult=1
+  \draw[->, atlantic, thick] (3.65, \massY) -- (3.65, {\massY + 0.5*\arrowDirM});
+\fi
+
+% ── Title above SMD ──
+\node[font=\bfseries\small, black] at (2.0, 4.3)
+  {Base-Excited SMD};
+\node[font=\scriptsize, warmgrey] at (2.0, 3.85)
+  {$\zeta = 0.20$};
+
+% ════════════════════════════════════════════════════════════════
+%  RIGHT: Bode Magnitude Plot (top)
+% ════════════════════════════════════════════════════════════════
+
 \begin{axis}[
-    name=mag, width=11cm, height=5cm,
-    xmode=log, xmin=0.1, xmax=1000,
-    ymin=-60, ymax=60,
-    ylabel={$|G|$ (dB)},
-    title={Bode Plot:\; $G(s) = \dfrac{\pgfmathprintnumber[fixed,precision=1]{\K}}{s/\pgfmathprintnumber[fixed,precision=0]{\polef}+1}$},
-    grid=both, grid style={warmgrey!15}, thick,
-    every axis title/.style={font=\small},
-    tick label style={font=\tiny},
-    label style={font=\footnotesize},
-    xticklabels={},
-    clip=false,
+  name=mag,
+  at={(5.5cm, 0.3cm)}, anchor=south west,
+  width=8.5cm, height=5cm,
+  xmode=log, xmin=0.1, xmax=5,
+  ymin=-30, ymax=15,
+  ylabel={$|T|$ (dB)},
+  grid=both, grid style={warmgrey!15},
+  thick,
+  tick label style={font=\tiny},
+  label style={font=\footnotesize},
+  xticklabels={},
+  xtick={0.1, 0.2, 0.5, 1, 2, 5},
+  ytick={-30, -20, -10, 0, 10},
+  clip=false,
 ]
-    % Bode magnitude asymptote: flat at KdB for w<p, then -20dB/dec
-    \addplot[domain=0.1:\polef, samples=2, dashed, horseshoe, thin] {\KdB};
-    \addplot[domain=\polef:1000, samples=100, dashed, horseshoe, thin]
-        {\KdB - 20*log10(x/\polef)};
+  % 0 dB reference line
+  \addplot[dashed, warmgrey, thin, domain=0.1:5, samples=2] {0};
 
-    % Actual magnitude curve
-    \addplot[domain=0.1:1000, samples=300, atlantic, very thick]
-        {\KdB - 20*log10(sqrt(1 + (x/\polef)^2))};
+  % Full transmissibility magnitude curve
+  \addplot[domain=0.1:5, samples=400, atlantic, very thick]
+    {10 * ln( max((1 + (2*\zetaVal*x)^2) / max((1 - x*x)^2 + (2*\zetaVal*x)^2, 0.0001), 0.0001) ) / ln(10)};
 
-    % 0 dB reference
-    \addplot[domain=0.1:1000, samples=2, black!30, thin] {0};
+  % Tracking dot at current frequency ratio
+  \addplot[only marks, mark=*, mark size=3pt, garnet]
+    coordinates {(\rNow, \TdBnow)};
 
-    % Corner frequency callout
-    \pgfmathsetmacro{\magAtCorner}{\KdB - 20*log10(sqrt(2))}
-    \addplot[only marks, mark=diamond*, mark size=3pt, horseshoe]
-        coordinates {(\polef, \magAtCorner)};
-    \node[font=\tiny, horseshoe, anchor=south east]
-        at (axis cs:\polef, \magAtCorner) {$\omega_c$};
-
-    % Gain crossover marker (when K > 1)
-    \ifnum\Kgt>0
-        \addplot[dashed, garnet, thin] coordinates {(\wgcClamp, -60) (\wgcClamp, 0)};
-        \addplot[only marks, mark=*, mark size=2.5pt, garnet]
-            coordinates {(\wgcClamp, 0)};
-        \node[font=\tiny, garnet, anchor=south west]
-            at (axis cs:\wgcClamp, 1) {$\omega_{gc}$};
-    \fi
+  % Resonance label near peak
+  \node[font=\tiny, atlantic, anchor=south west] at (axis cs:1.15, 8.5)
+    {Resonance};
+  \draw[->, thin, atlantic] (axis cs:1.12, 8.3) -- (axis cs:1.03, 8.1);
 \end{axis}
 
-%% ---- PHASE PLOT ----
+% Title above magnitude plot
+\node[font=\small\bfseries, black, anchor=south] at (mag.north) {Transmissibility Bode Plot};
+
+% ════════════════════════════════════════════════════════════════
+%  RIGHT: Bode Phase Plot (bottom, stacked below magnitude)
+% ════════════════════════════════════════════════════════════════
+
 \begin{axis}[
-    name=phase,
-    at=(mag.below south west), anchor=north west,
-    width=11cm, height=4cm,
-    xmode=log, xmin=0.1, xmax=1000,
-    ymin=-100, ymax=10,
-    xlabel={$\omega$ (rad/s)},
-    ylabel={$\angle G$ (deg)},
-    grid=both, grid style={warmgrey!15}, thick,
-    tick label style={font=\tiny},
-    label style={font=\footnotesize},
-    ytick={0, -45, -90},
-    clip=false,
+  name=phase,
+  at=(mag.below south west), anchor=north west,
+  width=8.5cm, height=4.5cm,
+  xmode=log, xmin=0.1, xmax=5,
+  ymin=-180, ymax=10,
+  xlabel={Frequency ratio $r = \omega/\omega_n$},
+  ylabel={$\angle T$ (deg)},
+  grid=both, grid style={warmgrey!15},
+  thick,
+  tick label style={font=\tiny},
+  label style={font=\footnotesize},
+  xtick={0.1, 0.2, 0.5, 1, 2, 5},
+  xticklabels={0.1, 0.2, 0.5, 1, 2, 5},
+  ytick={0, -45, -90, -135, -180},
+  clip=false,
 ]
-    % Phase asymptote: 0 for w < p/10, linear to -90 for w > 10*p
-    \pgfmathsetmacro{\plo}{\polef / 10}
-    \pgfmathsetmacro{\phi}{\polef * 10}
-    \addplot[domain=0.1:\plo, samples=2, dashed, horseshoe, thin] {0};
-    \addplot[domain=\plo:\phi, samples=2, dashed, horseshoe, thin]
-        {-45 * (ln(x/\plo)/ln(\phi/\plo))};
-    \addplot[domain=\phi:1000, samples=2, dashed, horseshoe, thin] {-90};
+  % -90 deg reference line
+  \addplot[dashed, warmgrey, thin, domain=0.1:5, samples=2] {-90};
 
-    % Actual phase curve
-    \addplot[domain=0.1:1000, samples=300, garnet, very thick]
-        {-atan(x/\polef) * 180 / 3.14159};
+  % Full transmissibility phase curve
+  \addplot[domain=0.1:5, samples=400, garnet, very thick]
+    {(1 - x*x + 4*\zetaVal*\zetaVal*x*x >= 0)
+      ? atan((-2*\zetaVal*x*x*x) / max(1 - x*x + 4*\zetaVal*\zetaVal*x*x, 0.001))
+      : (atan((-2*\zetaVal*x*x*x) / (1 - x*x + 4*\zetaVal*\zetaVal*x*x)) - 180)};
 
-    % Reference lines
-    \addplot[domain=0.1:1000, samples=2, dashed, black!20, thin] {-45};
-    \addplot[domain=0.1:1000, samples=2, dashed, black!20, thin] {-90};
-
-    % Corner frequency callout on phase
-    \addplot[only marks, mark=diamond*, mark size=3pt, horseshoe]
-        coordinates {(\polef, -45)};
-
-    % Gain crossover + phase margin (when K > 1)
-    \ifnum\Kgt>0
-        \addplot[dashed, garnet, thin]
-            coordinates {(\wgcClamp, -100) (\wgcClamp, 0)};
-        \addplot[only marks, mark=*, mark size=2.5pt, garnet]
-            coordinates {(\wgcClamp, \phaseAtGC)};
-
-        % Phase margin annotation
-        \node[font=\tiny, rose, anchor=west, align=left]
-            at (axis cs:{1.5*\wgcClamp}, {0.5*\phaseAtGC})
-            {PM $= \pgfmathprintnumber[fixed, precision=1]{\phaseMargin}^\circ$};
-    \fi
+  % Tracking dot at current frequency ratio
+  \addplot[only marks, mark=*, mark size=3pt, atlantic]
+    coordinates {(\rNow, \phaseNow)};
 \end{axis}
 
-% Info box
-\node[anchor=north east, fill=white, fill opacity=0.85, text opacity=1,
-      draw=warmgrey!50, inner sep=4pt, font=\footnotesize, align=left]
-    at ([shift={(-0.2cm,-0.2cm)}]mag.north east)
-    {$K = \pgfmathprintnumber[fixed, precision=1]{\K}$
-     \;($\pgfmathprintnumber[fixed, precision=1]{\KdB}$ dB)\\[1pt]
-     $\omega_c = \pgfmathprintnumber[fixed, precision=0]{\polef}$ rad/s};
+% ════════════════════════════════════════════════════════════════
+%  INFO READOUT
+% ════════════════════════════════════════════════════════════════
+
+\node[font=\footnotesize, warmgrey, anchor=north] at (6.5, -5.0)
+  {$r = \omega/\omega_n = \pgfmathprintnumber[fixed, precision=2, fixed zerofill]{\rNow}$
+   \qquad
+   $\zeta = 0.20$
+   \qquad
+   $|T| = \pgfmathprintnumber[fixed, precision=1, fixed zerofill]{\TdBnow}$ dB};
 
 \end{tikzpicture}
 \end{document}
