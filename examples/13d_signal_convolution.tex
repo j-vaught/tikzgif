@@ -1,15 +1,14 @@
-% Example 13: Signal Convolution
-% Sliding window convolution of a rectangular pulse with a triangular pulse.
+% Example 13d: Signal Convolution (Exponential * Step)
+% Sliding window convolution of a decaying exponential with a unit step.
 % Shows f(tau), g(t-tau), and the resulting convolution integral.
-% Parameter: \PARAM (time shift t, -2 to 4)
-% Range: -2 to 4, recommended 60 frames
+% Parameter: \PARAM (time shift t, -2 to 6)
+% Range: -2 to 6, recommended 60 frames
 % Difficulty: advanced
 % Features demonstrated: pgfplots, filled regions, multiple synchronized plots
 \documentclass[tikz]{standalone}
 \usepackage{pgfplots}
 \usepackage{xcolor}
 \pgfplotsset{compat=1.18}
-\usepgfplotslibrary{fillbetween}
 
 % USC Brand Colors
 \definecolor{garnet}{HTML}{73000A}
@@ -24,6 +23,7 @@
 
 \begin{document}
 \begin{tikzpicture}
+  \useasboundingbox (-2bp, -2bp) rectangle (244bp, 234bp);
   \pgfmathsetmacro{\tshift}{\PARAM}
 
   % --- Top plot: f(tau) and g(t - tau) ---
@@ -31,13 +31,13 @@
     name=topplot,
     at={(0,4.5cm)},
     width=10cm, height=4.5cm,
-    domain=-3:5,
-    samples=200,
+    domain=-3:7,
+    samples=300,
     axis lines=middle,
     xlabel={$\tau$},
     ylabel={},
     ymin=-0.3, ymax=1.5,
-    xmin=-3, xmax=5,
+    xmin=-3, xmax=7,
     grid=major,
     grid style={warmgrey!20},
     title={\small Signals: $f(\tau)$ and $g(t - \tau)$},
@@ -46,83 +46,70 @@
     legend style={font=\tiny},
     clip=false,
   ]
-    % f(tau): rectangular pulse from 0 to 2, height 1
-    \addplot[name path=f, garnet, very thick]
-      coordinates {(-3,0) (0,0) (0,1) (2,1) (2,0) (5,0)};
-    \addlegendentry{$f(\tau)$}
+    % f(tau) = e^{-tau} u(tau): decaying exponential for tau >= 0
+    \addplot[garnet, very thick] {
+      (x >= 0) * exp(-x)
+    };
+    \addlegendentry{$f(\tau) = e^{-\tau}u(\tau)$}
 
-    % g(t - tau): triangular pulse, peak at t-0.5, base from t-1 to t
-    % g(x) = triangle on [-1, 1], peak=1 at x=0
-    % g(t - tau) = g evaluated at (t - tau), i.e., triangle centered at t
-    \addplot[atlantic, very thick]
-      coordinates {
-        (-3, 0)
-        ({\tshift - 1}, 0)
-        ({\tshift}, 1)
-        ({\tshift + 1}, 0)
-        (5, 0)
-      };
-    \addlegendentry{$g(t - \tau)$}
+    % g(t - tau) = u(t - tau): step function, equals 1 when tau <= t
+    \addplot[atlantic, very thick] {
+      (x <= \tshift) * 1
+    };
+    \addlegendentry{$g(t - \tau) = u(t - \tau)$}
 
-    % Shade overlap region
-    \addplot[name path=g, atlantic, thick, draw=none]
-      coordinates {
-        (-3, 0)
-        ({\tshift - 1}, 0)
-        ({\tshift}, 1)
-        ({\tshift + 1}, 0)
-        (5, 0)
-      };
-    \addplot[honeycomb!50, opacity=0.3] fill between[of=f and g,
-      soft clip={domain=-3:5}];
+    % Shade overlap region: where both f(tau) > 0 and g(t-tau) > 0
+    % That is: tau >= 0 AND tau <= t, i.e., tau in [0, max(0, t)]
+    \pgfmathsetmacro{\clipRight}{max(0, \tshift)}
+    \pgfmathparse{\clipRight > 0 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+      \addplot[fill=honeycomb!50, opacity=0.3, draw=none,
+        domain=0:\clipRight, samples=100]
+        {exp(-x)} \closedcycle;
+    \fi
   \end{axis}
 
   % --- Bottom plot: convolution result (f * g)(t) ---
   \begin{axis}[
     at={(0,0)},
     width=10cm, height=4.5cm,
-    domain=-3:5,
+    domain=-3:7,
     samples=300,
     axis lines=middle,
     xlabel={$t$},
     ylabel={$(f * g)(t)$},
     ymin=-0.3, ymax=1.5,
-    xmin=-3, xmax=5,
+    xmin=-3, xmax=7,
     grid=major,
     grid style={warmgrey!20},
     title={\small Convolution: $(f * g)(t)$},
     every axis title/.style={at={(0.5,1.1)}, font=\small},
     clip=false,
   ]
-    % Analytical convolution of rect[0,2] * triangle[-1,1]:
-    % Piecewise function computed analytically:
-    % t in [-1, 0]:  0.5*(t+1)^2
-    % t in [0, 2]:   -0.5*t^2 + t + 0.5  (peak of 1 at t=1)
-    % t in [2, 3]:   0.5*(3-t)^2
+    % Analytical convolution of e^{-t}u(t) * u(t):
+    % t < 0: 0
+    % t >= 0: 1 - e^{-t}
     \addplot[warmgrey!60, very thick, smooth] {
-      (x >= -1 && x < 0) * (0.5*(x+1)^2) +
-      (x >= 0  && x < 2) * (-0.5*x*x + x + 0.5) +
-      (x >= 2  && x < 3) * (0.5*(3 - x)^2)
+      (x >= 0) * (1 - exp(-x))
     };
 
     % Traced portion up to current t
     \addplot[garnet, very thick, smooth, domain=-3:\tshift] {
-      (x >= -1 && x < 0) * (0.5*(x+1)^2) +
-      (x >= 0  && x < 2) * (-0.5*x*x + x + 0.5) +
-      (x >= 2  && x < 3) * (0.5*(3 - x)^2)
+      (x >= 0) * (1 - exp(-x))
     };
 
     % Current point marker
     \pgfmathsetmacro{\convval}{%
-      (\tshift >= -1 && \tshift < 0) * (0.5*(\tshift+1)^2) +
-      (\tshift >= 0  && \tshift < 2) * (-0.5*\tshift*\tshift + \tshift + 0.5) +
-      (\tshift >= 2  && \tshift < 3) * (0.5*(3 - \tshift)^2)
+      (\tshift >= 0) * (1 - exp(-\tshift))
     }
     \addplot[only marks, mark=*, mark size=3pt, garnet]
       coordinates {(\tshift, \convval)};
 
     % Vertical dashed line at current t
     \draw[dashed, garnet!50, thin] (axis cs:\tshift, 0) -- (axis cs:\tshift, \convval);
+
+    % Asymptote dashed line at y = 1
+    \draw[dashed, warmgrey!40, thin] (axis cs:-3, 1) -- (axis cs:7, 1);
 
     \node[anchor=south west, font=\small] at (axis cs:-2.8, 1.2)
       {$t = \pgfmathprintnumber[fixed, precision=2]{\tshift}$};

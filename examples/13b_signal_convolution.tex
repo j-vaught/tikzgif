@@ -1,0 +1,125 @@
+% Example 13b: Signal Convolution (Rect * Rect)
+% Sliding window convolution of two rectangular pulses.
+% Shows f(tau), g(t-tau), and the resulting convolution integral.
+% Parameter: \PARAM (time shift t, -1.5 to 3.5)
+% Range: -1.5 to 3.5, recommended 60 frames
+% Difficulty: advanced
+% Features demonstrated: pgfplots, filled regions, multiple synchronized plots
+\documentclass[tikz]{standalone}
+\usepackage{pgfplots}
+\usepackage{xcolor}
+\pgfplotsset{compat=1.18}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
+\begin{document}
+\begin{tikzpicture}
+  \useasboundingbox (-2bp, -2bp) rectangle (258bp, 234bp);
+  \pgfmathsetmacro{\tshift}{\PARAM}
+
+  % --- Top plot: f(tau) and g(t - tau) ---
+  \begin{axis}[
+    name=topplot,
+    at={(0,4.5cm)},
+    width=10cm, height=4.5cm,
+    domain=-2:4,
+    samples=200,
+    axis lines=middle,
+    xlabel={$\tau$},
+    ylabel={},
+    ymin=-0.3, ymax=1.5,
+    xmin=-2, xmax=4,
+    grid=major,
+    grid style={warmgrey!20},
+    title={\small Signals: $f(\tau)$ and $g(t - \tau)$},
+    every axis title/.style={at={(0.5,1.1)}, font=\small},
+    legend pos=north east,
+    legend style={font=\tiny},
+    clip=false,
+  ]
+    % f(tau): rectangular pulse from 0 to 1, height 1
+    \addplot[garnet, very thick]
+      coordinates {(-2,0) (0,0) (0,1) (1,1) (1,0) (4,0)};
+    \addlegendentry{$f(\tau)$}
+
+    % g(t - tau): rectangular pulse, shifted copy from t-1 to t
+    % g(x) = rect on [0, 1], so g(t - tau) = 1 when t-1 < tau < t
+    \addplot[atlantic, very thick]
+      coordinates {
+        (-2, 0)
+        ({\tshift - 1}, 0)
+        ({\tshift - 1}, 1)
+        ({\tshift}, 1)
+        ({\tshift}, 0)
+        (4, 0)
+      };
+    \addlegendentry{$g(t - \tau)$}
+
+    % Shade overlap region: both are 1 in the overlap, so it's a rectangle
+    % f=1 on [0,1], g=1 on [t-1,t]
+    % Overlap: [max(0, t-1), min(1, t)]
+    \pgfmathsetmacro{\overlapLeft}{max(0, \tshift - 1)}
+    \pgfmathsetmacro{\overlapRight}{min(1, \tshift)}
+    \pgfmathparse{\overlapLeft < \overlapRight ? 1 : 0}
+    \ifnum\pgfmathresult=1
+      \fill[honeycomb!50, opacity=0.3]
+        (axis cs:\overlapLeft, 0) rectangle (axis cs:\overlapRight, 1);
+    \fi
+  \end{axis}
+
+  % --- Bottom plot: convolution result (f * g)(t) ---
+  \begin{axis}[
+    at={(0,0)},
+    width=10cm, height=4.5cm,
+    domain=-2:4,
+    samples=300,
+    axis lines=middle,
+    xlabel={$t$},
+    ylabel={$(f * g)(t)$},
+    ymin=-0.3, ymax=1.5,
+    xmin=-2, xmax=4,
+    grid=major,
+    grid style={warmgrey!20},
+    title={\small Convolution: $(f * g)(t)$},
+    every axis title/.style={at={(0.5,1.1)}, font=\small},
+    clip=false,
+  ]
+    % Analytical convolution of rect[0,1] * rect[0,1]:
+    % t in [0, 1]:  t
+    % t in [1, 2]:  2 - t
+    \addplot[warmgrey!60, very thick, smooth] {
+      (x >= 0 && x < 1) * (x) +
+      (x >= 1 && x < 2) * (2 - x)
+    };
+
+    % Traced portion up to current t
+    \addplot[garnet, very thick, smooth, domain=-2:\tshift] {
+      (x >= 0 && x < 1) * (x) +
+      (x >= 1 && x < 2) * (2 - x)
+    };
+
+    % Current point marker
+    \pgfmathsetmacro{\convval}{%
+      (\tshift >= 0 && \tshift < 1) * (\tshift) +
+      (\tshift >= 1 && \tshift < 2) * (2 - \tshift)
+    }
+    \addplot[only marks, mark=*, mark size=3pt, garnet]
+      coordinates {(\tshift, \convval)};
+
+    % Vertical dashed line at current t
+    \draw[dashed, garnet!50, thin] (axis cs:\tshift, 0) -- (axis cs:\tshift, \convval);
+
+    \node[anchor=south west, font=\small] at (axis cs:-1.8, 1.2)
+      {$t = \pgfmathprintnumber[fixed, precision=2]{\tshift}$};
+  \end{axis}
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,127 @@
+% Example 13c: Signal Convolution (Triangle * Triangle -> B-spline)
+% Sliding window convolution of two triangular pulses.
+% Shows f(tau), g(t-tau), and the resulting convolution integral (cubic B-spline).
+% Parameter: \PARAM (time shift t, -3 to 3)
+% Range: -3 to 3, recommended 60 frames
+% Difficulty: advanced
+% Features demonstrated: pgfplots, filled regions, multiple synchronized plots
+\documentclass[tikz]{standalone}
+\usepackage{pgfplots}
+\usepackage{xcolor}
+\pgfplotsset{compat=1.18}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
+\begin{document}
+\begin{tikzpicture}
+  \useasboundingbox (-2bp, -2bp) rectangle (258bp, 236bp);
+  \pgfmathsetmacro{\tshift}{\PARAM}
+
+  % --- Top plot: f(tau) and g(t - tau) ---
+  \begin{axis}[
+    name=topplot,
+    at={(0,4.5cm)},
+    width=10cm, height=4.5cm,
+    domain=-4:4,
+    samples=200,
+    axis lines=middle,
+    xlabel={$\tau$},
+    ylabel={},
+    ymin=-0.3, ymax=1.5,
+    xmin=-4, xmax=4,
+    grid=major,
+    grid style={warmgrey!20},
+    title={\small Signals: $f(\tau)$ and $g(t - \tau)$},
+    every axis title/.style={at={(0.5,1.1)}, font=\small},
+    legend pos=north east,
+    legend style={font=\tiny},
+    clip=false,
+  ]
+    % f(tau): triangular pulse on [-1, 1], peak 1 at 0
+    \addplot[garnet, very thick]
+      coordinates {(-4,0) (-1,0) (0,1) (1,0) (4,0)};
+    \addlegendentry{$f(\tau)$}
+
+    % g(t - tau): triangular pulse, peak at t, base from t-1 to t+1
+    \addplot[atlantic, very thick]
+      coordinates {
+        (-4, 0)
+        ({\tshift - 1}, 0)
+        ({\tshift}, 1)
+        ({\tshift + 1}, 0)
+        (4, 0)
+      };
+    \addlegendentry{$g(t - \tau)$}
+
+    % Shade overlap region: min(f, g) where both > 0
+    % f=1-|x| on [-1,1], g=1-|x-t| on [t-1,t+1]
+    % Overlap: [max(-1, t-1), min(1, t+1)]
+    % Fill curve: min(1-|x|, 1-|x-t|)
+    \pgfmathsetmacro{\overlapLeft}{max(-1, \tshift - 1)}
+    \pgfmathsetmacro{\overlapRight}{min(1, \tshift + 1)}
+    \pgfmathparse{\overlapLeft < \overlapRight ? 1 : 0}
+    \ifnum\pgfmathresult=1
+      \addplot[fill=honeycomb!50, opacity=0.3, draw=none,
+        domain=\overlapLeft:\overlapRight, samples=100]
+        {min(1 - abs(x), 1 - abs(x - \tshift))} \closedcycle;
+    \fi
+  \end{axis}
+
+  % --- Bottom plot: convolution result (f * g)(t) ---
+  \begin{axis}[
+    at={(0,0)},
+    width=10cm, height=4.5cm,
+    domain=-4:4,
+    samples=400,
+    axis lines=middle,
+    xlabel={$t$},
+    ylabel={$(f * g)(t)$},
+    ymin=-0.15, ymax=1.0,
+    xmin=-4, xmax=4,
+    grid=major,
+    grid style={warmgrey!20},
+    title={\small Convolution: $(f * g)(t)$},
+    every axis title/.style={at={(0.5,1.1)}, font=\small},
+    clip=false,
+  ]
+    % Analytical convolution of triangle[-1,1] * triangle[-1,1]:
+    % Cubic B-spline kernel:
+    % |t| in [0, 1):  2/3 - t^2 + 0.5*|t|^3
+    % |t| in [1, 2):  (1/6)*(2 - |t|)^3
+    \addplot[warmgrey!60, very thick, smooth] {
+      (abs(x) >= 0 && abs(x) < 1) * (2/3 - x*x + 0.5*abs(x)*abs(x)*abs(x)) +
+      (abs(x) >= 1 && abs(x) < 2) * ((1/6)*(2 - abs(x))^3)
+    };
+
+    % Traced portion up to current t
+    \addplot[garnet, very thick, smooth, domain=-4:\tshift] {
+      (abs(x) >= 0 && abs(x) < 1) * (2/3 - x*x + 0.5*abs(x)*abs(x)*abs(x)) +
+      (abs(x) >= 1 && abs(x) < 2) * ((1/6)*(2 - abs(x))^3)
+    };
+
+    % Current point marker
+    \pgfmathsetmacro{\absT}{abs(\tshift)}
+    \pgfmathsetmacro{\convval}{%
+      (\absT >= 0 && \absT < 1) * (2/3 - \tshift*\tshift + 0.5*\absT*\absT*\absT) +
+      (\absT >= 1 && \absT < 2) * ((1/6)*(2 - \absT)^3)
+    }
+    \addplot[only marks, mark=*, mark size=3pt, garnet]
+      coordinates {(\tshift, \convval)};
+
+    % Vertical dashed line at current t
+    \draw[dashed, garnet!50, thin] (axis cs:\tshift, 0) -- (axis cs:\tshift, \convval);
+
+    \node[anchor=south west, font=\small] at (axis cs:-3.8, 0.8)
+      {$t = \pgfmathprintnumber[fixed, precision=2]{\tshift}$};
+  \end{axis}
+\end{tikzpicture}
+\end{document}
