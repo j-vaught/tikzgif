@@ -108,3 +108,32 @@ return LatexEngine.PDFLATEX
 That choice avoids an annoying class of user errors where “the tool works for some templates but silently breaks on others.” If a package implies an engine constraint, I want the tool to honor that explicitly.
 
 This is also why I kept manual override support: auto-selection should be smart, not authoritarian.
+
+## 7. Backend and Format Tradeoffs
+
+Compilation engines produce PDFs, but final delivery depends on conversion and assembly backends. I wanted this layer to be pluggable because real environments vary.
+
+Current conversion priority in `tikzgif/backends.py` is:
+
+```python
+BACKEND_PRIORITY = [
+    PdftoppmBackend,
+    PyMuPDFBackend,
+    Pdf2ImageBackend,
+    GhostscriptBackend,
+    ImageMagickBackend,
+]
+```
+
+That order reflects practical experience: if `pdftoppm` is installed, it is usually the fastest and most predictable option for high-volume frame conversion. If not, the pipeline keeps going with the best available fallback.
+
+Then assembly (`tikzgif/assembly.py`) targets multiple destinations:
+
+- GIF for docs, slides, and social previews.
+- MP4 for cleaner quality at larger frame counts.
+- WebP/APNG for modern browser-friendly animation.
+- SVG/spritesheet/PDF-animate for specialized workflows.
+
+I try to treat format choice as a product decision, not a codec religion problem. If the artifact is going to GitHub, GIF is often enough. If it is going into a talk deck or a polished demo, MP4/WebP usually wins on quality-per-byte.
+
+![Phase Portrait](../outputs/25_phase_portrait.gif)
