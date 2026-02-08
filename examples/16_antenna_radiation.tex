@@ -26,9 +26,9 @@
 \begin{document}
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
-% Clip to bounding box
+% Fix bounding box so tikzgif does not crop
+\useasboundingbox (-9,-8) rectangle (9,6);
 \clip (-9,-8) rectangle (9,6);
-\path[use as bounding box] (-9,-8) rectangle (9,6);
 
 % ============================================================
 % PARAMETER SETUP
