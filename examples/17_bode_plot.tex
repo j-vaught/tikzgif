@@ -1,8 +1,8 @@
 % Example 17: Base-Excited Mass-Spring-Damper with Bode Plot
 % Vertical SMD with base excitation (left) and Bode magnitude + phase (right).
 % Frequency ratio r = w/w_n sweeps to show resonance and vibration isolation.
-% Parameter: \PARAM (frequency ratio r = w/w_n, range 0.2..20.0)
-% Range: 0.2 to 20.0, recommended 120 frames at 15fps
+% Parameter: \PARAM (normalized sweep 0..1, log-maps to r = 0.2..20.0)
+% Range: 0 to 1, recommended 120 frames at 15fps
 % Difficulty: advanced
 % Features demonstrated: mechanical diagrams, frequency response, resonance,
 %   vibration isolation, Bode plots, pgfplots
@@ -30,7 +30,8 @@
 \useasboundingbox (-0.5, -5.5) rectangle (13.5, 5.5);
 
 % ── Parameters ──
-\pgfmathsetmacro{\rNow}{\PARAM}          % frequency ratio r = w/w_n
+\pgfmathsetmacro{\tFrac}{\PARAM}                      % normalized sweep (0 to 1)
+\pgfmathsetmacro{\rNow}{0.2 * exp(\tFrac * ln(100))}  % log sweep: r = 0.2..20
 \pgfmathsetmacro{\zetaVal}{0.20}          % damping ratio
 \pgfmathsetmacro{\Azero}{0.4}            % base excitation amplitude (cm)
 
@@ -57,9 +58,9 @@
 \pgfmathsetmacro{\phaseNow}{\Hreal >= 0 ? \baseAngle : (\baseAngle - 180)}
 
 % ── Animation phase (creates visible oscillation across frames) ──
-% Quadratic+linear blend: base oscillates faster at higher r (higher driving freq)
-\pgfmathsetmacro{\rFrac}{(\rNow - 0.2) / 19.8}
-\pgfmathsetmacro{\animPhase}{1080*\rFrac + 1800*\rFrac*\rFrac}
+% Phase proportional to r: base oscillates faster at higher driving frequency
+% (integral of frequency over log-swept time gives phase ~ rNow)
+\pgfmathsetmacro{\animPhase}{180 * (\rNow - 0.2)}
 \pgfmathsetmacro{\yBase}{\Azero * sin(\animPhase)}
 \pgfmathsetmacro{\yMassRaw}{\Azero * \Tmag * sin(\animPhase + \phaseNow)}
 \pgfmathsetmacro{\yMass}{max(min(\yMassRaw, 1.0), -1.0)}
