@@ -1,16 +1,17 @@
-% Example 10: RC Circuit Charging
-% An RC circuit diagram with the capacitor voltage rising exponentially,
-% accompanied by a real-time plot.
-% Parameter: \PARAM (normalized time t/tau, 0 to 5)
-% Range: 0 to 5, recommended 50 frames
+% Example 10: RC Circuit Motor-Fan (Charge / Discharge)
+% A DC motor with fan blades driven by an RC circuit.  The capacitor charges
+% (fan speeds up) then the switch opens and the capacitor discharges through
+% the motor (fan slows down), making the RC time constant physically intuitive.
+% Parameter: \PARAM (normalized time t/tau, 0 to 10)
+% Range: 0 to 10, recommended 80 frames at 20 fps
 % Difficulty: intermediate
-% Features demonstrated: circuit-like drawing, exponential curves, dual panels
+% Features demonstrated: circuit drawing, exponential curves, rotating fan,
+%   two-phase animation, dual panels
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{pgfplots}
 \usepackage{xcolor}
 \pgfplotsset{compat=1.18}
-\usetikzlibrary{decorations.markings}
 
 % USC Brand Colors
 \definecolor{garnet}{HTML}{73000A}
@@ -25,94 +26,227 @@
 
 \begin{document}
 \begin{tikzpicture}
-  \pgfmathsetmacro{\ttau}{max(\PARAM, 0.01)}  % t/tau (clamped to avoid zero domain)
-  \pgfmathsetmacro{\Vs}{5}         % source voltage
-  \pgfmathsetmacro{\Vc}{\Vs * (1 - exp(-\ttau))}  % capacitor voltage
-  \pgfmathsetmacro{\Ic}{exp(-\ttau)}               % normalized current
 
-  % --- Circuit Diagram (left panel) ---
-  \begin{scope}[shift={(-5,0)}]
-    % Battery
-    \draw[thick] (0,0) -- (0,2);
-    \draw[thick] (-0.3,2) -- (0.3,2);
-    \draw[thick] (-0.15,2.3) -- (0.15,2.3);
-    \node[left, font=\small] at (-0.3,2.15) {$V_s$};
+% ====================================================================
+% Bounding box — keeps every frame the same size
+% ====================================================================
+\useasboundingbox (-0.6,-1.4) rectangle (15.2,7.0);
 
-    % Top wire with switch
-    \draw[thick] (0,2.3) -- (0,3) -- (1,3);
-    % Switch (closes based on time)
-    \draw[thick] (1,3) -- (1.8,3);
-    \fill (1,3) circle (2pt);
-    \fill (1.8,3) circle (2pt);
-    \node[above, font=\tiny] at (1.4,3.1) {$t=0$};
+% ====================================================================
+% Electrical parameters
+% ====================================================================
+\pgfmathsetmacro{\Vs}{5}                         % source voltage
+\pgfmathsetmacro{\ttau}{max(\PARAM, 0.001)}      % t/tau clamped
 
-    % Resistor
-    \draw[thick] (1.8,3) -- (2.2,3);
-    \draw[thick] (2.2,3) -- (2.4,3.3) -- (2.6,2.7) -- (2.8,3.3) --
-                 (3.0,2.7) -- (3.2,3.3) -- (3.4,2.7) -- (3.6,3);
-    \draw[thick] (3.6,3) -- (4,3);
-    \node[above, font=\small] at (2.9,3.4) {$R$};
+% --- Phase flag and clamped discharge time ---
+\pgfmathsetmacro{\isCharging}{\ttau < 5 ? 1 : 0}
+\pgfmathsetmacro{\dt}{max(\ttau - 5, 0)}          % clamped >=0 to avoid exp overflow
 
-    % Wire to capacitor
-    \draw[thick] (4,3) -- (4,1.5);
+% --- Capacitor voltage ---
+\pgfmathsetmacro{\VcCharge}{\Vs * (1 - exp(-\ttau))}
+\pgfmathsetmacro{\VcAtFive}{\Vs * (1 - exp(-5))}
+\pgfmathsetmacro{\VcDischarge}{\VcAtFive * exp(-\dt)}
+\pgfmathsetmacro{\Vc}{\isCharging ? \VcCharge : \VcDischarge}
 
-    % Capacitor
-    \draw[thick] (3.6,1.5) -- (4.4,1.5);
-    \draw[thick] (3.6,1.1) -- (4.4,1.1);
-    \node[right, font=\small] at (4.5,1.3) {$C$};
+% --- Normalized current magnitude (for line thickness) ---
+\pgfmathsetmacro{\IcCharge}{exp(-\ttau)}
+\pgfmathsetmacro{\IcDischarge}{(\VcAtFive/\Vs) * exp(-\dt)}
+\pgfmathsetmacro{\Ic}{\isCharging ? \IcCharge : \IcDischarge}
 
-    % Capacitor voltage indicator (colored fill)
-    \pgfmathsetmacro{\fillht}{0.4 * \Vc / \Vs}
-    \fill[garnet!40, opacity=0.6] (3.65, 1.1) rectangle (4.35, {1.1 + \fillht});
+% --- Input voltage (step) ---
+\pgfmathsetmacro{\Vin}{\isCharging ? \Vs : 0}
 
-    % Bottom wire
-    \draw[thick] (4,1.1) -- (4,0) -- (0,0);
+% ====================================================================
+% Fan rotation angle  (integral of omega ~ Vc)
+% ====================================================================
+% omega_max * tau chosen so full charge gives ~3 rotations (1080 deg)
+\pgfmathsetmacro{\rotScale}{1080}
 
-    % Current arrow
-    \pgfmathsetmacro{\arrowsize}{max(0.1, \Ic * 0.4)}
-    \pgfmathsetmacro{\linewd}{0.5 + \Ic * 2}
-    \draw[->, garnet, line width=\linewd pt]
-      (2.9, 3.6) -- (3.5, 3.6);
-    \node[above, font=\tiny, garnet] at (3.2, 3.7) {$i(t)$};
+% Charging:  angle = rotScale * [ t/tau + exp(-t/tau) - 1 ]
+\pgfmathsetmacro{\angleCharge}{\rotScale * (\ttau + exp(-\ttau) - 1)}
 
-    % Voltage label
-    \node[below, font=\small] at (4, 0.9)
-      {$V_C = \pgfmathprintnumber[fixed, precision=2]{\Vc}$ V};
+% Value at the switching instant (t/tau = 5)
+\pgfmathsetmacro{\angleAtFive}{\rotScale * (5 + exp(-5) - 1)}
+
+% Discharging:  angle = angleAtFive + rotScale*(VcAtFive/Vs)*[1 - exp(-dt)]
+\pgfmathsetmacro{\angleDischarge}{\angleAtFive + \rotScale * (\VcAtFive/\Vs) * (1 - exp(-\dt))}
+
+\pgfmathsetmacro{\fanAngle}{\isCharging ? \angleCharge : \angleDischarge}
+
+% ====================================================================
+% LEFT PANEL — Circuit diagram  (shifted so origin is near center)
+% ====================================================================
+% Topology:  Vs --S--R--> node_A --+--(Motor+Fan)--+-- node_B --> Vs
+%                                  |               |
+%                                  +----( C )------+
+% Motor and capacitor are in PARALLEL between node_A and node_B.
+% ====================================================================
+\begin{scope}[shift={(2.8,2.8)}]
+
+  % ---------- Wires ----------
+  \pgfmathsetmacro{\linewd}{0.6 + \Ic * 2.0}
+
+  % Top rail: battery+ → switch → resistor → node_A
+  \draw[black!80, line width=0.8pt] (-2.6, 2.0) -- (-2.6, 3.2) -- (-1.6, 3.2);
+  % (switch gap drawn below)
+  \draw[black!80, line width=0.8pt] (-0.4, 3.2) -- (0.6, 3.2);
+  % (resistor drawn below)
+  % node_A: junction where motor and capacitor branches split
+  \draw[black!80, line width=0.8pt] (2.2, 3.2) -- (3.8, 3.2);
+  % Motor branch: node_A down through motor to node_B
+  \draw[black!80, line width=0.8pt] (2.6, 3.2) -- (2.6, 1.65);
+  \draw[black!80, line width=0.8pt] (2.6, 0.15) -- (2.6, -1.2);
+  % Capacitor branch: node_A down through cap to node_B
+  \draw[black!80, line width=0.8pt] (3.8, 3.2) -- (3.8, -0.1);
+  \draw[black!80, line width=0.8pt] (3.8, -0.7) -- (3.8, -1.2);
+  % node_B: bottom junction, back to battery-
+  \draw[black!80, line width=0.8pt] (2.6, -1.2) -- (3.8, -1.2);
+  \draw[black!80, line width=0.8pt] (2.6, -1.2) -- (-2.6, -1.2) -- (-2.6, 0.8);
+  % node_A dot
+  \fill[black!80] (2.6, 3.2) circle (1.5pt);
+  % Vertical tee to capacitor branch
+  \fill[black!80] (3.8, 3.2) circle (1.5pt);
+  % node_B dots
+  \fill[black!80] (2.6, -1.2) circle (1.5pt);
+  \fill[black!80] (3.8, -1.2) circle (1.5pt);
+
+  % ---------- Current arrow (on top wire, thickness ~ |I|) ----------
+  \pgfmathsetmacro{\arrwd}{max(0.3, \Ic * 2.5)}
+  \draw[->, garnet, line width=\arrwd pt] (-0.2, 3.55) -- (0.6, 3.55);
+  \node[above, font=\tiny, garnet] at (0.2, 3.6) {$i(t)$};
+
+  % ---------- Battery ----------
+  \draw[black!80, line width=1.2pt] (-2.95, 0.8) -- (-2.25, 0.8);  % short plate (-)
+  \draw[black!80, line width=0.6pt] (-3.1, 1.2) -- (-2.1, 1.2);   % long plate (+)
+  \draw[black!80, line width=0.8pt] (-2.6, 1.2) -- (-2.6, 2.0);   % wire up from +
+  \draw[black!80, line width=0.8pt] (-2.6, 0.0) -- (-2.6, 0.8);   % wire down to -
+  % polarity
+  \node[font=\scriptsize] at (-3.25, 1.4) {$+$};
+  \node[font=\scriptsize] at (-3.25, 0.6) {$-$};
+  \node[left, font=\small] at (-3.15, 1.0) {$V_s$};
+
+  % ---------- Switch ----------
+  \fill[black!80] (-1.6, 3.2) circle (2.0pt);
+  \fill[black!80] (-0.4, 3.2) circle (2.0pt);
+  \ifnum\isCharging=1
+    % Closed: straight bar
+    \draw[garnet, line width=1.4pt] (-1.6, 3.2) -- (-0.4, 3.2);
+    \node[above, font=\tiny, garnet] at (-1.0, 3.35) {closed};
+  \else
+    % Open: angled bar
+    \draw[warmgrey, line width=1.4pt] (-1.6, 3.2) -- (-0.7, 3.75);
+    \node[above, font=\tiny, warmgrey] at (-1.0, 3.75) {open};
+  \fi
+  \node[above, font=\small] at (-1.0, 3.85) {$S$};
+
+  % ---------- Resistor (zigzag) ----------
+  \draw[black!80, line width=0.8pt]
+    (0.6,3.2) -- (0.8,3.2)
+    -- (0.95,3.5) -- (1.15,2.9) -- (1.35,3.5) -- (1.55,2.9) -- (1.75,3.5) -- (1.95,2.9)
+    -- (2.1,3.2) -- (2.2,3.2);
+  \node[above, font=\small] at (1.4, 3.55) {$R$};
+
+  % ---------- Motor (circle with M) — left branch ----------
+  \draw[warmgrey, thick] (2.6, 0.9) circle (0.7);
+  \node[font=\small, warmgrey] at (2.6, 0.9) {M};
+
+  % ---------- Fan / Propeller (3 blades at 120° spacing) ----------
+  \begin{scope}[shift={(2.6, 0.9)}]
+    \foreach \k in {0,1,2} {
+      \pgfmathsetmacro{\bladeAng}{\fanAngle + \k * 120}
+      \fill[atlantic, opacity=0.85, rotate=\bladeAng]
+        (0,0) -- (0.12, 0.25) -- (0, 1.05) -- (-0.12, 0.25) -- cycle;
+    }
+    % hub
+    \fill[atlantic!70] (0,0) circle (0.1);
   \end{scope}
 
-  % --- Voltage Plot (right panel) ---
-  \begin{axis}[
-    at={(0cm,-2cm)},
-    anchor=south west,
-    width=7cm, height=5cm,
-    domain=0:5,
-    samples=100,
-    axis lines=left,
-    xlabel={$t/\tau$},
-    ylabel={Voltage (V)},
-    ymin=0, ymax=6,
-    xmin=0, xmax=5,
-    grid=major,
-    grid style={warmgrey!25},
-    title={\small Capacitor Charging},
-  ]
-    % Full response curve (faint)
-    \addplot[warmgrey!40, thick] {\Vs * (1 - exp(-x))};
+  % ---------- Capacitor — right branch ----------
+  \draw[black!80, line width=1.2pt] (3.4, -0.1) -- (4.2, -0.1);  % top plate
+  \draw[black!80, line width=1.2pt] (3.4, -0.7) -- (4.2, -0.7);  % bottom plate
+  \node[right, font=\small] at (4.3, -0.4) {$C$};
 
-    % Traced portion up to current time
-    \addplot[garnet, very thick, domain=0:\ttau] {\Vs * (1 - exp(-x))};
+  % charge-level fill
+  \pgfmathsetmacro{\fillFrac}{\Vc / \Vs}
+  \pgfmathsetmacro{\fillHt}{0.55 * \fillFrac}   % max gap ~ 0.55
+  \fill[garnet!40, opacity=0.6]
+    (3.45, -0.68) rectangle ({4.15}, {-0.68 + \fillHt});
 
-    % Current point
-    \addplot[only marks, mark=*, mark size=3pt, garnet]
-      coordinates {(\ttau, \Vc)};
+  % ---------- Vc numeric readout ----------
+  \node[below, font=\small] at (3.2, -1.5)
+    {$V_C = \pgfmathprintnumber[fixed, precision=2]{\Vc}$\,V};
 
-    % Asymptote
-    \addplot[dashed, atlantic!50, thin] {\Vs};
-    \node[right, font=\tiny, atlantic!50] at (axis cs:4.2, 5.2) {$V_s$};
+\end{scope}
 
-    % Time constant markers
-    \addplot[dotted, black!30] coordinates {(1,0) (1,{\Vs*(1-exp(-1))})};
-    \node[below, font=\tiny] at (axis cs:1, 0) {$\tau$};
-  \end{axis}
+% ====================================================================
+% RIGHT PANEL — Voltage plot
+% ====================================================================
+\begin{axis}[
+  at={(7.8cm, -0.6cm)},
+  anchor=south west,
+  width=7.0cm, height=6.8cm,
+  domain=0:10,
+  samples=200,
+  axis lines=left,
+  xlabel={$t/\tau$},
+  ylabel={Voltage (V)},
+  ymin=0, ymax=6.2,
+  xmin=0, xmax=10.5,
+  xtick={0,1,2,3,4,5,6,7,8,9,10},
+  grid=major,
+  grid style={warmgrey!20},
+  every axis x label/.style={at={(ticklabel* cs:1.0)}, anchor=north west},
+  every axis y label/.style={at={(ticklabel* cs:1.0)}, anchor=south east},
+  clip=false,
+]
+
+  % ---- Vertical dashed line at switch event ----
+  \draw[dashed, warmgrey!60, line width=0.6pt]
+    (axis cs:5, 0) -- (axis cs:5, 6.2);
+
+  % ---- Region labels ----
+  \node[font=\scriptsize, congaree] at (axis cs:2.5, 5.9) {Charging};
+  \node[font=\scriptsize, congaree] at (axis cs:7.5, 5.9) {Discharging};
+
+  % ---- Vin step (full ghost) ----
+  \addplot[atlantic, dashed, thick, forget plot]
+    coordinates {(0,5)(4.99,5)(5,0)(10,0)};
+  \node[font=\tiny, atlantic, anchor=south west] at (axis cs:0.1, 5.1) {$V_{in}$};
+
+  % ---- Vc full ghost curve ----
+  % charging portion
+  \addplot[warmgrey!35, thick, domain=0:5, forget plot]
+    {\Vs * (1 - exp(-x))};
+  % discharging portion
+  \addplot[warmgrey!35, thick, domain=5:10, forget plot]
+    {\VcAtFive * exp(-(x - 5))};
+
+  % ---- Vc active trace ----
+  \pgfmathsetmacro{\clampedT}{min(\ttau, 10)}
+  \pgfmathsetmacro{\traceEnd}{min(\clampedT, 5)}
+  % charging part of the active trace
+  \addplot[garnet, very thick, domain=0:\traceEnd, forget plot]
+    {\Vs * (1 - exp(-x))};
+
+  % discharging part of the active trace (only if past switch point)
+  \pgfmathsetmacro{\showDischarge}{\ttau > 5 ? 1 : 0}
+  \ifnum\showDischarge=1
+    \addplot[garnet, very thick, domain=5:\clampedT, forget plot]
+      {\VcAtFive * exp(-(x - 5))};
+  \fi
+
+  % ---- Current-time dot ----
+  \addplot[only marks, mark=*, mark size=2.5pt, garnet, forget plot]
+    coordinates {(\ttau, \Vc)};
+
+  % Vc label near dot
+  \node[font=\tiny, garnet, anchor=south west] at (axis cs:{\ttau + 0.15}, {\Vc + 0.15})
+    {$V_C$};
+
+  % ---- Asymptote ----
+  \addplot[dashed, atlantic!40, thin, domain=0:5, forget plot] {\Vs};
+
+\end{axis}
+
 \end{tikzpicture}
 \end{document}
