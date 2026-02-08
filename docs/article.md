@@ -266,3 +266,16 @@ If I continue evolving this, the most valuable upgrades are likely:
 3. Additional template metadata tooling for discoverability and education.
 
 For now, I’m treating this as a flagship story and a practical tool, not a content treadmill. I would rather keep one good long-form explanation current than publish shallow updates on a fixed schedule.
+
+## 14. Try It on Your Own Diagram
+
+If you already have a TikZ figure, you are close. Replace the value you want to animate with `\PARAM`, then render:
+
+```bash
+pip install tikzgif
+tikzgif render your_diagram.tex --frames 60 --fps 30 -o your_diagram.gif
+```
+
+If you need better quality-per-byte for longer animations, switch to MP4 or WebP and keep the same source.
+
+The motivation for this repo was never “make another converter.” It was to make technical storytelling in LaTeX less painful and more repeatable. If this saves you even one afternoon of manual frame wrangling, it did its job.
