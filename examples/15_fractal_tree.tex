@@ -31,16 +31,18 @@
 
   % Recursive branch command
   % #1=startX, #2=startY, #3=angle, #4=length, #5=depth, #6=thickness
+  % Always traverses the full tree so every node consumes its RNG values
+  % on every frame, preventing jitter from shifting RNG sequences.
   \newcommand{\branch}[6]{%
     \pgfmathtruncatemacro{\dep}{#5}%
     %
     % BASE CASE: terminal leaf node
     \ifnum\dep=\maxdepth
-      % Consume 3 rnd values for deterministic RNG sequence
+      % Always consume 3 rnd values for RNG consistency
       \pgfmathsetmacro{\leafsz}{0.06 + 0.03 * rnd}%
       \pgfmathsetmacro{\leafclr}{40 + 30 * rnd}%
       \pgfmathsetmacro{\leafopa}{0.6 + 0.3 * rnd}%
-      % Draw leaf if parent depth is visible
+      % Draw leaf only if parent depth is fully grown
       \pgfmathsetmacro{\parentvis}{(\dep - 1) < \currentdepth ? 1 : 0}%
       \ifdim\parentvis pt>0.5pt
         \pgfmathsetmacro{\parentgrow}{min(1, \currentdepth - (\dep - 1))}%
@@ -48,42 +50,41 @@
         \fill[horseshoe!\leafclr!grass, opacity=\finalopa] (#1, #2) circle (\leafsz);%
       \fi
     \else
-      % Check if this depth is visible yet
+      % Always consume 2 rand values for RNG consistency
+      \pgfmathsetmacro{\angleJitter}{5 * rand}%
+      \pgfmathsetmacro{\lenJitter}{1 + 0.15 * rand}%
+      \pgfmathsetmacro{\adjlen}{#4 * \lenJitter}%
+      %
+      % Draw BEFORE computing child endpoints — #1/#2/#3 are tokens like
+      % \ex/\ey/\angleL from the parent; redefining them early would make
+      % the draw command resolve to the wrong (child) coordinates.
       \pgfmathsetmacro{\branchvisible}{\dep < \currentdepth ? 1 : 0}%
       \ifdim\branchvisible pt>0.5pt
-        % Consume 2 rand values for jitter
-        \pgfmathsetmacro{\angleJitter}{5 * rand}%
-        \pgfmathsetmacro{\lenJitter}{1 + 0.15 * rand}%
-        %
         \pgfmathsetmacro{\growfactor}{min(1, \currentdepth - \dep)}%
-        \pgfmathsetmacro{\adjlen}{#4 * \lenJitter}%
         \pgfmathsetmacro{\ix}{#1 + \growfactor * \adjlen * sin(#3 + \angleJitter)}%
         \pgfmathsetmacro{\iy}{#2 + \growfactor * \adjlen * cos(#3 + \angleJitter)}%
-        %
-        % Color: gradual transition from brown trunk to green tips
         \pgfmathtruncatemacro{\greenpct}{min(100, max(0, \dep * 15))}%
         \draw[line width=#6 pt, line cap=round, horseshoe!\greenpct!warmgrey!80!black]
           (#1, #2) -- (\ix, \iy);%
-        %
-        % Recurse into children only when fully grown
-        \ifdim\growfactor pt>0.99pt
-          \pgfmathsetmacro{\ex}{#1 + \adjlen * sin(#3 + \angleJitter)}%
-          \pgfmathsetmacro{\ey}{#2 + \adjlen * cos(#3 + \angleJitter)}%
-          \pgfmathsetmacro{\newlen}{#4 * 0.68}%
-          \pgfmathsetmacro{\newthick}{max(0.15, #6 * 0.62)}%
-          \pgfmathtruncatemacro{\newdep}{\dep + 1}%
-          \pgfmathsetmacro{\splay}{22 - \dep * 0.5}%
-          %
-          \pgfmathsetmacro{\angleL}{#3 + \angleJitter - \splay}%
-          \pgfmathsetmacro{\angleR}{#3 + \angleJitter + \splay}%
-          \begingroup
-            \branch{\ex}{\ey}{\angleL}{\newlen}{\newdep}{\newthick}%
-          \endgroup
-          \begingroup
-            \branch{\ex}{\ey}{\angleR}{\newlen}{\newdep}{\newthick}%
-          \endgroup
-        \fi
       \fi
+      %
+      % Now safe to redefine \ex, \ey, etc. for child recursion
+      \pgfmathsetmacro{\ex}{#1 + \adjlen * sin(#3 + \angleJitter)}%
+      \pgfmathsetmacro{\ey}{#2 + \adjlen * cos(#3 + \angleJitter)}%
+      \pgfmathsetmacro{\newlen}{#4 * 0.68}%
+      \pgfmathsetmacro{\newthick}{max(0.15, #6 * 0.62)}%
+      \pgfmathtruncatemacro{\newdep}{\dep + 1}%
+      \pgfmathsetmacro{\splay}{22 - \dep * 0.5}%
+      \pgfmathsetmacro{\angleL}{#3 + \angleJitter - \splay}%
+      \pgfmathsetmacro{\angleR}{#3 + \angleJitter + \splay}%
+      %
+      % Always recurse to maintain RNG consistency across frames
+      \begingroup
+        \branch{\ex}{\ey}{\angleL}{\newlen}{\newdep}{\newthick}%
+      \endgroup
+      \begingroup
+        \branch{\ex}{\ey}{\angleR}{\newlen}{\newdep}{\newthick}%
+      \endgroup
     \fi
   }
 
