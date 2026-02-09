@@ -60,7 +60,64 @@
   \coordinate (A) at (\Ax, \Ay);
   \coordinate (B) at (\Bx, \By);
 
-  % ====== Trail paths (accumulated from angle 0 to current) ======
+  % ====== 1. Ground foundation fill ======
+  \fill[warmgrey!12]
+    ({\Oax - 0.9}, {\Oay - 0.75}) rectangle ({\Obx + 0.9}, {\Oay - 0.32});
+
+  % ====== 2. Hatching lines (angled, over ground fill) ======
+  \foreach \hx in {-3.1, -2.75, ..., 3.7} {
+    \draw[warmgrey!45, line width=0.5pt]
+      (\hx, {\Oay - 0.32}) -- ({\hx - 0.35}, {\Oay - 0.75});
+  }
+
+  % ====== 3. Ground horizontal line ======
+  \draw[black!70, line width=1.5pt]
+    ({\Oax - 0.9}, {\Oay - 0.32}) -- ({\Obx + 0.9}, {\Oay - 0.32});
+
+  % Ground link reference (dashed)
+  \draw[black!20, line width=0.8pt, dashed] (O2) -- (O4);
+
+  % ====== 4. Ground pivot supports (triangular) ======
+  \fill[black!55]
+    (\Oax, \Oay) -- ({\Oax - 0.32}, {\Oay - 0.32}) -- ({\Oax + 0.32}, {\Oay - 0.32}) -- cycle;
+  \fill[black!55]
+    (\Obx, \Oby) -- ({\Obx - 0.32}, {\Oby - 0.32}) -- ({\Obx + 0.32}, {\Oby - 0.32}) -- cycle;
+
+  % ====== 5. Crank and rocker bars ======
+  % Rocker: O4 -> B
+  \draw[atlantic!45!black, line width=11pt, line cap=rect] (O4) -- (B);
+  \draw[atlantic!28, line width=7.5pt, line cap=rect] (O4) -- (B);
+
+  % Crank: O2 -> A
+  \draw[garnet!45!black, line width=11pt, line cap=rect] (O2) -- (A);
+  \draw[garnet!28, line width=7.5pt, line cap=rect] (O2) -- (A);
+
+  % ====== 6. Coupler bar (horizontal connecting rod) ======
+  \draw[congaree!45!black, line width=11pt, line cap=rect] (A) -- (B);
+  \draw[congaree!22, line width=7.5pt, line cap=rect] (A) -- (B);
+
+  % ====== 7. Joint pins (all four) ======
+  % O2 (fixed ground pivot)
+  \fill[white] (O2) circle (0.17);
+  \draw[black!75, line width=1.6pt] (O2) circle (0.17);
+  \fill[black!45] (O2) circle (0.055);
+
+  % O4 (fixed ground pivot)
+  \fill[white] (O4) circle (0.17);
+  \draw[black!75, line width=1.6pt] (O4) circle (0.17);
+  \fill[black!45] (O4) circle (0.055);
+
+  % A (moving joint - crank/coupler)
+  \fill[garnet!12] (A) circle (0.2);
+  \draw[garnet!65!black, line width=1.6pt] (A) circle (0.2);
+  \fill[garnet] (A) circle (0.065);
+
+  % B (moving joint - coupler/rocker)
+  \fill[atlantic!12] (B) circle (0.2);
+  \draw[atlantic!65!black, line width=1.6pt] (B) circle (0.2);
+  \fill[atlantic] (B) circle (0.065);
+
+  % ====== 8. Trail paths ======
   \def\trailA{}
   \def\trailB{}
   \pgfmathtruncatemacro{\paramInt}{\crankAng}
@@ -94,63 +151,7 @@
       plot[smooth, tension=0.6] coordinates {\trailB};
   \fi
 
-  % ====== Ground foundation ======
-  \fill[warmgrey!12]
-    ({\Oax - 0.9}, {\Oay - 0.75}) rectangle ({\Obx + 0.9}, {\Oay - 0.32});
-  \draw[black!70, line width=1.5pt]
-    ({\Oax - 0.9}, {\Oay - 0.32}) -- ({\Obx + 0.9}, {\Oay - 0.32});
-  % Hatching lines
-  \foreach \hx in {-3.1, -2.75, ..., 3.7} {
-    \draw[warmgrey!45, line width=0.5pt]
-      (\hx, {\Oay - 0.32}) -- ({\hx - 0.35}, {\Oay - 0.75});
-  }
-
-  % Ground link reference (dashed)
-  \draw[black!20, line width=0.8pt, dashed] (O2) -- (O4);
-
-  % ====== Linkage bars ======
-  % Each bar: dark outline + lighter fill using two overlapping thick lines
-
-  % Rocker: O4 -> B (drawn first, behind coupler)
-  \draw[atlantic!45!black, line width=11pt, line cap=rect] (O4) -- (B);
-  \draw[atlantic!28, line width=7.5pt, line cap=rect] (O4) -- (B);
-
-  % Crank: O2 -> A
-  \draw[garnet!45!black, line width=11pt, line cap=rect] (O2) -- (A);
-  \draw[garnet!28, line width=7.5pt, line cap=rect] (O2) -- (A);
-
-  % Coupler: A -> B (drawn last, on top)
-  \draw[congaree!45!black, line width=11pt, line cap=rect] (A) -- (B);
-  \draw[congaree!22, line width=7.5pt, line cap=rect] (A) -- (B);
-
-  % ====== Ground pivot supports (triangular) ======
-  \fill[black!55]
-    (\Oax, \Oay) -- ({\Oax - 0.32}, {\Oay - 0.32}) -- ({\Oax + 0.32}, {\Oay - 0.32}) -- cycle;
-  \fill[black!55]
-    (\Obx, \Oby) -- ({\Obx - 0.32}, {\Oby - 0.32}) -- ({\Obx + 0.32}, {\Oby - 0.32}) -- cycle;
-
-  % ====== Joint pins (drawn on top of bars) ======
-  % O2 (fixed ground pivot)
-  \fill[white] (O2) circle (0.17);
-  \draw[black!75, line width=1.6pt] (O2) circle (0.17);
-  \fill[black!45] (O2) circle (0.055);
-
-  % O4 (fixed ground pivot)
-  \fill[white] (O4) circle (0.17);
-  \draw[black!75, line width=1.6pt] (O4) circle (0.17);
-  \fill[black!45] (O4) circle (0.055);
-
-  % A (moving joint - crank/coupler)
-  \fill[garnet!12] (A) circle (0.2);
-  \draw[garnet!65!black, line width=1.6pt] (A) circle (0.2);
-  \fill[garnet] (A) circle (0.065);
-
-  % B (moving joint - coupler/rocker)
-  \fill[atlantic!12] (B) circle (0.2);
-  \draw[atlantic!65!black, line width=1.6pt] (B) circle (0.2);
-  \fill[atlantic] (B) circle (0.065);
-
-  % ====== Labels ======
+  % ====== 9. Labels ======
   \node[font=\footnotesize\bfseries, black!60, anchor=north]
     at (\Oax, {\Oay - 0.85}) {$O_2$};
   \node[font=\footnotesize\bfseries, black!60, anchor=north]
