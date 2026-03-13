@@ -9,6 +9,7 @@
 \usepackage{tikz}
 \usepackage{pgfplots}
 \usepackage{amsmath}
+\usepackage{luacode}
 \pgfplotsset{compat=1.18}
 \usepgfplotslibrary{fillbetween}
 
@@ -22,6 +23,35 @@
 \definecolor{honeycomb}{HTML}{A49137}
 \definecolor{warmgrey}{HTML}{676156}
 \definecolor{sandstorm}{HTML}{FFF2E3}
+
+% Lua functions to generate coordinate lists
+\begin{luacode*}
+function gen_square_coords(xmin, xmax, samples)
+    local step = (xmax - xmin) / (samples - 1)
+    local parts = {}
+    for i = 0, samples - 1 do
+        local x = xmin + i * step
+        local y = (math.sin(x) >= 0) and 1 or -1
+        parts[#parts + 1] = string.format("(%.6f, %.6f)", x, y)
+    end
+    tex.sprint(table.concat(parts, " "))
+end
+
+function gen_fourier_coords(xmin, xmax, samples, N)
+    local step = (xmax - xmin) / (samples - 1)
+    local parts = {}
+    for i = 0, samples - 1 do
+        local x = xmin + i * step
+        local s = 0
+        for n = 1, N, 2 do
+            s = s + math.sin(n * x) / n
+        end
+        local y = (4 / math.pi) * s
+        parts[#parts + 1] = string.format("(%.6f, %.6f)", x, y)
+    end
+    tex.sprint(table.concat(parts, " "))
+end
+\end{luacode*}
 
 \begin{document}
 \begin{tikzpicture}
@@ -40,39 +70,14 @@
     tick label style={font=\small},
     xtick={-3.14159, 0, 3.14159, 6.28318, 9.42478},
     xticklabels={$-\pi$, $0$, $\pi$, $2\pi$, $3\pi$},
-    declare function={N=\Nterms;},
 ]
-    % Target square wave
-    \addplot[domain=-3.5:10.5, samples=500, name path=sqwave,
-        dashed, black!40, thin]
-        {(sin(deg(x)) >= 0) ? 1 : -1};
+    % Target square wave (Lua-generated coordinates)
+    \addplot[name path=sqwave, dashed, black!40, thin]
+        coordinates {\directlua{gen_square_coords(-3.5, 10.5, 500)}};
 
-    % Fourier partial sum (lua backend accelerated via declare function)
-    \addplot[domain=-3.5:10.5, samples=800, name path=fourier,
-        atlantic, very thick]
-        {(4/3.14159) * (
-            (N >= 1  ? sin(deg(1*x))/1   : 0) +
-            (N >= 3  ? sin(deg(3*x))/3   : 0) +
-            (N >= 5  ? sin(deg(5*x))/5   : 0) +
-            (N >= 7  ? sin(deg(7*x))/7   : 0) +
-            (N >= 9  ? sin(deg(9*x))/9   : 0) +
-            (N >= 11 ? sin(deg(11*x))/11 : 0) +
-            (N >= 13 ? sin(deg(13*x))/13 : 0) +
-            (N >= 15 ? sin(deg(15*x))/15 : 0) +
-            (N >= 17 ? sin(deg(17*x))/17 : 0) +
-            (N >= 19 ? sin(deg(19*x))/19 : 0) +
-            (N >= 21 ? sin(deg(21*x))/21 : 0) +
-            (N >= 23 ? sin(deg(23*x))/23 : 0) +
-            (N >= 25 ? sin(deg(25*x))/25 : 0) +
-            (N >= 27 ? sin(deg(27*x))/27 : 0) +
-            (N >= 29 ? sin(deg(29*x))/29 : 0) +
-            (N >= 31 ? sin(deg(31*x))/31 : 0) +
-            (N >= 33 ? sin(deg(33*x))/33 : 0) +
-            (N >= 35 ? sin(deg(35*x))/35 : 0) +
-            (N >= 37 ? sin(deg(37*x))/37 : 0) +
-            (N >= 39 ? sin(deg(39*x))/39 : 0) +
-            (N >= 41 ? sin(deg(41*x))/41 : 0)
-        )};
+    % Fourier partial sum (Lua-generated coordinates)
+    \addplot[name path=fourier, atlantic, very thick]
+        coordinates {\directlua{gen_fourier_coords(-3.5, 10.5, 800, \Nterms)}};
 
     % Error shading between partial sum and square wave
     \addplot[fill=rose, fill opacity=0.12] fill between[of=fourier and sqwave];
