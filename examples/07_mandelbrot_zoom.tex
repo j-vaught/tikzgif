@@ -1,11 +1,12 @@
 % Example 07: Mandelbrot Zoom
 % Progressive zoom into the Mandelbrot set boundary near the Seahorse Valley.
 % Uses LuaLaTeX for fast pixel-level computation (160x120, 200 iterations).
-% Parameter: \PARAM (zoom level, 0 to 1 representing log-scale zoom)
-% Range: 0 to 1, recommended 60 frames
-% Engine: lualatex
+% Parameter: \PARAM sweeps 0 to 1 (default range), log-scale zoom
+% Render: tikzgif render 07_mandelbrot_zoom.tex
+% Engine: lualatex (auto-detected)
 % Difficulty: advanced
 % Features demonstrated: Lua computation, pixel rendering, fractal zoom
+
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
@@ -152,10 +153,11 @@ end
 
 \begin{document}
 \begin{tikzpicture}
+  \pgfmathsetmacro{\zoomval}{\PARAM}
   \useasboundingbox (0,0) rectangle (8,6);
 
   % Render Mandelbrot via Lua
-  \directlua{mandelbrot_frame(\PARAM)}
+  \directlua{mandelbrot_frame(\zoomval)}
 
   % Border
   \draw[white, thick] (0,0) rectangle (8,6);
