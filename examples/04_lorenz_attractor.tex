@@ -3,7 +3,7 @@
 % diverge chaotically, demonstrating the butterfly effect.
 % Full paths drawn via pgf path accumulation in \loop (no group boundaries).
 % Parameter: \PARAM sweeps 0 to 1 (default range), mapped to 0-2000 steps
-% Render: tikzgif render 04_lorenz_attractor.tex
+% Render: tikzgif render 04_lorenz_attractor.tex --fps 10
 % Difficulty: advanced
 % Features demonstrated: Euler integration, 3D projection, pgf path accumulation
 
@@ -41,14 +41,6 @@
   \pgfmathsetmacro{\sz}{0.15}
   \pgfmathsetmacro{\zoff}{-3.8}
 
-  % Title
-  \node[font=\bfseries\small, warmgrey] at (0,7.0)
-    {Sensitive Dependence on Initial Conditions};
-
-  % Time display
-  \pgfmathsetmacro{\tval}{\nsteps * \dt}
-  \node[font=\small, warmgrey] at (0,-5.8)
-    {$t = \pgfmathprintnumber[fixed, precision=1]{\tval}$};
 
   %% ========== LEFT PANEL: x0 = 1.000 (garnet) ==========
   \begin{scope}[xshift=-5.5cm]
