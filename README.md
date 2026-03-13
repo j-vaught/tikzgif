@@ -2,7 +2,7 @@
 
 Convert a parameterized TikZ/LaTeX file into an animation from one command.
 
-`tikzgif` compiles frames in parallel, auto-detects bounding boxes, and renders to formats like GIF, MP4, WebP, and APNG.
+`tikzgif` compiles frames in parallel and renders to GIF or MP4.
 
 ## Quick Examples
 
@@ -21,9 +21,8 @@ Convert a parameterized TikZ/LaTeX file into an animation from one command.
 |---|---|---|
 | Automation | One command from `.tex` to animation output | Manual script workflow |
 | Parallelism | Frame compilation across CPU cores | Sequential compilation |
-| Output formats | GIF, MP4, WebP, APNG, SVG, spritesheet, animated PDF | GIF only |
+| Output formats | GIF, MP4 | GIF only |
 | LaTeX engines | `pdflatex`, `xelatex`, `lualatex` | `pdflatex` only |
-| Bounding boxes | Automatic two-pass detection | Manual setup |
 | Caching | Content-addressable cache for unchanged frames | None |
 | Installation | Install from source (`pip install -e .`) | Clone repo + ImageMagick setup |
 
@@ -36,7 +35,6 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
-[if anything ain't working or you'd like a new feature/or additional example tex files, just shoot me an email at jvaught@sc.edu and i'll see what i can get working!]
 
 ## Basic Usage
 
@@ -124,9 +122,10 @@ See [EXAMPLES.md](EXAMPLES.md) for the full gallery.
 
 - GIF for docs and slides.
 - MP4 for video workflows.
-- WebP/APNG for web pages.
 
 ## Requirements
 
 - A LaTeX engine available on `PATH` (`pdflatex`, `xelatex`, or `lualatex`).
 - Python 3.10+.
+- `pdftoppm` from poppler-utils for PDF to PNG conversion.
+- `ffmpeg` only when writing MP4 output.

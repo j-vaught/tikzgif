@@ -24,9 +24,8 @@ Cache invalidation
   body with substituted param), any change to the template or parameter
   produces a new hash automatically.
 
-- Template-level: if the template_structure_hash changes, every frame hash
-  will also change (because the preamble/body changed), so old entries
-  become dead.  Periodic GC reclaims them.
+- Template-level: any change to template source changes frame content hashes,
+  so old entries become unreachable and are reclaimed by periodic GC.
 
 - Manual: users can delete ~/.cache/tikzgif/ to force a full rebuild.
 """
