@@ -15,8 +15,8 @@ from .assembly import (
     QualityPreset,
 )
 from .backends import PdftoppmBackend, RenderConfig
-from .compiler import compile_with_bbox_normalization
-from .types import CompilationConfig, ErrorPolicy, LatexEngine
+from .compiler import compile_single_pass
+from .types import BoundingBox, CompilationConfig, ErrorPolicy, LatexEngine
 
 _FORMAT_MAP = {
     "gif": OutputFormat.GIF,
@@ -69,6 +69,7 @@ def render(
     output: str | Path | None = None,
     raw_pdf_dir: str | Path | None = None,
     raw_png_dir: str | Path | None = None,
+    bbox: tuple[float, float, float, float] | None = None,
 ) -> RenderResult:
     """Render a parameterized .tex file to GIF or MP4.
 
@@ -111,11 +112,21 @@ def render(
         dpi=dpi,
     )
 
-    frame_results, _envelope = compile_with_bbox_normalization(
+    enforced_bbox: BoundingBox | None = None
+    if bbox is not None:
+        enforced_bbox = BoundingBox(
+            x_min=bbox[0],
+            y_min=bbox[1],
+            x_max=bbox[2],
+            y_max=bbox[3],
+        )
+
+    frame_results = compile_single_pass(
         source,
         param_values,
         comp_config,
         param_token="\\" + param,
+        enforced_bbox=enforced_bbox,
     )
 
     successful = [r for r in frame_results if r.success]

@@ -101,7 +101,4 @@ class CompilationConfig:
     extra_args: list[str] = field(default_factory=list)
     cache_dir: Path | None = None # None = auto (~/.cache/tikzgif/)
     timeout_per_frame_s: float = 30.0
-    bbox_strategy: str = "two-pass"  # "two-pass" | "user" | "postprocess"
     dpi: int = 300
-    bbox_padding_bp: float = 2.0  # Extra padding around computed envelope
-    max_probes: int = 10          # Max frames to probe in two-pass strategy

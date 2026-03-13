@@ -57,11 +57,7 @@ from concurrent.futures import (
 from pathlib import Path
 from typing import Callable
 
-from tikzgif.bbox import (
-    compute_envelope,
-    extract_bbox_from_pdf,
-    select_probe_indices,
-)
+from tikzgif.bbox import extract_bbox_from_pdf
 from tikzgif.cache import CompilationCache
 from tikzgif.engine import (
     build_compile_command,
@@ -71,10 +67,8 @@ from tikzgif.engine import (
 )
 from tikzgif.exceptions import BoundingBoxError, CompilationError
 from tikzgif.tex_gen import (
-    ParsedTemplate,
     generate_frame_specs,
     parse_template,
-    template_structure_hash,
 )
 from tikzgif.types import (
     BoundingBox,
@@ -429,142 +423,6 @@ def compile_frames(
                 error_message="Frame was not compiled (internal error).",
             ))
     return ordered
-
-
-# ---------------------------------------------------------------------------
-# Two-pass compilation with bounding-box normalization
-# ---------------------------------------------------------------------------
-
-def compile_with_bbox_normalization(
-    source: str,
-    param_values: list[float],
-    config: CompilationConfig,
-    param_token: str = r"\PARAM",
-    extra_preamble: str = "",
-) -> tuple[list[FrameResult], BoundingBox]:
-    """
-    Full two-pass compilation pipeline with automatic bounding-box
-    normalization.
-
-    Pass 1 ("probe"):
-        Compile a sampled subset of frames without a forced bounding box.
-        Extract each frame's natural bounding box.  Compute the envelope.
-
-    Pass 2 ("final"):
-        Re-generate all frames with the envelope injected as
-        \\useasboundingbox.  Compile in parallel.
-
-    If the template already contains \\useasboundingbox, the probe pass
-    is skipped.
-
-    Parameters
-    ----------
-    source : str
-        Complete parameterized .tex file content.
-    param_values : list[float]
-        Parameter values, one per frame.
-    config : CompilationConfig
-        Compilation configuration.
-    param_token : str
-        The placeholder token.
-    extra_preamble : str
-        Additional preamble content.
-
-    Returns
-    -------
-    (results, envelope)
-        results: list of FrameResult in frame order.
-        envelope: the bounding box enforced on all frames.
-    """
-    parsed = parse_template(source, param_token)
-    cache = CompilationCache(root=config.cache_dir)
-
-    # -- Short circuit: user already specified bounding box ----------------
-    if parsed.has_bounding_box:
-        logger.info(
-            "Template contains \\useasboundingbox; skipping probe pass."
-        )
-        specs = generate_frame_specs(
-            parsed, param_values,
-            enforced_bbox=None,
-            extra_preamble=extra_preamble,
-        )
-        results = compile_frames(
-            specs, config, cache, packages=parsed.detected_packages
-        )
-
-        # Extract bbox from first successful frame for reporting.
-        envelope = BoundingBox(0, 0, 100, 100)  # fallback
-        for r in results:
-            if r.success and r.bounding_box is not None:
-                envelope = r.bounding_box
-                break
-
-        return results, envelope
-
-    # -- Pass 1: Probe for bounding boxes ----------------------------------
-    logger.info("Pass 1: Probing bounding boxes (%d samples)...",
-                config.max_probes)
-
-    probe_indices = select_probe_indices(
-        len(param_values), max_probes=config.max_probes
-    )
-
-    # Generate specs for ALL frames (no enforced bbox), then select probes.
-    all_specs_no_bbox = generate_frame_specs(
-        parsed, param_values,
-        enforced_bbox=None,
-        extra_preamble=extra_preamble,
-    )
-    probe_specs = [all_specs_no_bbox[i] for i in probe_indices]
-
-    probe_results = compile_frames(
-        probe_specs, config, cache, packages=parsed.detected_packages
-    )
-
-    # Collect bounding boxes.
-    probe_bboxes: list[BoundingBox] = []
-    for result in probe_results:
-        if result.success and result.bounding_box is not None:
-            probe_bboxes.append(result.bounding_box)
-
-    if not probe_bboxes:
-        raise BoundingBoxError(
-            "All probe frames failed to compile.  Cannot determine bounding "
-            "box.  Fix the LaTeX errors and try again."
-        )
-
-    raw_envelope = compute_envelope(probe_bboxes)
-    # Apply padding so content does not touch the edge.
-    envelope = raw_envelope.padded(config.bbox_padding_bp)
-
-    logger.info(
-        "Bounding-box envelope: (%.1f, %.1f) -- (%.1f, %.1f)  "
-        "[%.1f x %.1f bp]",
-        envelope.x_min, envelope.y_min,
-        envelope.x_max, envelope.y_max,
-        envelope.width, envelope.height,
-    )
-
-    # -- Pass 2: Final compilation with enforced bbox ----------------------
-    logger.info("Pass 2: Compiling all %d frames with enforced bounding box...",
-                len(param_values))
-
-    final_specs = generate_frame_specs(
-        parsed, param_values,
-        enforced_bbox=envelope,
-        extra_preamble=extra_preamble,
-    )
-
-    # Store template metadata for future cache lookups.
-    tmpl_hash = template_structure_hash(parsed)
-    frame_map = {s.index: s.content_hash for s in final_specs}
-    cache.store_template_meta(tmpl_hash, frame_map)
-
-    final_results = compile_frames(
-        final_specs, config, cache, packages=parsed.detected_packages
-    )
-    return final_results, envelope
 
 
 # ---------------------------------------------------------------------------
