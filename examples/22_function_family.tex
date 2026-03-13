@@ -62,82 +62,12 @@
     \addplot[domain=0:1, samples=2, name path=xaxis, draw=none] {0};
     \addplot[fill=atlantic, fill opacity=0.12] fill between[of=funcpath and xaxis];
 
-    % Area annotation
-    \node[font=\footnotesize, atlantic!80!black, anchor=north]
-        at (axis cs:0.5, {0.5*pow(0.5,\nval)})
-        {$A = \frac{1}{\pgfmathprintnumber[fixed,precision=2]{\nval}\!+\!1}
-         = \pgfmathprintnumber[fixed, precision=3]{\integralval}$};
-
-    % Derivative curve overlay: f'(x) = n * x^(n-1)
-    \pgfmathsetmacro{\nvalm}{\nval - 1}
-    \addplot[domain=0.01:2.2, samples=150, garnet, thin, dashed]
-        {\nval * x^(\nvalm)};
-    \node[font=\tiny, garnet, anchor=west]
-        at (axis cs:2.22, {\nval * 2.2^(\nvalm)})
-        {$f'$};
-
     % Current curve (main)
     \addplot[domain=0.01:2.2, samples=200, atlantic, ultra thick] {x^\nval};
 
-    % Identity line
-    \addplot[domain=0:2.2, samples=2, dashed, black!30, thin] {x};
-
-    % Tangent line at x = 0.5
-    \addplot[domain=0.15:0.85, samples=2, rose, thick] {\ytan + \slopetan*(x - 0.5)};
-    \addplot[only marks, mark=*, mark size=2.5pt, rose]
-        coordinates {(0.5, \ytan)};
-    \node[font=\tiny, rose, anchor=south west]
-        at (axis cs:0.52, \ytan)
-        {$m = \pgfmathprintnumber[fixed, precision=2]{\slopetan}$};
-
     % Fixed point (1,1)
     \addplot[only marks, mark=*, mark size=3pt, garnet] coordinates {(1, 1)};
-    \node[font=\footnotesize, anchor=south west, garnet]
-        at (axis cs:1.05, 1.05) {$(1,\,1)$};
-
-    % Convexity annotation
-    \pgfmathparse{\isconvex > 0.5 ? "Convex" : (\isconvex < -0.5 ? "Concave" : "Linear")}
-    \edef\convlabel{\pgfmathresult}
-    \pgfmathparse{\isconvex > 0.5 ? "horseshoe" : (\isconvex < -0.5 ? "rose" : "warmgrey")}
-    \edef\convcolor{\pgfmathresult}
-    \node[font=\footnotesize\bfseries, \convcolor, anchor=north east,
-          fill=white, fill opacity=0.8, text opacity=1, inner sep=2pt]
-        at (axis cs:2.2, 5.3) {\convlabel};
 \end{axis}
-
-% Zoomed inset near (1,1)
-\begin{axis}[
-    at={(mainax.north east)}, anchor=north east,
-    shift={(-0.4cm,-1.2cm)},
-    width=3.2cm, height=3.2cm,
-    xmin=0.75, xmax=1.25, ymin=0.75, ymax=1.25,
-    xtick={0.8, 1.0, 1.2}, ytick={0.8, 1.0, 1.2},
-    tick label style={font=\tiny},
-    grid=major, grid style={warmgrey!15},
-    axis line style={warmgrey},
-    axis background/.style={fill=sandstorm, fill opacity=0.3},
-    title={\tiny Inset near $(1,1)$},
-    every axis title/.style={font=\tiny},
-]
-    % Ghost family in inset
-    \foreach \ghostN in {0.5, 1.0, 2.0, 3.0, 5.0} {
-        \addplot[domain=0.75:1.25, samples=60, warmgrey!20, thin] {x^\ghostN};
-    }
-    % Current curve in inset
-    \addplot[domain=0.75:1.25, samples=100, atlantic, very thick] {x^\nval};
-    % Identity
-    \addplot[domain=0.75:1.25, samples=2, dashed, black!30, thin] {x};
-    % Fixed point
-    \addplot[only marks, mark=*, mark size=2pt, garnet] coordinates {(1, 1)};
-\end{axis}
-
-% Info box with exponent and integral
-\node[anchor=north west, fill=white, fill opacity=0.85, text opacity=1,
-      draw=warmgrey!50, inner sep=4pt, font=\footnotesize,
-      align=left]
-    at ([shift={(0.3cm,-0.2cm)}]mainax.north west)
-    {$n = \pgfmathprintnumber[fixed, precision=2]{\nval}$\\[2pt]
-     $\displaystyle\int_0^1\!x^n\,dx = \pgfmathprintnumber[fixed, precision=3]{\integralval}$};
 
 % Title outside clipped axis
 \node[font=\large, anchor=south] at (mainax.north) {$y = x^{\pgfmathprintnumber[fixed, precision=2]{\nval}}$};
