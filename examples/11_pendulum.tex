@@ -34,7 +34,6 @@
 
   % Pivot point
   \coordinate (pivot) at (0, 0.5);
-  \fill[black] (pivot) circle (3pt);
   \draw[thick] (-1.5, 0.5) -- (1.5, 0.5);
   \foreach \xx in {-1.4,-1.1,...,1.5} {
     \draw[thin, warmgrey] (\xx, 0.5) -- ({\xx + 0.3}, 0.8);
@@ -60,6 +59,8 @@
   % Bob
   \fill[garnet] (\xbob, \ybob) circle (8pt);
 
+  % Pivot point
+  \fill[black] (pivot) circle (3pt);
 
 \end{tikzpicture}
 \end{document}
