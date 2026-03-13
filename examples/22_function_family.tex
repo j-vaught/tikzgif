@@ -46,11 +46,11 @@
     width=10cm, height=8cm,
     xmin=-0.05, xmax=2.3, ymin=-0.15, ymax=5.5,
     xlabel={$x$}, ylabel={$y$},
-    title={$y = x^{\pgfmathprintnumber[fixed, precision=2]{\nval}}$},
+    title={},
     grid=major, grid style={warmgrey!20}, thick,
     every axis title/.style={font=\large},
     tick label style={font=\small},
-    clip=false,
+    clip=true,
 ]
     % Ghost family (faint reference curves)
     \foreach \ghostN in {0.5, 1.0, 2.0, 3.0, 4.0, 5.0} {
@@ -138,6 +138,13 @@
     at ([shift={(0.3cm,-0.2cm)}]mainax.north west)
     {$n = \pgfmathprintnumber[fixed, precision=2]{\nval}$\\[2pt]
      $\displaystyle\int_0^1\!x^n\,dx = \pgfmathprintnumber[fixed, precision=3]{\integralval}$};
+
+% Title outside clipped axis
+\node[font=\large, anchor=south] at (mainax.north) {$y = x^{\pgfmathprintnumber[fixed, precision=2]{\nval}}$};
+
+% Fix bounding box across all frames
+\pgfresetboundingbox
+\useasboundingbox (-1.2, -1.5) rectangle (11.5, 9.2);
 
 \end{tikzpicture}
 \end{document}
