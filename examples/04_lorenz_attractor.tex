@@ -2,10 +2,11 @@
 % Two side-by-side panels with nearly identical starting points (x0=1.000 vs x0=1.01)
 % diverge chaotically, demonstrating the butterfly effect.
 % Full paths drawn via pgf path accumulation in \loop (no group boundaries).
-% Parameter: \PARAM (integer step count, 0 to 2000)
-% Range: 0 to 2000, recommended 150 frames
+% Parameter: \PARAM sweeps 0 to 1 (default range), mapped to 0-2000 steps
+% Render: tikzgif render 04_lorenz_attractor.tex
 % Difficulty: advanced
 % Features demonstrated: Euler integration, 3D projection, pgf path accumulation
+
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
@@ -32,7 +33,7 @@
   \pgfmathsetmacro{\rh}{28}
   \pgfmathsetmacro{\bet}{2.667}
   \pgfmathsetmacro{\dt}{0.01}
-  \pgfmathtruncatemacro{\nsteps}{\PARAM}
+  \pgfmathtruncatemacro{\nsteps}{\PARAM * 2000}
 
   % Projection: 3D oblique to 2D
   \pgfmathsetmacro{\sx}{0.10}
