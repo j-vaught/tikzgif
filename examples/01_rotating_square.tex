@@ -1,9 +1,10 @@
 % Example 01: Rotating Square
 % Simplest possible animation -- a square rotating around its center.
-% Parameter: \PARAM (rotation angle in degrees)
-% Range: 0 to 360, recommended 36 frames (10-degree steps)
+% Parameter: \PARAM sweeps 0 to 1 (default range), mapped to 0-360 degrees
+% Render: tikzgif render 01_rotating_square.tex
 % Difficulty: beginner
 % Features demonstrated: basic parameter substitution, rotation transform
+
 \documentclass[tikz]{standalone}
 \usepackage{xcolor}
 
@@ -18,18 +19,20 @@
 \definecolor{warmgrey}{HTML}{676156}
 \definecolor{sandstorm}{HTML}{FFF2E3}
 
+
 \begin{document}
 \begin{tikzpicture}
+  \pgfmathsetmacro{\angle}{\PARAM * 360}
   \useasboundingbox (-3,-3) rectangle (3,3);
   \draw[ultra thick, black] (0,0) -- ++(0:0.3) arc (0:360:0.3) -- cycle;
   \fill[sandstorm] (0,0) circle (0.05);
-  \begin{scope}[rotate=\PARAM]
+  \begin{scope}[rotate=\angle]
     \draw[line width=1.5pt, fill=garnet!20, draw=garnet]
       (-1.2,-1.2) rectangle (1.2,1.2);
     \draw[line width=0.5pt, dashed, warmgrey]
       (-1.2,-1.2) -- (1.2,1.2)
       (-1.2,1.2) -- (1.2,-1.2);
   \end{scope}
-  \node[below] at (0,-2.2) {\small $\theta = \PARAM^\circ$};
+  \node[below] at (0,-2.2) {\small $\theta = \pgfmathprintnumber[fixed, precision=0]{\angle}^\circ$};
 \end{tikzpicture}
 \end{document}
