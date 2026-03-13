@@ -4,6 +4,7 @@
 % Render: tikzgif render 03_sine_wave_phase.tex
 % Difficulty: beginner
 % Features demonstrated: pgfplots integration, trigonometric functions
+
 \documentclass[tikz]{standalone}
 \usepackage{pgfplots}
 \usepackage{xcolor}
@@ -23,6 +24,7 @@
 \begin{document}
 \begin{tikzpicture}
   \pgfmathsetmacro{\phase}{\PARAM * 360}
+  
   \begin{axis}[
     width=10cm, height=5cm,
     domain=0:720,
@@ -39,7 +41,7 @@
     grid=major,
     grid style={warmgrey!30},
     title={\small Phase shift $\phi = \pgfmathprintnumber[fixed, precision=0]{\phase}^\circ$},
-    every axis title/.style={at={(0.5,1.05)}},
+    every axis title/.style={at={(0,1.05)}, anchor=west},
     tick label style={font=\tiny},
   ]
     \addplot[garnet, thick, smooth] {sin(x + \phase)};
