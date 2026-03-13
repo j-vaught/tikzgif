@@ -68,15 +68,6 @@
     \addplot[garnet, very thick]
       {exp(-x)*sin(\wt*180/3.14159 - x*180/3.14159)};
 
-    % Vertical marker at x' = 1 (one penetration depth)
-    \draw[warmgrey, densely dashed, thin]
-      (axis cs:1, -1.3) -- (axis cs:1, 1.3);
-    \node[above, font=\tiny, warmgrey] at (axis cs:1, 1.15) {$\delta$};
-
-    % Vertical marker at x' = pi (phase inversion depth)
-    \draw[warmgrey, densely dashed, thin]
-      (axis cs:3.14159, -1.3) -- (axis cs:3.14159, 1.3);
-    \node[above, font=\tiny, warmgrey] at (axis cs:3.14159, 1.15) {$\pi\delta$};
   \end{axis}
 
   % --- Bottom Panel: Color Bar (physical representation) ---
@@ -106,10 +97,6 @@
 
   % Border for color bar
   \draw[black, thick] (\barxoffset, 0) rectangle ({\barxoffset + \barwidth}, \barheight);
-
-  % Phase label below the color bar
-  \node[below, font=\small] at ({\barxoffset + \barwidth/2}, -0.15)
-    {$\omega t = \pgfmathprintnumber[fixed, precision=2]{\wt}$};
 
   % Colorbar legend on the right
   \begin{scope}[shift={({\barxoffset + \barwidth + 0.4}, 0)}]
