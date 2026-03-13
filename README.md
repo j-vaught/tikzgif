@@ -41,7 +41,7 @@ pip install -e .
 One command from `.tex` to `.gif`:
 
 ```bash
-tikzgif render examples/02_bouncing_ball.tex --frames 60 --start 0 --end 1 --fps 30 -o ball.gif
+tikzgif render examples/02_bouncing_ball.tex --output ball.gif
 ```
 
 That's it. Put `\PARAM` in any TikZ file where you want the animated value, and tikzgif sweeps the range across frames.
