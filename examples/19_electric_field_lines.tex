@@ -1,7 +1,7 @@
 % Example 19: Electric Field Lines from Point Charges
 % Field lines from two point charges via superposition and Euler method.
-% Parameter: \PARAM (x-coordinate of moving charge, range 0.5..3.5)
-% Range: 0.5 to 3.5, recommended 30 frames
+% Parameter: \PARAM (0 to 1, mapped to x-coordinate of moving charge = 0.5 to 3.5)
+% Render: tikzgif render 19_electric_field_lines.tex
 % Difficulty: intermediate
 % Features demonstrated: electric fields, superposition, per-segment color,
 %   quiver field overlay, mid-path arrowheads, charge annotations
@@ -25,7 +25,7 @@
 \begin{document}
 \begin{tikzpicture}[>=Stealth]
 
-\pgfmathsetmacro{\xB}{\PARAM}
+\pgfmathsetmacro{\xB}{\PARAM * 3 + 0.5}
 \pgfmathsetmacro{\qsign}{-1.0}
 \pgfmathsetmacro{\xA}{-1.5}
 \pgfmathsetmacro{\yA}{0}

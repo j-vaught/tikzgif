@@ -1,7 +1,7 @@
 % Example 28: 3D Object Rotation
 % Rotates a wireframe cube with shadow projection and vertex tracking.
-% Parameter: \PARAM (azimuthal viewing angle in degrees, range 0.0..360.0)
-% Range: 0.0 to 360.0, recommended 72 frames
+% Parameter: \PARAM (0 to 1, mapped to azimuthal viewing angle = 0 to 360 degrees)
+% Render: tikzgif render 28_rotation_3d.tex
 % Difficulty: intermediate
 % Features demonstrated: 3D rotation, shadow projection, vertex labels,
 %   tracked vertex trail, face shading, rotation angle indicator
@@ -24,7 +24,7 @@
 
 \begin{document}
 
-\pgfmathsetmacro{\rotAngle}{\PARAM}
+\pgfmathsetmacro{\rotAngle}{\PARAM * 360}
 
 \begin{tikzpicture}[>=Stealth, scale=2,
     x={({cos(\rotAngle)}, {-sin(\rotAngle)})},

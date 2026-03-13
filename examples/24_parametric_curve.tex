@@ -1,7 +1,7 @@
 % Example 24: Parametric Curve Tracing (Lissajous)
 % A point traces a Lissajous figure as the parameter sweeps from 0 to 2pi.
-% Parameter: \PARAM (maximum t value, range 0.1..6.283185 rad)
-% Range: 0.1 to 6.283185, recommended 48 frames
+% Parameter: \PARAM (0 to 1, mapped to maximum t = 0.1 to 2*pi)
+% Render: tikzgif render 24_parametric_curve.tex
 % Difficulty: intermediate
 % Features demonstrated: parametric curves, Lissajous figures, velocity vector,
 %   speed-coded trail, component signal strips, frequency ratio label
@@ -25,7 +25,7 @@
 \begin{document}
 \begin{tikzpicture}[>=Stealth]
 
-\pgfmathsetmacro{\tmax}{\PARAM}
+\pgfmathsetmacro{\tmax}{\PARAM * 6.183185 + 0.1}
 \pgfmathsetmacro{\fa}{3.0}
 \pgfmathsetmacro{\fb}{2.0}
 \pgfmathsetmacro{\phd}{1.5708}

@@ -1,7 +1,7 @@
 % Example 20: Electromagnetic Wave Propagation
 % Traveling wave packet with E and B field visualization in 3D.
-% Parameter: \PARAM (temporal phase in radians, range 0.0..6.283185)
-% Range: 0.0 to 6.283185, recommended 40 frames
+% Parameter: \PARAM (0 to 1, mapped to temporal phase = 0 to 2*pi)
+% Render: tikzgif render 20_em_wave.tex
 % Difficulty: advanced
 % Features demonstrated: EM waves, wave packet envelope, energy density strip,
 %   Poynting vector arrows, phase-front planes, improved labels
@@ -25,7 +25,7 @@
 \begin{document}
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
-\pgfmathsetmacro{\phase}{\PARAM}
+\pgfmathsetmacro{\phase}{\PARAM * 6.283185}
 \pgfmathsetmacro{\amp}{1.5}
 \pgfmathsetmacro{\wavelen}{4}
 \pgfmathsetmacro{\zmax}{9}

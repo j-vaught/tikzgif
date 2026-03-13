@@ -1,7 +1,7 @@
 % Example 25: Phase Portrait Animation
 % Phase portrait of dx/dt = [[-a, b], [-b, -a]]*x with stability transitions.
-% Parameter: \PARAM (real part of eigenvalue a, range -1.0..2.0)
-% Range: -1.0 to 2.0, recommended 30 frames
+% Parameter: \PARAM (0 to 1, mapped to eigenvalue real part a = -1.0 to 2.0)
+% Render: tikzgif render 25_phase_portrait.tex
 % Difficulty: advanced
 % Features demonstrated: phase portrait, ODE, nullclines, eigenvalue inset,
 %   trajectory opacity fading, energy-level circles, flow particles
@@ -27,7 +27,7 @@
 \begin{document}
 \begin{tikzpicture}[>=Stealth]
 
-\pgfmathsetmacro{\aval}{\PARAM}
+\pgfmathsetmacro{\aval}{\PARAM * 3 - 1}
 \pgfmathsetmacro{\bval}{2.0}
 
 % Axes

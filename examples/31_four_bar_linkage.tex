@@ -1,7 +1,7 @@
 % Example 31: Four-Bar Linkage
 % A Grashof crank-rocker mechanism with joint path trails.
-% Parameter: \PARAM (crank angle in degrees, 0 to 360)
-% Range: 0 to 360, recommended 72 frames (5-degree steps)
+% Parameter: \PARAM (0 to 1, mapped to crank angle = 0 to 360 degrees)
+% Render: tikzgif render 31_four_bar_linkage.tex
 % Difficulty: intermediate
 % Features demonstrated: kinematics, loop closure, trail paths, mechanical linkage
 \documentclass[tikz]{standalone}
@@ -36,7 +36,7 @@
   \pgfmathsetmacro{\Oby}{-1}
 
   % Current crank angle from animation parameter
-  \pgfmathsetmacro{\crankAng}{\PARAM}
+  \pgfmathsetmacro{\crankAng}{\PARAM * 360}
 
   % ====== Forward kinematics ======
   % Point A: crank-coupler joint

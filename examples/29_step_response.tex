@@ -1,7 +1,7 @@
 % Example 29: Second-Order Step Response
 % Animates unit step response as damping ratio sweeps from underdamped to overdamped.
-% Parameter: \PARAM (damping ratio, range 0.1..2.0)
-% Range: 0.1 to 2.0, recommended 39 frames
+% Parameter: \PARAM (0 to 1, mapped to damping ratio zeta = 0.1 to 2.0)
+% Render: tikzgif render 29_step_response.tex
 % Difficulty: intermediate
 % Features demonstrated: control systems, step response, decay envelope,
 %   s-plane inset, ghost family traces, settling band, time-domain markers
@@ -27,7 +27,7 @@
 \begin{document}
 \begin{tikzpicture}
 
-\pgfmathsetmacro{\zeta}{\PARAM}
+\pgfmathsetmacro{\zeta}{\PARAM * 1.9 + 0.1}
 \pgfmathsetmacro{\wn}{3.0}
 \pgfmathsetmacro{\zetaC}{min(\zeta, 3.0)}
 \pgfmathsetmacro{\sigma}{\zetaC * \wn}

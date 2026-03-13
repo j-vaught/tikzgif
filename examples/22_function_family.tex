@@ -1,7 +1,7 @@
 % Example 22: Function Family Animation
 % Animates y = x^n as the exponent sweeps from 0.3 to 5.0.
-% Parameter: \PARAM (exponent n, range 0.3..5.0)
-% Range: 0.3 to 5.0, recommended 48 frames
+% Parameter: \PARAM (0 to 1, mapped to exponent n = 0.3 to 5.0)
+% Render: tikzgif render 22_function_family.tex
 % Difficulty: intermediate
 % Features demonstrated: power curves, function families, tangent lines,
 %   area shading, derivative overlay, zoomed inset, convexity annotation
@@ -26,7 +26,7 @@
 \begin{document}
 \begin{tikzpicture}
 
-\pgfmathsetmacro{\nval}{\PARAM}
+\pgfmathsetmacro{\nval}{\PARAM * 4.7 + 0.3}
 
 % Compute tangent line at x=0.5: slope = n * 0.5^(n-1), y0 = 0.5^n
 \pgfmathsetmacro{\ytan}{pow(0.5, \nval)}

@@ -1,7 +1,7 @@
 % Example 30: Two-Source Wave Interference
 % Two coherent sources create an interference pattern with phase difference.
-% Parameter: \PARAM (phase difference in radians, range 0.0..6.283185)
-% Range: 0.0 to 6.283185, recommended 30 frames
+% Parameter: \PARAM (0 to 1, mapped to phase difference = 0 to 2*pi radians)
+% Render: tikzgif render 30_wave_interference.tex
 % Difficulty: advanced
 % Features demonstrated: wave interference, intensity profile, finer resolution,
 %   nodal lines, phase-coherent wavefronts, fringe order labels
@@ -27,7 +27,7 @@
 \begin{document}
 \begin{tikzpicture}
 
-\pgfmathsetmacro{\deltaPhi}{\PARAM}
+\pgfmathsetmacro{\deltaPhi}{\PARAM * 6.283185}
 \pgfmathsetmacro{\separation}{2.0}
 \pgfmathsetmacro{\halfSep}{\separation / 2}
 \pgfmathsetmacro{\waveK}{3.0}

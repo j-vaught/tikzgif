@@ -1,7 +1,7 @@
 % Example 21: Fourier Series Buildup
 % Partial-sum convergence of a Fourier series to a square wave.
-% Parameter: \PARAM (number of odd harmonics, range 1..41)
-% Range: 1 to 41, recommended 21 frames
+% Parameter: \PARAM (0 to 1, mapped to number of odd harmonics = 1 to 41)
+% Render: tikzgif render 21_fourier_series.tex
 % Difficulty: intermediate
 % Features demonstrated: Fourier series, convergence, spectrum bar chart,
 %   error shading, Gibbs measurement, latest harmonic highlight, energy readout
@@ -27,7 +27,7 @@
 \begin{document}
 \begin{tikzpicture}
 
-\pgfmathtruncatemacro{\Nterms}{\PARAM}
+\pgfmathtruncatemacro{\Nterms}{\PARAM * 40 + 1}
 
 % Compute energy fraction: sum of 1/n^2 for odd n up to N, divided by pi^2/8
 \pgfmathsetmacro{\energySum}{%

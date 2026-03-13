@@ -1,7 +1,7 @@
 % Example 23: Magnetic Field of a Current Loop
 % Cross-section of a current loop with Euler-integrated dipole field lines.
-% Parameter: \PARAM (current I in amperes, range 0.5..5.0)
-% Range: 0.5 to 5.0, recommended 30 frames
+% Parameter: \PARAM (0 to 1, mapped to current I = 0.5 to 5.0 amperes)
+% Render: tikzgif render 23_magnetic_field_loop.tex
 % Difficulty: intermediate
 % Features demonstrated: magnetic field, Euler integration, heat map,
 %   multi-layer wire cross-sections, current arrows, B-field profile
@@ -25,7 +25,7 @@
 \begin{document}
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
-\pgfmathsetmacro{\Ival}{\PARAM}
+\pgfmathsetmacro{\Ival}{\PARAM * 4.5 + 0.5}
 \pgfmathsetmacro{\wireR}{1.0} % half-distance between wires
 
 % Field strength background heat map (coarse 16x12 pixel grid)

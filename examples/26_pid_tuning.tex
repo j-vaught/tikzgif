@@ -1,7 +1,7 @@
 % Example 26: PID Tuning Visualization
 % PID step response for G(s) = 1/(s+1), sweeping proportional gain.
-% Parameter: \PARAM (proportional gain, range 0.5..15.0)
-% Range: 0.5 to 15.0, recommended 30 frames
+% Parameter: \PARAM (0 to 1, mapped to proportional gain Kp = 0.5 to 15.0)
+% Render: tikzgif render 26_pid_tuning.tex
 % Difficulty: advanced
 % Features demonstrated: control systems, PID dynamics, settling band,
 %   time markers, decay envelope, performance metrics, error overlay
@@ -28,7 +28,7 @@
 \begin{document}
 \begin{tikzpicture}
 
-\pgfmathsetmacro{\Kp}{\PARAM}
+\pgfmathsetmacro{\Kp}{\PARAM * 14.5 + 0.5}
 \pgfmathsetmacro{\Ki}{1.0}
 \pgfmathsetmacro{\Kd}{0.3}
 
