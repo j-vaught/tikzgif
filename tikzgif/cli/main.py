@@ -132,7 +132,12 @@ def _handle_render(args: argparse.Namespace) -> int:
         bbox = _parse_bbox(args.bbox)
         background = None if isinstance(args.background, str) and args.background.lower() == "none" else args.background
 
-        print(f"Compiling {args.frames} frames ({args.start} -> {args.end}) ...")
+        engine_label = args.engine or "auto"
+        cache_label = "off" if args.no_cache else "on"
+        print(
+            f"Rendering {args.frames} frames ({args.start} -> {args.end}) | "
+            f"engine={engine_label} backend={args.backend} cache={cache_label}"
+        )
         result = render(
             args.tex_file,
             param=args.param,
