@@ -42,14 +42,11 @@
     grid style={warmgrey!20},
     title={\small Signals: $f(\tau)$ and $g(t - \tau)$},
     every axis title/.style={at={(0.5,1.1)}, font=\small},
-    legend pos=north east,
-    legend style={font=\tiny},
     clip=false,
   ]
     % f(tau): rectangular pulse from 0 to 1, height 1
     \addplot[garnet, very thick]
       coordinates {(-2,0) (0,0) (0,1) (1,1) (1,0) (4,0)};
-    \addlegendentry{$f(\tau)$}
 
     % g(t - tau): rectangular pulse, shifted copy from t-1 to t
     % g(x) = rect on [0, 1], so g(t - tau) = 1 when t-1 < tau < t
@@ -62,7 +59,6 @@
         ({\tshift}, 0)
         (4, 0)
       };
-    \addlegendentry{$g(t - \tau)$}
 
     % Shade overlap region: both are 1 in the overlap, so it's a rectangle
     % f=1 on [0,1], g=1 on [t-1,t]
@@ -84,7 +80,7 @@
     samples=300,
     axis lines=middle,
     xlabel={$t$},
-    ylabel={$(f * g)(t)$},
+    ylabel={},
     ymin=-0.3, ymax=1.5,
     xmin=-2, xmax=4,
     grid=major,
@@ -118,8 +114,6 @@
     % Vertical dashed line at current t
     \draw[dashed, garnet!50, thin] (axis cs:\tshift, 0) -- (axis cs:\tshift, \convval);
 
-    \node[anchor=south west, font=\small] at (axis cs:-1.8, 1.2)
-      {$t = \pgfmathprintnumber[fixed, precision=2]{\tshift}$};
   \end{axis}
 \end{tikzpicture}
 \end{document}
