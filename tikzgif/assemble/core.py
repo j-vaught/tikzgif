@@ -235,19 +235,80 @@ class GifAssembler:
         output = self.config.output_path
 
         total = len(images)
-        pal_ref = images[0].convert("P", palette=Image.Palette.ADAPTIVE, colors=256)
-        pal_img = Image.new("P", (1, 1))
-        pal_img.putpalette(pal_ref.getpalette())
-        quantized = []
+
+        # Step 1: Scan color frequencies across all frames
+        from collections import Counter
+        color_counts: Counter[tuple[int, int, int]] = Counter()
         for i, img in enumerate(images):
-            quantized.append(
-                img.convert("RGB").quantize(palette=pal_img, dither=Image.Dither.FLOYDSTEINBERG)
-            )
+            rgb = img.convert("RGB")
+            color_counts.update(rgb.getdata())
             pct = ((i + 1) / total) * 100
             print(
-                f"\rAssembling: {i + 1}/{total} ({pct:.0f}%)",
+                f"\rScanning colors: {i + 1}/{total} ({pct:.0f}%) — {len(color_counts)} unique",
                 end="", flush=True, file=sys.stderr,
             )
+        print(file=sys.stderr)
+
+        n_unique = len(color_counts)
+        total_pixels = sum(color_counts.values())
+
+        # Step 2: Build palette from top 256 most frequent colors
+        if n_unique <= 256:
+            palette_colors = sorted(color_counts.keys())
+            remapped = 0
+            print(
+                f"Building palette: {n_unique} unique colors — exact fit, no quantization needed",
+                file=sys.stderr,
+            )
+        else:
+            palette_colors = [c for c, _ in color_counts.most_common(256)]
+            top256_pixels = sum(color_counts[c] for c in palette_colors)
+            coverage = (top256_pixels / total_pixels) * 100
+            remapped = n_unique - 256
+            print(
+                f"Building palette: {n_unique} unique colors -> top 256 by frequency "
+                f"({coverage:.2f}% pixel coverage, {remapped} rare colors remapped)",
+                file=sys.stderr,
+            )
+
+        # Build lookup: palette index for each color
+        color_to_idx = {c: i for i, c in enumerate(palette_colors)}
+
+        # For colors not in the palette, find nearest neighbor
+        if n_unique > 256:
+            palette_arr = palette_colors  # list for distance calc
+            for color in color_counts:
+                if color not in color_to_idx:
+                    # Find nearest palette color by squared Euclidean distance
+                    best_idx = 0
+                    best_dist = float("inf")
+                    r0, g0, b0 = color
+                    for idx, (r1, g1, b1) in enumerate(palette_arr):
+                        d = (r0 - r1) ** 2 + (g0 - g1) ** 2 + (b0 - b1) ** 2
+                        if d < best_dist:
+                            best_dist = d
+                            best_idx = idx
+                    color_to_idx[color] = best_idx
+
+        flat_palette: list[int] = []
+        for r, g, b in palette_colors:
+            flat_palette.extend((r, g, b))
+        flat_palette.extend([0] * (768 - len(flat_palette)))
+
+        # Step 3: Quantize frames using the palette
+        quantized = []
+        for i, img in enumerate(images):
+            rgb = img.convert("RGB")
+            p_img = Image.new("P", rgb.size)
+            p_img.putpalette(flat_palette)
+            p_img.putdata([color_to_idx[px] for px in rgb.getdata()])
+            quantized.append(p_img)
+            pct = ((i + 1) / total) * 100
+            print(
+                f"\rQuantizing: {i + 1}/{total} ({pct:.0f}%)",
+                end="", flush=True, file=sys.stderr,
+            )
+
         print(file=sys.stderr)
         first = quantized[0]
         rest = quantized[1:]
