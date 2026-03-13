@@ -53,7 +53,7 @@
   \newcommand{\drawgear}[7]{%
     \begin{scope}[shift={#1}, rotate=#6]
       %% Gear body (root circle fill)
-      \fill[#7!15] (0,0) circle (#4);
+      \fill[#7!30] (0,0) circle (#4);
 
       %% Teeth: trapezoidal profile from root to tip
       \pgfmathsetmacro{\angpitch}{360 / #5}
@@ -61,7 +61,7 @@
         \pgfmathsetmacro{\tc}{\angpitch * \t}
         \pgfmathsetmacro{\hbase}{\angpitch * 0.25}
         \pgfmathsetmacro{\htip}{\angpitch * 0.18}
-        \fill[#7!28]
+        \fill[#7!45]
           ({\tc - \hbase}:#4) -- ({\tc - \htip}:#3)
           -- ({\tc + \htip}:#3) -- ({\tc + \hbase}:#4) -- cycle;
         \draw[#7!70!black, line width=0.5pt]
@@ -77,7 +77,7 @@
 
       %% Inner web
       \pgfmathsetmacro{\webR}{#4 * 0.7}
-      \fill[#7!10] (0,0) circle (\webR);
+      \fill[#7!25] (0,0) circle (\webR);
       \draw[#7!40, line width=0.4pt] (0,0) circle (\webR);
 
       %% Lightening holes
@@ -90,7 +90,7 @@
 
       %% Hub
       \pgfmathsetmacro{\hubR}{#2 * 0.2}
-      \fill[#7!30] (0,0) circle (\hubR);
+      \fill[#7!50] (0,0) circle (\hubR);
       \draw[#7!60!black, line width=0.8pt] (0,0) circle (\hubR);
 
       %% Bore hole
