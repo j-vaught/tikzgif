@@ -19,7 +19,7 @@ tikzgif render bouncing_ball.tex --frames 60 --fps 30 -o bouncing_ball.gif
 
 ## Why tikzgif?
 
-| | **tikzgif** | TikZ2animation |
+| | **tikzgif** | [TikZ2animation](https://github.com/heschmann/TikZ2animation) |
 |---|---|---|
 | Automation | Fully automated pipeline -- one command from `.tex` to `.gif` | Manual shell script; user runs `pdflatex`, then `convert` separately |
 | Parallelism | Compiles frames across all CPU cores simultaneously | Sequential compilation only |
