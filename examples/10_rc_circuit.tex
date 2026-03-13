@@ -2,8 +2,8 @@
 % A DC motor with fan blades driven by an RC circuit.  The capacitor charges
 % (fan speeds up) then the switch opens and the capacitor discharges through
 % the motor (fan slows down), making the RC time constant physically intuitive.
-% Parameter: \PARAM (normalized time t/tau, 0 to 10)
-% Range: 0 to 10, recommended 80 frames at 20 fps
+% Parameter: \PARAM (0 to 1, mapped to t/tau 0-10)
+% Render: tikzgif render 10_rc_circuit.tex
 % Difficulty: intermediate
 % Features demonstrated: circuit drawing, exponential curves, rotating fan,
 %   two-phase animation, dual panels
@@ -36,7 +36,7 @@
 % Electrical parameters
 % ====================================================================
 \pgfmathsetmacro{\Vs}{5}                         % source voltage
-\pgfmathsetmacro{\ttau}{max(\PARAM, 0.001)}      % t/tau clamped
+\pgfmathsetmacro{\ttau}{max(\PARAM * 10, 0.001)}  % t/tau clamped
 
 % --- Phase flag and clamped discharge time ---
 \pgfmathsetmacro{\isCharging}{\ttau < 5 ? 1 : 0}
