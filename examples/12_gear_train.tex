@@ -1,9 +1,10 @@
 % Example 12: Gear Train
 % Two meshing gears rotating in opposite directions.
-% Parameter: \PARAM (rotation angle of gear 1 in degrees, 0 to 360)
-% Range: 0 to 360, recommended 72 frames (5-degree steps)
+% Parameter: \PARAM (0 to 1, mapped to 0-360 degree rotation)
+% Render: tikzgif render 12_gear_train.tex
 % Difficulty: intermediate
 % Features demonstrated: parameterized drawing, mechanical simulation, rotation
+
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
@@ -23,7 +24,7 @@
 \begin{tikzpicture}
   \useasboundingbox (-6,-5.5) rectangle (7,5.5);
 
-  \pgfmathsetmacro{\angleA}{\PARAM}
+  \pgfmathsetmacro{\angleA}{\PARAM * 360}
 
   % Gear parameters (module = tooth size)
   \pgfmathtruncatemacro{\teethA}{16}
@@ -116,16 +117,5 @@
   \draw[->, atlantic, thick]
     ([shift={(130:{\outerB + 0.35})}]cB) arc (130:50:{\outerB + 0.35});
 
-  % Labels
-  \node[below, font=\small\bfseries, garnet!80!black] at ([yshift={-\outerA cm - 0.5cm}]cA)
-    {Gear A (\teethA\,T)};
-  \node[below, font=\small\bfseries, atlantic!80!black] at ([yshift={-\outerB cm - 0.5cm}]cB)
-    {Gear B (\teethB\,T)};
-
-  % Angle readout
-  \node[font=\small] at (0, -4.8)
-    {$\theta_A = \pgfmathprintnumber[fixed, precision=0]{\angleA}^\circ$
-     \quad
-     $\theta_B = \pgfmathprintnumber[fixed, precision=0]{\angleB}^\circ$};
 \end{tikzpicture}
 \end{document}
