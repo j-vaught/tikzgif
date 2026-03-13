@@ -198,6 +198,7 @@ class RenderJobConfig:
     start: float = 0.0
     end: float = 1.0
     frames: int = 90
+    test_mode: bool = False
 
     template: TemplateConfig = field(default_factory=TemplateConfig)
     compile: CompileConfig = field(default_factory=CompileConfig)
@@ -284,6 +285,7 @@ def legacy_args_to_job_config(
     frame_delay_default_ms: int | None = None,
     pause_first_ms: int | None = None,
     pause_last_ms: int | None = None,
+    test_mode: bool = False,
 ) -> RenderJobConfig:
     """Build a ``RenderJobConfig`` from legacy ``render()`` keyword arguments.
 
@@ -377,6 +379,7 @@ def legacy_args_to_job_config(
         start=start,
         end=end,
         frames=frames,
+        test_mode=test_mode,
         template=TemplateConfig(
             param_token="\\" + param,
             enforced_bbox=enforced_bbox,
