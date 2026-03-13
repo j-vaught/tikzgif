@@ -40,7 +40,20 @@ SHELL_ESCAPE_PACKAGES = frozenset(
 
 @dataclass
 class ParsedTemplate:
-    """Result of parsing a parameterized .tex template."""
+    """Result of parsing a parameterized ``.tex`` template.
+
+    Attributes:
+        original_source: Unmodified template source text.
+        preamble_lines: Lines before ``\\begin{document}``.
+        body_lines: Lines between ``\\begin{document}`` and ``\\end{document}``.
+        postamble_lines: Lines from ``\\end{document}`` onward.
+        document_class: LaTeX document class name.
+        class_options: Options passed to ``\\documentclass``.
+        detected_packages: Set of ``\\usepackage`` names found.
+        needs_shell_escape: Whether detected packages require ``--shell-escape``.
+        has_bounding_box: Whether the body contains ``\\useasboundingbox``.
+        param_token: The parameter token used for substitution.
+    """
 
     original_source: str
     preamble_lines: list[str]
@@ -55,8 +68,19 @@ class ParsedTemplate:
 
 
 def parse_template(source: str, param_token: str = DEFAULT_PARAM_TOKEN) -> ParsedTemplate:
-    """Parse template content and validate required LaTeX structure."""
+    """Parse template source and validate required LaTeX structure.
 
+    Args:
+        source: Raw LaTeX template text.
+        param_token: Parameter token to look for in the document body.
+
+    Returns:
+        A ``ParsedTemplate`` with extracted metadata.
+
+    Raises:
+        TemplateError: If required LaTeX structure is missing or the
+            parameter token is not found in the document body.
+    """
     m_begin = _RE_BEGIN_DOC.search(source)
     m_end = _RE_END_DOC.search(source)
     if m_begin is None:
@@ -108,8 +132,18 @@ def parse_template(source: str, param_token: str = DEFAULT_PARAM_TOKEN) -> Parse
 
 
 def parse_template_from_file(path: Path, param_token: str = DEFAULT_PARAM_TOKEN) -> ParsedTemplate:
-    """Read and parse template from disk."""
+    """Read and parse a template from disk.
 
+    Args:
+        path: Path to the ``.tex`` template file.
+        param_token: Parameter token to look for.
+
+    Returns:
+        A ``ParsedTemplate`` with extracted metadata.
+
+    Raises:
+        TemplateError: If the file cannot be read or parsing fails.
+    """
     try:
         source = path.read_text(encoding="utf-8")
     except OSError as exc:
@@ -118,8 +152,15 @@ def parse_template_from_file(path: Path, param_token: str = DEFAULT_PARAM_TOKEN)
 
 
 def _build_standalone_preamble(parsed: ParsedTemplate, extra_preamble: str = "") -> str:
-    """Build standalone preamble preserving package imports from source."""
+    """Build a ``standalone`` preamble preserving package imports from the source.
 
+    Args:
+        parsed: Previously parsed template.
+        extra_preamble: Additional preamble text to append.
+
+    Returns:
+        Complete preamble string for a standalone document.
+    """
     lines: list[str] = []
     user_opts = [opt for opt in parsed.class_options if opt not in ("tikz",)]
     opts = ["tikz"] + user_opts
@@ -145,8 +186,16 @@ def _build_frame_body(
     param_value: float,
     enforced_bbox: BoundingBox | None = None,
 ) -> str:
-    """Substitute parameter value and optionally inject fixed bounding box."""
+    """Substitute the parameter value and optionally inject a fixed bounding box.
 
+    Args:
+        parsed: Previously parsed template.
+        param_value: Value to substitute for the parameter token.
+        enforced_bbox: Bounding box to inject, or ``None``.
+
+    Returns:
+        Processed body string with substitutions applied.
+    """
     body = "".join(parsed.body_lines)
     body = body.replace(parsed.param_token, f"{param_value:g}")
 
@@ -166,8 +215,17 @@ def generate_frame_specs(
     enforced_bbox: BoundingBox | None = None,
     extra_preamble: str = "",
 ) -> list[FrameSpec]:
-    """Generate complete per-frame LaTeX sources and their content hashes."""
+    """Generate complete per-frame LaTeX sources and their content hashes.
 
+    Args:
+        parsed: Previously parsed template.
+        param_values: Parameter values (one per frame).
+        enforced_bbox: Fixed bounding box to inject, or ``None``.
+        extra_preamble: Additional preamble text to inject.
+
+    Returns:
+        List of ``FrameSpec`` objects ready for compilation.
+    """
     preamble = _build_standalone_preamble(parsed, extra_preamble)
     specs: list[FrameSpec] = []
 

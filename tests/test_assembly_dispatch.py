@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from tikzgif.assembly import AnimationAssembler, OutputConfig
+from tikzgif.exceptions import AssemblyError
 
 
 def test_animation_assembler_rejects_unknown_format(tmp_path: Path) -> None:
@@ -10,5 +11,5 @@ def test_animation_assembler_rejects_unknown_format(tmp_path: Path) -> None:
     assembler = AnimationAssembler(config)
     assembler.config.format = None  # type: ignore[assignment]
 
-    with pytest.raises(ValueError, match="Unsupported output format"):
+    with pytest.raises(AssemblyError, match="Unsupported output format"):
         assembler.assemble([])

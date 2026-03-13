@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import enum
+import logging
 import shutil
 import subprocess
 import tempfile
@@ -11,18 +12,21 @@ from pathlib import Path
 
 from PIL import Image
 
+from ..exceptions import AssemblyError
 from ..types import FrameResult
+
+logger = logging.getLogger(__name__)
 
 
 class OutputFormat(enum.Enum):
-    """Supported output formats."""
+    """Supported output animation formats."""
 
     GIF = "gif"
     MP4 = "mp4"
 
 
 class QualityPreset(enum.Enum):
-    """Quality presets used for output scaling."""
+    """Quality presets controlling maximum output width."""
 
     WEB = "web"
     PRESENTATION = "presentation"
@@ -38,7 +42,14 @@ QUALITY_PRESETS: dict[QualityPreset, dict[str, int]] = {
 
 @dataclass
 class FrameDelay:
-    """Per-frame timing control in milliseconds."""
+    """Per-frame timing control in milliseconds.
+
+    Attributes:
+        default_ms: Default delay between frames.
+        delays_ms: Per-frame delay overrides keyed by frame index.
+        pause_first_ms: Extra pause on the first frame, or ``None``.
+        pause_last_ms: Extra pause on the last frame, or ``None``.
+    """
 
     default_ms: int = 100
     delays_ms: dict[int, int] = field(default_factory=dict)
@@ -46,6 +57,11 @@ class FrameDelay:
     pause_last_ms: int | None = None
 
     def resolve(self, n_frames: int) -> list[int]:
+        """Compute the delay sequence for *n_frames* frames.
+
+        Returns:
+            List of per-frame delays in milliseconds.
+        """
         delays = [self.delays_ms.get(i, self.default_ms) for i in range(n_frames)]
         if self.pause_first_ms is not None and delays:
             delays[0] = self.pause_first_ms
@@ -56,14 +72,25 @@ class FrameDelay:
 
 @dataclass
 class GifConfig:
-    """GIF assembly options."""
+    """GIF-specific assembly options.
+
+    Attributes:
+        loop_count: Number of loops (0 = infinite).
+    """
 
     loop_count: int = 0
 
 
 @dataclass
 class Mp4Config:
-    """MP4 assembly options."""
+    """MP4-specific assembly options.
+
+    Attributes:
+        fps: Output frames per second.
+        crf: Constant rate factor (lower = higher quality).
+        preset: ffmpeg encoding preset.
+        pixel_format: Output pixel format.
+    """
 
     fps: float = 10.0
     crf: int = 23
@@ -73,7 +100,13 @@ class Mp4Config:
 
 @dataclass
 class MetadataConfig:
-    """Optional metadata."""
+    """Optional metadata embedded in the output file.
+
+    Attributes:
+        title: Animation title.
+        author: Author name.
+        comment: Freeform comment string.
+    """
 
     title: str = ""
     author: str = ""
@@ -82,7 +115,17 @@ class MetadataConfig:
 
 @dataclass
 class OutputConfig:
-    """Top-level output configuration."""
+    """Top-level output configuration for animation assembly.
+
+    Attributes:
+        format: Target output format.
+        output_path: Destination file path.
+        preset: Quality preset controlling maximum width.
+        frame_delay: Per-frame timing configuration.
+        gif: GIF-specific options.
+        mp4: MP4-specific options.
+        metadata: Metadata to embed in the output.
+    """
 
     format: OutputFormat = OutputFormat.GIF
     output_path: Path = Path("output.gif")
@@ -94,25 +137,57 @@ class OutputConfig:
 
 
 def _run(cmd: list[str], *, timeout: int = 300) -> None:
-    subprocess.run(
-        cmd,
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
+    """Run a subprocess command with error handling.
+
+    Raises:
+        AssemblyError: If the command exits with a non-zero return code.
+    """
+    try:
+        subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise AssemblyError(
+            f"Subprocess failed (rc={exc.returncode}): {' '.join(cmd)}\n"
+            f"{exc.stderr}",
+            output_format="mp4",
+        ) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise AssemblyError(
+            f"Subprocess timed out after {timeout}s: {' '.join(cmd)}",
+            output_format="mp4",
+        ) from exc
 
 
 def _load_images(
     frame_results: list[FrameResult],
     cfg: OutputConfig,
 ) -> tuple[list[Image.Image], list[int]]:
+    """Load and optionally downscale successfully rendered frame images.
+
+    Args:
+        frame_results: Results from the compilation stage.
+        cfg: Output configuration with quality preset and timing.
+
+    Returns:
+        Tuple of (RGBA images, per-frame delays in ms).
+
+    Raises:
+        AssemblyError: If no successfully compiled frames are available.
+    """
     successful = sorted(
         [fr for fr in frame_results if fr.success and fr.png_path and fr.png_path.exists()],
         key=lambda result: result.index,
     )
     if not successful:
-        raise ValueError("No successfully compiled frames to assemble")
+        raise AssemblyError(
+            "No successfully compiled frames to assemble.",
+            output_format=cfg.format.value,
+        )
 
     images = []
     for result in successful:
@@ -134,39 +209,81 @@ def _load_images(
 
 
 class GifAssembler:
-    """Assemble PNG frames into an animated GIF."""
+    """Assemble PNG frames into an animated GIF.
+
+    Args:
+        config: Output configuration with GIF-specific settings.
+    """
 
     def __init__(self, config: OutputConfig) -> None:
         self.config = config
 
     def assemble(self, frame_results: list[FrameResult]) -> Path:
+        """Write an animated GIF from compiled frame results.
+
+        Args:
+            frame_results: Results from the compilation stage.
+
+        Returns:
+            Path to the written GIF file.
+
+        Raises:
+            AssemblyError: If no frames are available or writing fails.
+        """
         images, delays = _load_images(frame_results, self.config)
         output = self.config.output_path
 
         first = images[0].convert("P", palette=Image.Palette.ADAPTIVE)
         rest = [img.convert("P", palette=Image.Palette.ADAPTIVE) for img in images[1:]]
-        first.save(
-            output,
-            format="GIF",
-            save_all=True,
-            append_images=rest,
-            duration=delays,
-            loop=self.config.gif.loop_count,
-            optimize=True,
-            comment=self.config.metadata.comment.encode("utf-8"),
-        )
+
+        try:
+            first.save(
+                output,
+                format="GIF",
+                save_all=True,
+                append_images=rest,
+                duration=delays,
+                loop=self.config.gif.loop_count,
+                optimize=True,
+                comment=self.config.metadata.comment.encode("utf-8"),
+            )
+        except OSError as exc:
+            raise AssemblyError(
+                f"Failed to write GIF to {output}: {exc}",
+                output_format="gif",
+            ) from exc
+
         return output
 
 
 class Mp4Assembler:
-    """Assemble PNG frames into MP4 using ffmpeg."""
+    """Assemble PNG frames into an MP4 video using ``ffmpeg``.
+
+    Args:
+        config: Output configuration with MP4-specific settings.
+    """
 
     def __init__(self, config: OutputConfig) -> None:
         self.config = config
 
     def assemble(self, frame_results: list[FrameResult]) -> Path:
+        """Write an MP4 video from compiled frame results.
+
+        Args:
+            frame_results: Results from the compilation stage.
+
+        Returns:
+            Path to the written MP4 file.
+
+        Raises:
+            AssemblyError: If ``ffmpeg`` is missing, no frames are
+                available, or encoding fails.
+        """
         if shutil.which("ffmpeg") is None:
-            raise RuntimeError("ffmpeg not found. Install ffmpeg to create MP4 output.")
+            raise AssemblyError(
+                "ffmpeg not found on PATH. Install ffmpeg to create MP4 output.",
+                output_format="mp4",
+            )
 
         images, _delays = _load_images(frame_results, self.config)
         output = self.config.output_path
@@ -211,7 +328,11 @@ class Mp4Assembler:
 
 
 class AnimationAssembler:
-    """Dispatch to format-specific assemblers."""
+    """Dispatch to the appropriate format-specific assembler.
+
+    Args:
+        config: Output configuration specifying the target format.
+    """
 
     _ASSEMBLERS: dict[OutputFormat, type[GifAssembler] | type[Mp4Assembler]] = {
         OutputFormat.GIF: GifAssembler,
@@ -222,8 +343,22 @@ class AnimationAssembler:
         self.config = config
 
     def assemble(self, frame_results: list[FrameResult]) -> Path:
+        """Assemble frames into the configured output format.
+
+        Args:
+            frame_results: Results from the compilation stage.
+
+        Returns:
+            Path to the written output file.
+
+        Raises:
+            AssemblyError: If the output format is unsupported.
+        """
         assembler_cls = self._ASSEMBLERS.get(self.config.format)
         if assembler_cls is None:
-            raise ValueError(f"Unsupported output format: {self.config.format}")
+            raise AssemblyError(
+                f"Unsupported output format: {self.config.format}",
+                output_format=str(self.config.format),
+            )
         assembler = assembler_cls(self.config)
         return assembler.assemble(frame_results)

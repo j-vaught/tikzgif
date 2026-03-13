@@ -10,11 +10,22 @@ from pathlib import Path
 from .assemble import AnimationAssembler
 from .compile import compile_single_pass
 from .config import RenderJobConfig, legacy_args_to_job_config
+from .exceptions import RenderError
 from .rasterize import get_backend_by_name
 
 
 @dataclass
 class RenderResult:
+    """Result returned by a completed render job.
+
+    Attributes:
+        output_path: Path to the generated output file (GIF or MP4).
+        total_frames: Total number of frames in the animation.
+        successful_frames: Number of frames that compiled successfully.
+        failed_frames: Number of frames that failed to compile.
+        size_bytes: Size of the output file in bytes.
+    """
+
     output_path: Path
     total_frames: int
     successful_frames: int
@@ -23,10 +34,29 @@ class RenderResult:
 
 
 def render_job(job: RenderJobConfig) -> RenderResult:
-    """Render a job described by explicit stage-level config objects."""
+    """Render a job described by explicit stage-level config objects.
+
+    Executes the full pipeline: template parsing, parallel LaTeX
+    compilation, PDF rasterization, and output assembly.
+
+    Args:
+        job: Fully specified render job configuration.
+
+    Returns:
+        A ``RenderResult`` with output path and frame statistics.
+
+    Raises:
+        FileNotFoundError: If the ``.tex`` file does not exist.
+        RenderError: If all frames fail to compile.
+        tikzgif.exceptions.CompilationError: If compilation fails
+            under ``ABORT`` error policy.
+        tikzgif.exceptions.ConverterNotFoundError: If the raster
+            backend is unavailable.
+        tikzgif.exceptions.AssemblyError: If output assembly fails.
+    """
     tex_path = Path(job.tex_file)
     if not tex_path.is_file():
-        raise FileNotFoundError(f"file not found: {tex_path}")
+        raise FileNotFoundError(f"TeX file not found: {tex_path}")
 
     source = tex_path.read_text(encoding="utf-8")
     param_values = job.param_values()
@@ -45,7 +75,10 @@ def render_job(job: RenderJobConfig) -> RenderResult:
 
     if not successful:
         details = "\n".join(f"Frame {r.index}: {r.error_message}" for r in failed[:5])
-        raise RuntimeError(f"All frames failed to compile.\n{details}")
+        raise RenderError(
+            f"All {len(failed)} frames failed to compile.\n{details}",
+            stage="compile",
+        )
 
     backend = get_backend_by_name(job.raster.backend)
     render_config = job.raster.to_render_config()
@@ -127,9 +160,53 @@ def render(
     pause_first_ms: int | None = None,
     pause_last_ms: int | None = None,
 ) -> RenderResult:
-    """Render a parameterized .tex file to GIF or MP4.
+    """Render a parameterized ``.tex`` file to GIF or MP4.
 
-    This is the public backward-compatible API used by CLI and library callers.
+    This is the primary public API for both CLI and library callers.
+    All parameters are converted to a ``RenderJobConfig`` and delegated
+    to ``render_job()``.
+
+    Args:
+        tex_file: Path to the ``.tex`` template file.
+        param: Parameter token name (without the leading backslash).
+        start: Starting parameter value.
+        end: Ending parameter value.
+        frames: Number of animation frames to generate.
+        fps: Frames per second in the output.
+        format: Output format (``"gif"`` or ``"mp4"``).
+        quality: Quality preset (``"web"``, ``"presentation"``, ``"print"``).
+        engine: LaTeX engine name, or ``None`` for auto-detection.
+        workers: Number of parallel compilation workers (0 = auto).
+        timeout: Timeout per frame in seconds.
+        dpi: Target DPI for rasterization.
+        error_policy: How to handle frame failures
+            (``"abort"``, ``"skip"``, ``"retry"``).
+        output: Explicit output file path, or ``None`` for auto.
+        raw_pdf_dir: Directory to copy raw per-frame PDFs, or ``None``.
+        raw_png_dir: Directory to copy raw per-frame PNGs, or ``None``.
+        bbox: Fixed bounding box ``(xmin, ymin, xmax, ymax)``, or ``None``.
+        shell_escape: Whether to pass ``--shell-escape`` to LaTeX.
+        latex_args: Additional arguments forwarded to the LaTeX engine.
+        cache_dir: Custom cache directory path, or ``None`` for default.
+        backend: Rasterization backend name.
+        color_space: Target color space (``"rgb"``, ``"rgba"``, ``"grayscale"``).
+        background: Background color name, or ``None`` for transparency.
+        antialias: Whether to enable anti-aliasing via supersampling.
+        antialias_factor: Supersampling multiplier.
+        raster_threads: Number of rasterization threads.
+        gif_loop_count: GIF loop count (0 = infinite).
+        mp4_crf: MP4 constant rate factor.
+        mp4_preset: ffmpeg encoding preset.
+        mp4_pixel_format: MP4 pixel format.
+        metadata_title: Output file title metadata.
+        metadata_author: Output file author metadata.
+        metadata_comment: Output file comment metadata.
+        frame_delay_default_ms: Default inter-frame delay in ms.
+        pause_first_ms: Pause duration on first frame in ms.
+        pause_last_ms: Pause duration on last frame in ms.
+
+    Returns:
+        A ``RenderResult`` with output path and frame statistics.
     """
     job = legacy_args_to_job_config(
         tex_file,

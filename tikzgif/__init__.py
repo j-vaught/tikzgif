@@ -15,6 +15,18 @@ from tikzgif.config import (
     RenderJobConfig,
     TemplateConfig,
 )
+from tikzgif.exceptions import (
+    AssemblyError,
+    BoundingBoxError,
+    CacheError,
+    CompilationError,
+    ConverterError,
+    ConverterNotFoundError,
+    LatexNotFoundError,
+    RenderError,
+    TemplateError,
+    TikzGifError,
+)
 from tikzgif.types import (
     BoundingBox,
     CompilationConfig,
@@ -37,6 +49,16 @@ __all__ = [
     "RasterConfig",
     "OutputConfig",
     "RenderJobConfig",
+    "TikzGifError",
+    "AssemblyError",
+    "BoundingBoxError",
+    "CacheError",
+    "CompilationError",
+    "ConverterError",
+    "ConverterNotFoundError",
+    "LatexNotFoundError",
+    "RenderError",
+    "TemplateError",
     "render",
     "render_job",
 ]

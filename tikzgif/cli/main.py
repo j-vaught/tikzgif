@@ -1,4 +1,4 @@
-"""Main CLI entry point for tikzgif."""
+"""Command-line interface for tikzgif."""
 
 from __future__ import annotations
 
@@ -8,11 +8,23 @@ from pathlib import Path
 
 from ..api import render
 from ..compile import detect_available_engines
+from ..exceptions import TikzGifError
 from ..rasterize import BACKEND_PRIORITY
 from ..template import parse_template_from_file
 
 
 def _parse_bbox(raw: str | None) -> tuple[float, float, float, float] | None:
+    """Parse a comma-separated bounding-box string.
+
+    Args:
+        raw: String in the form ``"xmin,ymin,xmax,ymax"``, or ``None``.
+
+    Returns:
+        Tuple of four floats, or ``None`` if *raw* is ``None``.
+
+    Raises:
+        ValueError: If the string is malformed.
+    """
     if raw is None:
         return None
     pieces = [p.strip() for p in raw.split(",")]
@@ -26,6 +38,7 @@ def _parse_bbox(raw: str | None) -> tuple[float, float, float, float] | None:
 
 
 def _print_size(size_bytes: int) -> str:
+    """Format *size_bytes* as a human-readable string."""
     if size_bytes < 1024:
         return f"{size_bytes} B"
     if size_bytes < 1024 * 1024:
@@ -34,6 +47,7 @@ def _print_size(size_bytes: int) -> str:
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    """Build the top-level argument parser with subcommands."""
     parser = argparse.ArgumentParser(
         prog="tikzgif",
         description="Parameterized TikZ to animation pipeline",
@@ -108,6 +122,11 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _handle_render(args: argparse.Namespace) -> int:
+    """Execute the ``render`` subcommand.
+
+    Returns:
+        Exit code (0 on success, 1 on error).
+    """
     try:
         bbox = _parse_bbox(args.bbox)
         background = None if isinstance(args.background, str) and args.background.lower() == "none" else args.background
@@ -151,8 +170,11 @@ def _handle_render(args: argparse.Namespace) -> int:
             pause_first_ms=args.pause_first_ms,
             pause_last_ms=args.pause_last_ms,
         )
-    except Exception as exc:
+    except TikzGifError as exc:
         print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        print(f"Unexpected error: {exc}", file=sys.stderr)
         return 1
 
     if result.failed_frames:
@@ -170,6 +192,11 @@ def _handle_render(args: argparse.Namespace) -> int:
 
 
 def _handle_inspect(args: argparse.Namespace) -> int:
+    """Execute the ``inspect`` subcommand.
+
+    Returns:
+        Exit code (0 on success, 1 on error).
+    """
     command = args.inspect_command
     if command == "engines":
         detected = detect_available_engines()
@@ -189,7 +216,7 @@ def _handle_inspect(args: argparse.Namespace) -> int:
     if command == "template":
         try:
             parsed = parse_template_from_file(Path(args.tex_file), param_token="\\" + args.param)
-        except Exception as exc:
+        except TikzGifError as exc:
             print(f"Error: {exc}", file=sys.stderr)
             return 1
 
@@ -206,6 +233,14 @@ def _handle_inspect(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Parse arguments and dispatch to the appropriate subcommand.
+
+    Args:
+        argv: Argument list, or ``None`` to use ``sys.argv``.
+
+    Returns:
+        Exit code.
+    """
     parser = _build_parser()
     args = parser.parse_args(argv)
 
@@ -220,4 +255,5 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def cli_entry() -> None:
+    """Script entry point for the ``tikzgif`` command."""
     sys.exit(main())

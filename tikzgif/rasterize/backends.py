@@ -1,18 +1,11 @@
-"""
-PDF-to-image conversion backends.
+"""PDF-to-image conversion backends.
 
-Each backend converts a multi-page PDF into a sequence of PIL Image objects.
+Each backend converts a PDF into a sequence of PIL ``Image`` objects.
 The module probes the system for available tools and exposes a unified
 interface regardless of which backend is active.
 
-Backend priority (highest to lowest):
-    1. pdftoppm   -- fastest, highest quality, from poppler-utils
-    2. PyMuPDF    -- pure-Python, no subprocess overhead
-    3. pdf2image  -- Python wrapper around poppler (same quality as #1)
-    4. Ghostscript -- most portable, needed by ImageMagick anyway
-    5. ImageMagick -- most common but has security-policy issues
-
-All backends produce List[PIL.Image.Image] in RGBA mode.
+Backend priority (highest to lowest): pdftoppm, PyMuPDF, pdf2image,
+Ghostscript, ImageMagick.  All backends produce ``RGBA`` PIL images.
 """
 
 from __future__ import annotations
@@ -26,19 +19,17 @@ import tempfile
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
 
 from PIL import Image
+
+from tikzgif.exceptions import ConverterError, ConverterNotFoundError
 
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-
 class ColorSpace(Enum):
     """Target color space for rendered frames."""
+
     RGB = auto()
     RGBA = auto()
     GRAYSCALE = auto()
@@ -48,45 +39,38 @@ class ColorSpace(Enum):
 class RenderConfig:
     """Immutable rendering parameters shared by every backend.
 
-    DPI guide
-    ---------
-    ======  ============================  ============================
-    DPI     Pixel size (US Letter)        Typical use
-    ======  ============================  ============================
-    72      612 x 792                     Screen preview
-    150     1275 x 1650                   Web / GIF quality
-    300     2550 x 3300                   Presentation quality
-    600     5100 x 6600                   Print quality
-    1200    10200 x 13200                 Archival (rarely needed)
-    ======  ============================  ============================
+    Attributes:
+        dpi: Target resolution in dots per inch.
+        color_space: Output color space.
+        background: Background color name, or ``None`` for transparency.
+        antialias: Whether to enable anti-aliasing via supersampling.
+        antialias_factor: Supersampling multiplier when *antialias* is ``True``.
+        threads: Number of rendering threads (backend-dependent support).
     """
+
     dpi: int = 300
     color_space: ColorSpace = ColorSpace.RGBA
-    background: Optional[str] = "white"      # None = transparent
+    background: str | None = "white"
     antialias: bool = True
-    antialias_factor: int = 2                # supersampling multiplier
+    antialias_factor: int = 2
     threads: int = 4
 
     @property
     def render_dpi(self) -> int:
-        """Effective DPI when anti-aliasing via super-sampling."""
+        """Effective DPI when anti-aliasing via supersampling."""
         if self.antialias and self.antialias_factor > 1:
             return self.dpi * self.antialias_factor
         return self.dpi
 
-    def pixel_dimensions(self, width_pt: float, height_pt: float) -> Tuple[int, int]:
+    def pixel_dimensions(self, width_pt: float, height_pt: float) -> tuple[int, int]:
         """Convert point dimensions to pixel dimensions at target DPI."""
         px_w = int(round(width_pt * self.dpi / 72.0))
         px_h = int(round(height_pt * self.dpi / 72.0))
         return (px_w, px_h)
 
 
-# ---------------------------------------------------------------------------
-# Abstract base
-# ---------------------------------------------------------------------------
-
 class ConversionBackend(abc.ABC):
-    """Abstract interface that every backend must implement."""
+    """Abstract interface that every rasterization backend must implement."""
 
     name: str = "abstract"
 
@@ -95,38 +79,49 @@ class ConversionBackend(abc.ABC):
         self,
         pdf_path: Path,
         config: RenderConfig,
-        pages: Optional[Sequence[int]] = None,
-    ) -> List[Image.Image]:
-        """Convert *pdf_path* into a list of PIL Images (one per page)."""
+        pages: list[int] | None = None,
+    ) -> list[Image.Image]:
+        """Convert *pdf_path* into a list of PIL Images (one per page).
+
+        Args:
+            pdf_path: Path to the input PDF file.
+            config: Rendering parameters.
+            pages: Zero-based page indices to convert, or ``None`` for all.
+
+        Returns:
+            List of RGBA PIL Images.
+
+        Raises:
+            ConverterError: If the conversion subprocess fails.
+            FileNotFoundError: If *pdf_path* does not exist.
+        """
 
     @staticmethod
     @abc.abstractmethod
     def is_available() -> bool:
-        """Return True if this backend's dependencies are satisfied."""
+        """Return ``True`` if this backend's dependencies are satisfied."""
 
     @staticmethod
     @abc.abstractmethod
     def install_hint() -> str:
-        """Human-readable install instructions for the current platform."""
+        """Return platform-specific installation instructions."""
 
     @staticmethod
-    def _ensure_rgba(img: Image.Image, background: Optional[str]) -> Image.Image:
-        """Normalise any PIL image to RGBA, compositing onto *background*."""
+    def _ensure_rgba(img: Image.Image, background: str | None) -> Image.Image:
+        """Normalize any PIL image to RGBA, compositing onto *background*."""
         if img.mode == "RGBA":
             if background is not None:
                 bg = Image.new("RGBA", img.size, background)
                 bg.paste(img, mask=img)
                 return bg
             return img
-        if img.mode in ("RGB", "L", "P"):
-            return img.convert("RGBA")
         return img.convert("RGBA")
 
     @staticmethod
     def _downscale_aa(
         img: Image.Image, target_dpi: int, render_dpi: int
     ) -> Image.Image:
-        """Downscale a super-sampled image back to *target_dpi*."""
+        """Downscale a supersampled image back to *target_dpi*."""
         if render_dpi <= target_dpi:
             return img
         scale = target_dpi / render_dpi
@@ -134,32 +129,19 @@ class ConversionBackend(abc.ABC):
         return img.resize(new_size, Image.LANCZOS)
 
 
-# ---------------------------------------------------------------------------
-# 1. pdftoppm (poppler-utils)
-# ---------------------------------------------------------------------------
-
 class PdftoppmBackend(ConversionBackend):
-    """Fastest backend -- ~15 ms/frame at 300 DPI, ~50 ms at 600 DPI.
-
-    Command flags
-    -------------
-    -png              Output PNG (lossless, supports alpha after composite)
-    -r <dpi>          Resolution
-    -aaVector yes/no  Path anti-aliasing (FreeType/cairo)
-    -aaText yes/no    Text anti-aliasing
-    -gray             Force grayscale output
-    -f <n> -l <n>     First/last page (1-based)
-    -nthreads <n>     Parallel rendering threads (poppler >= 21.03)
-    """
+    """Fastest backend using ``pdftoppm`` from poppler-utils."""
 
     name = "pdftoppm"
 
     @staticmethod
     def is_available() -> bool:
+        """Return ``True`` if ``pdftoppm`` is on ``$PATH``."""
         return shutil.which("pdftoppm") is not None
 
     @staticmethod
     def install_hint() -> str:
+        """Return platform-specific install instructions for poppler."""
         os_name = platform.system()
         if os_name == "Darwin":
             return "brew install poppler"
@@ -170,15 +152,16 @@ class PdftoppmBackend(ConversionBackend):
         return "Install poppler-utils for your platform."
 
     def convert(self, pdf_path, config, pages=None):
+        """Convert PDF pages to RGBA images via ``pdftoppm``."""
         pdf_path = pdf_path.resolve()
         if not pdf_path.is_file():
-            raise FileNotFoundError(pdf_path)
+            raise FileNotFoundError(f"PDF not found: {pdf_path}")
 
-        results: List[Image.Image] = []
+        results: list[Image.Image] = []
 
         with tempfile.TemporaryDirectory(prefix="tikzgif_pdftoppm_") as tmpdir:
             prefix = Path(tmpdir) / "frame"
-            cmd: List[str] = ["pdftoppm", "-png"]
+            cmd: list[str] = ["pdftoppm", "-png"]
 
             effective_dpi = config.render_dpi if (
                 config.antialias and config.antialias_factor > 1
@@ -200,16 +183,28 @@ class PdftoppmBackend(ConversionBackend):
             cmd += [str(pdf_path), str(prefix)]
             logger.debug("pdftoppm command: %s", " ".join(cmd))
 
-            proc = subprocess.run(cmd, capture_output=True, timeout=300)
+            try:
+                proc = subprocess.run(cmd, capture_output=True, timeout=300)
+            except subprocess.TimeoutExpired as exc:
+                raise ConverterError(
+                    "pdftoppm timed out after 300s.",
+                    backend="pdftoppm",
+                ) from exc
+
             if proc.returncode != 0:
-                raise RuntimeError(
-                    f"pdftoppm failed (rc={proc.returncode}):\n"
-                    f"{proc.stderr.decode(errors='replace')}"
+                stderr_text = proc.stderr.decode(errors="replace")
+                raise ConverterError(
+                    f"pdftoppm failed (rc={proc.returncode}):\n{stderr_text}",
+                    backend="pdftoppm",
+                    stderr_output=stderr_text,
                 )
 
             png_files = sorted(Path(tmpdir).glob("frame-*.png"))
             if not png_files:
-                raise RuntimeError("pdftoppm produced no output files.")
+                raise ConverterError(
+                    "pdftoppm produced no output files.",
+                    backend="pdftoppm",
+                )
 
             requested_set = set(pages) if pages is not None else None
 
@@ -228,21 +223,14 @@ class PdftoppmBackend(ConversionBackend):
         return results
 
 
-# ---------------------------------------------------------------------------
-# 2. PyMuPDF (fitz)
-# ---------------------------------------------------------------------------
-
 class PyMuPDFBackend(ConversionBackend):
-    """Pure-Python via MuPDF. ~20 ms/frame at 300 DPI, ~70 ms at 600 DPI.
-
-    No subprocess calls. Renders at arbitrary DPI via a transformation
-    matrix. Native anti-aliasing. Supports transparent backgrounds.
-    """
+    """Pure-Python backend via the PyMuPDF (``fitz``) library."""
 
     name = "pymupdf"
 
     @staticmethod
     def is_available() -> bool:
+        """Return ``True`` if PyMuPDF is importable."""
         try:
             import fitz  # noqa: F401
             return True
@@ -251,17 +239,29 @@ class PyMuPDFBackend(ConversionBackend):
 
     @staticmethod
     def install_hint() -> str:
+        """Return pip install instruction for PyMuPDF."""
         return "pip install PyMuPDF"
 
     def convert(self, pdf_path, config, pages=None):
+        """Convert PDF pages to RGBA images via PyMuPDF."""
         import fitz
+
         pdf_path = pdf_path.resolve()
-        doc = fitz.open(str(pdf_path))
+        if not pdf_path.is_file():
+            raise FileNotFoundError(f"PDF not found: {pdf_path}")
+
+        try:
+            doc = fitz.open(str(pdf_path))
+        except Exception as exc:
+            raise ConverterError(
+                f"PyMuPDF failed to open {pdf_path}: {exc}",
+                backend="pymupdf",
+            ) from exc
 
         page_indices = sorted(pages) if pages is not None else list(range(len(doc)))
         scale = config.dpi / 72.0
         matrix = fitz.Matrix(scale, scale)
-        results: List[Image.Image] = []
+        results: list[Image.Image] = []
 
         for page_idx in page_indices:
             if page_idx < 0 or page_idx >= len(doc):
@@ -281,17 +281,14 @@ class PyMuPDFBackend(ConversionBackend):
         return results
 
 
-# ---------------------------------------------------------------------------
-# 3. pdf2image (Python wrapper around poppler)
-# ---------------------------------------------------------------------------
-
 class Pdf2ImageBackend(ConversionBackend):
-    """Wraps pdf2image library. Same quality as pdftoppm, ~25 ms/frame."""
+    """Backend wrapping the ``pdf2image`` library (uses poppler internally)."""
 
     name = "pdf2image"
 
     @staticmethod
     def is_available() -> bool:
+        """Return ``True`` if ``pdf2image`` is importable and ``pdftoppm`` is on PATH."""
         try:
             import pdf2image  # noqa: F401
             return shutil.which("pdftoppm") is not None
@@ -300,6 +297,7 @@ class Pdf2ImageBackend(ConversionBackend):
 
     @staticmethod
     def install_hint() -> str:
+        """Return install instructions for pdf2image and poppler."""
         os_name = platform.system()
         base = "pip install pdf2image"
         if os_name == "Darwin":
@@ -311,14 +309,18 @@ class Pdf2ImageBackend(ConversionBackend):
         return base
 
     def convert(self, pdf_path, config, pages=None):
+        """Convert PDF pages to RGBA images via ``pdf2image``."""
         from pdf2image import convert_from_path
+
         pdf_path = pdf_path.resolve()
+        if not pdf_path.is_file():
+            raise FileNotFoundError(f"PDF not found: {pdf_path}")
 
         effective_dpi = config.render_dpi if (
             config.antialias and config.antialias_factor > 1
         ) else config.dpi
 
-        kwargs: Dict = {
+        kwargs: dict = {
             "pdf_path": str(pdf_path),
             "dpi": effective_dpi,
             "fmt": "png",
@@ -332,8 +334,15 @@ class Pdf2ImageBackend(ConversionBackend):
         if config.background is None:
             kwargs["transparent"] = True
 
-        pil_images = convert_from_path(**kwargs)
-        results: List[Image.Image] = []
+        try:
+            pil_images = convert_from_path(**kwargs)
+        except Exception as exc:
+            raise ConverterError(
+                f"pdf2image conversion failed: {exc}",
+                backend="pdf2image",
+            ) from exc
+
+        results: list[Image.Image] = []
         requested_set = set(pages) if pages is not None else None
         base_idx = min(pages) if pages else 0
 
@@ -349,29 +358,14 @@ class Pdf2ImageBackend(ConversionBackend):
         return results
 
 
-# ---------------------------------------------------------------------------
-# 4. Ghostscript
-# ---------------------------------------------------------------------------
-
 class GhostscriptBackend(ConversionBackend):
-    """Most portable. ~40 ms/frame at 300 DPI, ~150 ms at 600 DPI.
-
-    Command flags
-    -------------
-    -sDEVICE=pngalpha       32-bit RGBA (transparent background)
-    -sDEVICE=png16m          24-bit RGB (opaque)
-    -sDEVICE=pnggray         8-bit grayscale
-    -r<dpi>                  Resolution
-    -dTextAlphaBits=4        Text AA (1=none, 2=low, 4=full)
-    -dGraphicsAlphaBits=4    Vector AA
-    -dFirstPage/-dLastPage   Page range (1-based)
-    -dNumRenderingThreads=N  Parallel rendering (GS >= 9.54)
-    """
+    """Backend using Ghostscript for PDF rasterization."""
 
     name = "ghostscript"
 
     @staticmethod
-    def _gs_executable() -> Optional[str]:
+    def _gs_executable() -> str | None:
+        """Return the Ghostscript binary name, or ``None`` if not found."""
         for name in ("gs", "gswin64c", "gswin32c"):
             if shutil.which(name) is not None:
                 return name
@@ -379,10 +373,12 @@ class GhostscriptBackend(ConversionBackend):
 
     @staticmethod
     def is_available() -> bool:
+        """Return ``True`` if Ghostscript is on ``$PATH``."""
         return GhostscriptBackend._gs_executable() is not None
 
     @staticmethod
     def install_hint() -> str:
+        """Return platform-specific install instructions for Ghostscript."""
         os_name = platform.system()
         if os_name == "Darwin":
             return "brew install ghostscript"
@@ -393,10 +389,17 @@ class GhostscriptBackend(ConversionBackend):
         return "Install Ghostscript for your platform."
 
     def convert(self, pdf_path, config, pages=None):
+        """Convert PDF pages to RGBA images via Ghostscript."""
         gs_bin = self._gs_executable()
         if gs_bin is None:
-            raise RuntimeError("Ghostscript not found on PATH.")
+            raise ConverterNotFoundError(
+                "Ghostscript not found on PATH.",
+                backend="ghostscript",
+                install_hint=self.install_hint(),
+            )
         pdf_path = pdf_path.resolve()
+        if not pdf_path.is_file():
+            raise FileNotFoundError(f"PDF not found: {pdf_path}")
 
         effective_dpi = config.render_dpi if (
             config.antialias and config.antialias_factor > 1
@@ -412,7 +415,7 @@ class GhostscriptBackend(ConversionBackend):
             else:
                 device = "png16m"
 
-            cmd: List[str] = [
+            cmd: list[str] = [
                 gs_bin, "-dBATCH", "-dNOPAUSE", "-dSAFER", "-dQUIET",
                 f"-sDEVICE={device}", f"-r{effective_dpi}",
                 f"-sOutputFile={out_pattern}",
@@ -432,18 +435,30 @@ class GhostscriptBackend(ConversionBackend):
             cmd.append(str(pdf_path))
             logger.debug("Ghostscript command: %s", " ".join(cmd))
 
-            proc = subprocess.run(cmd, capture_output=True, timeout=300)
+            try:
+                proc = subprocess.run(cmd, capture_output=True, timeout=300)
+            except subprocess.TimeoutExpired as exc:
+                raise ConverterError(
+                    "Ghostscript timed out after 300s.",
+                    backend="ghostscript",
+                ) from exc
+
             if proc.returncode != 0:
-                raise RuntimeError(
-                    f"Ghostscript failed (rc={proc.returncode}):\n"
-                    f"{proc.stderr.decode(errors='replace')}"
+                stderr_text = proc.stderr.decode(errors="replace")
+                raise ConverterError(
+                    f"Ghostscript failed (rc={proc.returncode}):\n{stderr_text}",
+                    backend="ghostscript",
+                    stderr_output=stderr_text,
                 )
 
             png_files = sorted(Path(tmpdir).glob("frame-*.png"))
             if not png_files:
-                raise RuntimeError("Ghostscript produced no output files.")
+                raise ConverterError(
+                    "Ghostscript produced no output files.",
+                    backend="ghostscript",
+                )
 
-            results: List[Image.Image] = []
+            results: list[Image.Image] = []
             requested_set = set(pages) if pages is not None else None
             base_page = min(pages) if pages else 0
 
@@ -461,22 +476,14 @@ class GhostscriptBackend(ConversionBackend):
         return results
 
 
-# ---------------------------------------------------------------------------
-# 5. ImageMagick
-# ---------------------------------------------------------------------------
-
 class ImageMagickBackend(ConversionBackend):
-    """Wrapper. ~50 ms/frame at 300 DPI. Uses Ghostscript internally.
-
-    SECURITY NOTE: ImageMagick policy.xml may block PDF conversion.
-    Edit /etc/ImageMagick-*/policy.xml:
-        <policy domain="coder" rights="read" pattern="PDF" />
-    """
+    """Backend wrapping ImageMagick ``convert``/``magick``."""
 
     name = "imagemagick"
 
     @staticmethod
-    def _magick_executable() -> Optional[str]:
+    def _magick_executable() -> str | None:
+        """Return the ImageMagick binary name, or ``None`` if not found."""
         if shutil.which("magick") is not None:
             return "magick"
         if shutil.which("convert") is not None:
@@ -485,6 +492,7 @@ class ImageMagickBackend(ConversionBackend):
 
     @staticmethod
     def is_available() -> bool:
+        """Return ``True`` if ImageMagick is on ``$PATH`` and functional."""
         exe = ImageMagickBackend._magick_executable()
         if exe is None:
             return False
@@ -498,6 +506,7 @@ class ImageMagickBackend(ConversionBackend):
 
     @staticmethod
     def install_hint() -> str:
+        """Return platform-specific install instructions for ImageMagick."""
         os_name = platform.system()
         if os_name == "Darwin":
             hint = "brew install imagemagick"
@@ -515,10 +524,17 @@ class ImageMagickBackend(ConversionBackend):
         return hint
 
     def convert(self, pdf_path, config, pages=None):
+        """Convert PDF pages to RGBA images via ImageMagick."""
         exe = self._magick_executable()
         if exe is None:
-            raise RuntimeError("ImageMagick not found on PATH.")
+            raise ConverterNotFoundError(
+                "ImageMagick not found on PATH.",
+                backend="imagemagick",
+                install_hint=self.install_hint(),
+            )
         pdf_path = pdf_path.resolve()
+        if not pdf_path.is_file():
+            raise FileNotFoundError(f"PDF not found: {pdf_path}")
 
         effective_dpi = config.render_dpi if (
             config.antialias and config.antialias_factor > 1
@@ -526,7 +542,7 @@ class ImageMagickBackend(ConversionBackend):
 
         with tempfile.TemporaryDirectory(prefix="tikzgif_magick_") as tmpdir:
             out_pattern = str(Path(tmpdir) / "frame.png")
-            cmd: List[str] = [exe, "-density", str(effective_dpi)]
+            cmd: list[str] = [exe, "-density", str(effective_dpi)]
             if not config.antialias:
                 cmd.append("+antialias")
             if config.background is None:
@@ -544,24 +560,38 @@ class ImageMagickBackend(ConversionBackend):
             cmd.append(out_pattern)
             logger.debug("ImageMagick command: %s", " ".join(cmd))
 
-            proc = subprocess.run(cmd, capture_output=True, timeout=300)
+            try:
+                proc = subprocess.run(cmd, capture_output=True, timeout=300)
+            except subprocess.TimeoutExpired as exc:
+                raise ConverterError(
+                    "ImageMagick timed out after 300s.",
+                    backend="imagemagick",
+                ) from exc
+
             if proc.returncode != 0:
                 stderr_text = proc.stderr.decode(errors="replace")
                 if "not authorized" in stderr_text.lower():
-                    raise RuntimeError(
-                        "ImageMagick PDF conversion blocked by security policy.\n"
+                    raise ConverterError(
+                        "ImageMagick PDF conversion blocked by security policy. "
                         "Edit /etc/ImageMagick-*/policy.xml to allow PDF reads:\n"
-                        '  <policy domain="coder" rights="read" pattern="PDF" />'
+                        '  <policy domain="coder" rights="read" pattern="PDF" />',
+                        backend="imagemagick",
+                        stderr_output=stderr_text,
                     )
-                raise RuntimeError(
-                    f"ImageMagick failed (rc={proc.returncode}):\n{stderr_text}"
+                raise ConverterError(
+                    f"ImageMagick failed (rc={proc.returncode}):\n{stderr_text}",
+                    backend="imagemagick",
+                    stderr_output=stderr_text,
                 )
 
             png_files = sorted(Path(tmpdir).glob("frame*.png"))
             if not png_files:
-                raise RuntimeError("ImageMagick produced no output files.")
+                raise ConverterError(
+                    "ImageMagick produced no output files.",
+                    backend="imagemagick",
+                )
 
-            results: List[Image.Image] = []
+            results: list[Image.Image] = []
             requested_set = set(pages) if pages is not None else None
             base_page = min(pages) if pages else 0
 
@@ -579,11 +609,7 @@ class ImageMagickBackend(ConversionBackend):
         return results
 
 
-# ---------------------------------------------------------------------------
-# Registry
-# ---------------------------------------------------------------------------
-
-BACKEND_PRIORITY: List[type] = [
+BACKEND_PRIORITY: list[type] = [
     PdftoppmBackend,
     PyMuPDFBackend,
     Pdf2ImageBackend,
@@ -591,11 +617,22 @@ BACKEND_PRIORITY: List[type] = [
     ImageMagickBackend,
 ]
 
-_BACKEND_BY_NAME: Dict[str, type] = {cls.name: cls for cls in BACKEND_PRIORITY}
+_BACKEND_BY_NAME: dict[str, type] = {cls.name: cls for cls in BACKEND_PRIORITY}
 
 
 def get_backend_by_name(name: str) -> ConversionBackend:
-    """Instantiate a backend by its short name."""
+    """Instantiate a rasterization backend by its short name.
+
+    Args:
+        name: Backend identifier (e.g. ``"pdftoppm"``, ``"pymupdf"``).
+
+    Returns:
+        An initialized ``ConversionBackend`` instance.
+
+    Raises:
+        ValueError: If *name* is not a recognized backend.
+        ConverterNotFoundError: If the backend is not available on this system.
+    """
     cls = _BACKEND_BY_NAME.get(name)
     if cls is None:
         raise ValueError(
@@ -603,8 +640,9 @@ def get_backend_by_name(name: str) -> ConversionBackend:
             f"Available: {list(_BACKEND_BY_NAME.keys())}"
         )
     if not cls.is_available():
-        raise RuntimeError(
-            f"Backend '{name}' is not available on this system.\n"
-            f"Install: {cls.install_hint()}"
+        raise ConverterNotFoundError(
+            f"Backend '{name}' is not available on this system.",
+            backend=name,
+            install_hint=cls.install_hint(),
         )
     return cls()

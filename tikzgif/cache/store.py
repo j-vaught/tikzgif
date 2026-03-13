@@ -1,38 +1,14 @@
-"""
-Content-addressable compilation cache.
+"""Content-addressable compilation cache.
 
-Each compiled frame is stored under a directory named by the SHA-256 of
-its .tex source.  If the .tex content for a frame has not changed since
-the last build, the cached PDF is reused without recompilation.
-
-Directory layout
-----------------
-~/.cache/tikzgif/
-    frames/
-        <sha256_prefix_2>/<sha256_rest>/
-            frame.tex
-            frame.pdf
-            frame.png       (populated after PDF-to-PNG conversion)
-            bbox.json       (bounding box from compilation)
-    meta/
-        <template_hash>.json   (maps param values -> frame hashes)
-
-Cache invalidation
-------------------
-- Frame-level: a frame is invalid if its content hash is absent from the
-  cache.  Because the hash covers the *complete* .tex source (preamble +
-  body with substituted param), any change to the template or parameter
-  produces a new hash automatically.
-
-- Template-level: any change to template source changes frame content hashes,
-  so old entries become unreachable and are reclaimed by periodic GC.
-
-- Manual: users can delete ~/.cache/tikzgif/ to force a full rebuild.
+Compiled frames are stored under directories named by the SHA-256 of
+their ``.tex`` source.  Unchanged frames are served from cache without
+recompilation.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 import time
@@ -41,13 +17,15 @@ from typing import Any
 
 from tikzgif.types import BoundingBox, FrameSpec
 
+logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Default cache root
-# ---------------------------------------------------------------------------
 
 def default_cache_dir() -> Path:
-    """Return the platform-appropriate default cache directory."""
+    """Return the platform-appropriate default cache directory.
+
+    Respects ``$XDG_CACHE_HOME`` on Unix and ``%LOCALAPPDATA%`` on
+    Windows, falling back to ``~/.cache/tikzgif``.
+    """
     xdg = os.environ.get("XDG_CACHE_HOME")
     if xdg:
         base = Path(xdg)
@@ -62,36 +40,28 @@ def default_cache_dir() -> Path:
 
 
 def _ensure_dir(path: Path) -> Path:
-    """Create directory if it does not exist."""
+    """Create *path* if it does not exist and return it."""
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
-# ---------------------------------------------------------------------------
-# Hash-based directory layout
-# ---------------------------------------------------------------------------
-
 def _key_dir(root: Path, content_hash: str) -> Path:
-    """
-    Return the cache subdirectory for a content hash.
+    """Return the two-level cache subdirectory for *content_hash*.
 
-    Uses a two-level split (first 2 chars / rest) to avoid putting
-    too many entries in a single directory, which degrades filesystem
-    performance on some platforms.
+    Uses a ``<prefix_2>/<rest>`` split to avoid excessive entries in a
+    single directory.
     """
     return root / "frames" / content_hash[:2] / content_hash[2:]
 
 
-# ---------------------------------------------------------------------------
-# Cache manager
-# ---------------------------------------------------------------------------
-
 class CompilationCache:
-    """
-    Content-addressable cache for compiled LaTeX frames.
+    """Content-addressable cache for compiled LaTeX frames.
 
     Thread-safe for reads; writes are process-isolated because each
     parallel worker writes to a unique hash directory.
+
+    Args:
+        root: Cache root directory, or ``None`` for platform default.
     """
 
     def __init__(self, root: Path | None = None) -> None:
@@ -101,25 +71,23 @@ class CompilationCache:
         _ensure_dir(self.frames_dir)
         _ensure_dir(self.meta_dir)
 
-    # -- Lookup ------------------------------------------------------------
-
     def has_frame(self, content_hash: str) -> bool:
-        """Return True if a compiled PDF exists for this content hash."""
+        """Return ``True`` if a compiled PDF exists for *content_hash*."""
         pdf = _key_dir(self.root, content_hash) / "frame.pdf"
         return pdf.is_file()
 
     def get_pdf_path(self, content_hash: str) -> Path | None:
-        """Return the cached PDF path, or None if not cached."""
+        """Return the cached PDF path, or ``None`` if not cached."""
         pdf = _key_dir(self.root, content_hash) / "frame.pdf"
         return pdf if pdf.is_file() else None
 
     def get_png_path(self, content_hash: str) -> Path | None:
-        """Return the cached PNG path, or None if not cached."""
+        """Return the cached PNG path, or ``None`` if not cached."""
         png = _key_dir(self.root, content_hash) / "frame.png"
         return png if png.is_file() else None
 
     def get_bbox(self, content_hash: str) -> BoundingBox | None:
-        """Return the cached bounding box, or None."""
+        """Return the cached bounding box, or ``None``."""
         bbox_file = _key_dir(self.root, content_hash) / "bbox.json"
         if not bbox_file.is_file():
             return None
@@ -127,37 +95,64 @@ class CompilationCache:
             data = json.loads(bbox_file.read_text("utf-8"))
             return BoundingBox(**data)
         except (json.JSONDecodeError, TypeError, KeyError):
+            logger.debug("Corrupt bbox cache entry: %s", bbox_file)
             return None
 
-    # -- Store -------------------------------------------------------------
-
     def frame_dir(self, content_hash: str) -> Path:
-        """Return (and create) the directory for a given hash."""
+        """Return (and create) the cache directory for *content_hash*."""
         return _ensure_dir(_key_dir(self.root, content_hash))
 
     def store_tex(self, spec: FrameSpec) -> Path:
-        """Write the .tex source into the cache and return its path."""
+        """Write the ``.tex`` source into the cache.
+
+        Args:
+            spec: Frame specification containing source and hash.
+
+        Returns:
+            Path to the cached ``.tex`` file.
+        """
         d = self.frame_dir(spec.content_hash)
         tex_path = d / "frame.tex"
         tex_path.write_text(spec.tex_content, encoding="utf-8")
         return tex_path
 
     def store_pdf(self, spec: FrameSpec, pdf_path: Path) -> Path:
-        """Copy a compiled PDF into the cache. Returns the cached path."""
+        """Copy a compiled PDF into the cache.
+
+        Args:
+            spec: Frame specification.
+            pdf_path: Path to the compiled PDF to cache.
+
+        Returns:
+            Path to the cached PDF.
+        """
         d = self.frame_dir(spec.content_hash)
         dest = d / "frame.pdf"
         shutil.copy2(pdf_path, dest)
         return dest
 
     def store_png(self, spec: FrameSpec, png_path: Path) -> Path:
-        """Copy a converted PNG into the cache. Returns the cached path."""
+        """Copy a rasterized PNG into the cache.
+
+        Args:
+            spec: Frame specification.
+            png_path: Path to the PNG to cache.
+
+        Returns:
+            Path to the cached PNG.
+        """
         d = self.frame_dir(spec.content_hash)
         dest = d / "frame.png"
         shutil.copy2(png_path, dest)
         return dest
 
     def store_bbox(self, content_hash: str, bbox: BoundingBox) -> None:
-        """Persist a bounding box alongside a cached frame."""
+        """Persist a bounding box alongside a cached frame.
+
+        Args:
+            content_hash: Content hash identifying the frame.
+            bbox: Bounding box to store.
+        """
         d = self.frame_dir(content_hash)
         bbox_file = d / "bbox.json"
         data = {
@@ -168,15 +163,16 @@ class CompilationCache:
         }
         bbox_file.write_text(json.dumps(data), encoding="utf-8")
 
-    # -- Template metadata -------------------------------------------------
-
     def store_template_meta(
         self,
         template_hash: str,
         frame_map: dict[int, str],
     ) -> None:
-        """
-        Store a mapping from frame index -> content hash for a template.
+        """Store a mapping from frame index to content hash for a template.
+
+        Args:
+            template_hash: SHA-256 of the template source.
+            frame_map: ``{frame_index: content_hash}`` mapping.
         """
         meta_path = self.meta_dir / f"{template_hash}.json"
         data = {
@@ -187,7 +183,14 @@ class CompilationCache:
         meta_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     def load_template_meta(self, template_hash: str) -> dict[int, str] | None:
-        """Load a previous frame map, or None if not found."""
+        """Load a previous frame map, or ``None`` if not found.
+
+        Args:
+            template_hash: SHA-256 of the template source.
+
+        Returns:
+            ``{frame_index: content_hash}`` mapping, or ``None``.
+        """
         meta_path = self.meta_dir / f"{template_hash}.json"
         if not meta_path.is_file():
             return None
@@ -195,15 +198,17 @@ class CompilationCache:
             data = json.loads(meta_path.read_text("utf-8"))
             return {int(k): v for k, v in data["frames"].items()}
         except (json.JSONDecodeError, KeyError):
+            logger.debug("Corrupt template meta: %s", meta_path)
             return None
 
-    # -- Garbage collection ------------------------------------------------
-
     def gc(self, max_age_days: int = 30) -> int:
-        """
-        Remove cache entries older than max_age_days.
+        """Remove cache entries older than *max_age_days*.
 
-        Returns the number of entries removed.
+        Args:
+            max_age_days: Maximum age in days before eviction.
+
+        Returns:
+            Number of entries removed.
         """
         cutoff = time.time() - (max_age_days * 86400)
         removed = 0
@@ -222,7 +227,11 @@ class CompilationCache:
         return removed
 
     def clear(self) -> int:
-        """Remove the entire cache. Returns count of removed entries."""
+        """Remove the entire cache.
+
+        Returns:
+            Number of frame entries that were removed.
+        """
         count = 0
         if self.frames_dir.is_dir():
             count = sum(
@@ -238,10 +247,12 @@ class CompilationCache:
         _ensure_dir(self.meta_dir)
         return count
 
-    # -- Statistics --------------------------------------------------------
-
     def stats(self) -> dict[str, Any]:
-        """Return cache statistics."""
+        """Return cache statistics.
+
+        Returns:
+            Dict with ``entries`` count, ``size_mb``, and ``root`` path.
+        """
         total = 0
         size_bytes = 0
         if self.frames_dir.is_dir():
@@ -261,29 +272,25 @@ class CompilationCache:
         }
 
 
-# ---------------------------------------------------------------------------
-# Convenience functions (backward-compatible with old API)
-# ---------------------------------------------------------------------------
-
 def get_cache_dir(override: Path | None = None) -> Path:
     """Return the cache root, creating it if necessary."""
     return _ensure_dir(override or default_cache_dir())
 
 
 def lookup_pdf(cache_dir: Path, frame: FrameSpec) -> Path | None:
-    """Check if a cached PDF exists for the given frame."""
+    """Check if a cached PDF exists for *frame*."""
     pdf = _key_dir(cache_dir, frame.content_hash) / "frame.pdf"
     return pdf if pdf.exists() else None
 
 
 def lookup_png(cache_dir: Path, frame: FrameSpec) -> Path | None:
-    """Check if a cached PNG exists for the given frame."""
+    """Check if a cached PNG exists for *frame*."""
     png = _key_dir(cache_dir, frame.content_hash) / "frame.png"
     return png if png.exists() else None
 
 
 def store_pdf(cache_dir: Path, frame: FrameSpec, pdf_path: Path) -> Path:
-    """Copy a compiled PDF into the cache. Returns the cached path."""
+    """Copy a compiled PDF into the cache and return the cached path."""
     key = _ensure_dir(_key_dir(cache_dir, frame.content_hash))
     dest = key / "frame.pdf"
     shutil.copy2(pdf_path, dest)
@@ -291,7 +298,7 @@ def store_pdf(cache_dir: Path, frame: FrameSpec, pdf_path: Path) -> Path:
 
 
 def store_png(cache_dir: Path, frame: FrameSpec, png_path: Path) -> Path:
-    """Copy a converted PNG into the cache. Returns the cached path."""
+    """Copy a rasterized PNG into the cache and return the cached path."""
     key = _ensure_dir(_key_dir(cache_dir, frame.content_hash))
     dest = key / "frame.png"
     shutil.copy2(png_path, dest)
@@ -299,7 +306,7 @@ def store_png(cache_dir: Path, frame: FrameSpec, png_path: Path) -> Path:
 
 
 def clear_cache(cache_dir: Path | None = None) -> int:
-    """Remove all cached files. Returns the number of entries removed."""
+    """Remove all cached files and return the number of entries removed."""
     root = get_cache_dir(cache_dir)
     if not root.exists():
         return 0

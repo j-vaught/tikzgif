@@ -1,7 +1,7 @@
 """Pipeline configuration objects for tikzgif.
 
-These dataclasses provide explicit stage-level configuration while
-keeping backward-compatible adapters for the legacy ``render(...)`` API.
+Dataclasses providing explicit stage-level configuration with
+backward-compatible adapters for the legacy ``render()`` API.
 """
 
 from __future__ import annotations
@@ -21,7 +21,13 @@ from .types import BoundingBox, CompilationConfig, ErrorPolicy, LatexEngine
 
 @dataclass(frozen=True)
 class TemplateConfig:
-    """Template parsing/substitution settings."""
+    """Template parsing and substitution settings.
+
+    Attributes:
+        param_token: Token to substitute (e.g. ``"\\PARAM"``).
+        extra_preamble: Additional LaTeX preamble lines to inject.
+        enforced_bbox: Fixed bounding box to inject, or ``None``.
+    """
 
     param_token: str = r"\PARAM"
     extra_preamble: str = ""
@@ -30,7 +36,18 @@ class TemplateConfig:
 
 @dataclass(frozen=True)
 class CompileConfig:
-    """LaTeX compilation settings."""
+    """LaTeX compilation settings.
+
+    Attributes:
+        engine: LaTeX engine, or ``None`` for auto-detection.
+        error_policy: Strategy for handling frame failures.
+        max_workers: Number of parallel workers (0 = auto).
+        shell_escape: Whether to enable ``--shell-escape``.
+        extra_args: Additional arguments forwarded to the engine.
+        cache_dir: Custom cache root, or ``None`` for platform default.
+        timeout_per_frame_s: Maximum seconds per frame compilation.
+        dpi: Target DPI for rasterization.
+    """
 
     engine: LatexEngine | None = None
     error_policy: ErrorPolicy = ErrorPolicy.RETRY
@@ -42,7 +59,7 @@ class CompileConfig:
     dpi: int = 300
 
     def to_compilation_config(self) -> CompilationConfig:
-        """Convert to the compile engine's internal config dataclass."""
+        """Convert to the compile engine's internal ``CompilationConfig``."""
         return CompilationConfig(
             engine=self.engine,
             error_policy=self.error_policy,
@@ -57,7 +74,17 @@ class CompileConfig:
 
 @dataclass(frozen=True)
 class RasterConfig:
-    """PDF-to-image rasterization settings."""
+    """PDF-to-image rasterization settings.
+
+    Attributes:
+        backend: Backend name (e.g. ``"pdftoppm"``).
+        dpi: Target DPI.
+        color_space: Output color space.
+        background: Background color, or ``None`` for transparency.
+        antialias: Whether to enable supersampled anti-aliasing.
+        antialias_factor: Supersampling multiplier.
+        threads: Number of rendering threads.
+    """
 
     backend: str = "pdftoppm"
     dpi: int = 300
@@ -68,7 +95,7 @@ class RasterConfig:
     threads: int = 1
 
     def to_render_config(self) -> RenderConfig:
-        """Convert to raster backend render config."""
+        """Convert to a raster backend ``RenderConfig``."""
         return RenderConfig(
             dpi=self.dpi,
             color_space=self.color_space,
@@ -81,7 +108,27 @@ class RasterConfig:
 
 @dataclass(frozen=True)
 class OutputConfig:
-    """Output assembly settings shared by GIF/MP4."""
+    """Output assembly settings shared by GIF and MP4.
+
+    Attributes:
+        format: Target output format.
+        quality: Quality preset controlling maximum width.
+        fps: Frames per second.
+        output_path: Explicit output path, or ``None`` for auto.
+        raw_pdf_dir: Directory to copy raw PDFs, or ``None``.
+        raw_png_dir: Directory to copy raw PNGs, or ``None``.
+        gif_loop_count: GIF loop count (0 = infinite).
+        mp4_crf: MP4 constant rate factor.
+        mp4_preset: ffmpeg encoding preset.
+        mp4_pixel_format: MP4 pixel format.
+        metadata_title: Output file title.
+        metadata_author: Output file author.
+        metadata_comment: Output file comment.
+        frame_delay_default_ms: Default inter-frame delay in ms.
+        frame_delay_overrides_ms: Per-frame delay overrides.
+        pause_first_ms: Pause on first frame in ms.
+        pause_last_ms: Pause on last frame in ms.
+    """
 
     format: OutputFormat = OutputFormat.GIF
     quality: QualityPreset = QualityPreset.PRESENTATION
@@ -105,7 +152,7 @@ class OutputConfig:
     pause_last_ms: int | None = None
 
     def to_assembly_config(self, default_output_path: Path) -> AssemblyOutputConfig:
-        """Convert to the assembly module config."""
+        """Convert to the assembly module's ``OutputConfig``."""
         output_cfg = AssemblyOutputConfig(
             format=self.format,
             output_path=self.output_path or default_output_path,
@@ -132,7 +179,18 @@ class OutputConfig:
 
 @dataclass(frozen=True)
 class RenderJobConfig:
-    """Top-level render job configuration composed by stage configs."""
+    """Top-level render job configuration composed of stage configs.
+
+    Attributes:
+        tex_file: Path to the ``.tex`` template file.
+        start: Starting parameter value.
+        end: Ending parameter value.
+        frames: Number of animation frames.
+        template: Template parsing settings.
+        compile: Compilation settings.
+        raster: Rasterization settings.
+        output: Output assembly settings.
+    """
 
     tex_file: Path
     start: float = 0.0
@@ -145,7 +203,14 @@ class RenderJobConfig:
     output: OutputConfig = field(default_factory=OutputConfig)
 
     def param_values(self) -> list[float]:
-        """Return the frame parameter sweep values."""
+        """Return the frame parameter sweep values.
+
+        Returns:
+            List of linearly spaced values from *start* to *end*.
+
+        Raises:
+            ValueError: If *frames* is less than 1.
+        """
         if self.frames <= 0:
             raise ValueError("frames must be >= 1")
         if self.frames == 1:
@@ -157,6 +222,14 @@ class RenderJobConfig:
 
 
 def _parse_color_space(color_space: str) -> ColorSpace:
+    """Parse a color-space string into a ``ColorSpace`` enum member.
+
+    Args:
+        color_space: One of ``"rgb"``, ``"rgba"``, ``"grayscale"``.
+
+    Raises:
+        ValueError: If the string is not recognized.
+    """
     lowered = color_space.strip().lower()
     if lowered == "rgb":
         return ColorSpace.RGB
@@ -209,8 +282,52 @@ def legacy_args_to_job_config(
     pause_first_ms: int | None = None,
     pause_last_ms: int | None = None,
 ) -> RenderJobConfig:
-    """Build explicit job config from legacy ``render(...)`` kwargs."""
+    """Build a ``RenderJobConfig`` from legacy ``render()`` keyword arguments.
 
+    Args:
+        tex_file: Path to the ``.tex`` template.
+        param: Parameter token name (without leading backslash).
+        start: Starting parameter value.
+        end: Ending parameter value.
+        frames: Number of frames.
+        fps: Output frames per second.
+        format: Output format (``"gif"`` or ``"mp4"``).
+        quality: Quality preset name.
+        engine: LaTeX engine name, or ``None`` for auto.
+        workers: Parallel worker count (0 = auto).
+        timeout: Per-frame timeout in seconds.
+        dpi: Target DPI.
+        error_policy: Error handling strategy name.
+        output: Explicit output path, or ``None``.
+        raw_pdf_dir: Directory for raw PDFs, or ``None``.
+        raw_png_dir: Directory for raw PNGs, or ``None``.
+        bbox: Fixed bounding box tuple, or ``None``.
+        shell_escape: Whether to enable ``--shell-escape``.
+        latex_args: Extra LaTeX engine arguments.
+        cache_dir: Custom cache directory, or ``None``.
+        backend: Raster backend name.
+        color_space: Target color space name.
+        background: Background color, or ``None``.
+        antialias: Whether to enable supersampled anti-aliasing.
+        antialias_factor: Supersampling multiplier.
+        raster_threads: Number of rasterization threads.
+        gif_loop_count: GIF loop count.
+        mp4_crf: MP4 constant rate factor.
+        mp4_preset: ffmpeg encoding preset.
+        mp4_pixel_format: MP4 pixel format.
+        metadata_title: Output title metadata.
+        metadata_author: Output author metadata.
+        metadata_comment: Output comment metadata.
+        frame_delay_default_ms: Default inter-frame delay in ms.
+        pause_first_ms: First-frame pause in ms.
+        pause_last_ms: Last-frame pause in ms.
+
+    Returns:
+        A fully constructed ``RenderJobConfig``.
+
+    Raises:
+        ValueError: If any string argument is not a recognized option.
+    """
     format_map = {
         "gif": OutputFormat.GIF,
         "mp4": OutputFormat.MP4,

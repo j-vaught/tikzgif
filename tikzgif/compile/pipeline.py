@@ -1,45 +1,8 @@
-"""
-Parallel LaTeX compilation engine.
+"""Parallel LaTeX compilation engine.
 
-Architecture
-------------
-This module uses ``concurrent.futures.ProcessPoolExecutor`` for parallel
-compilation.  Each frame is compiled in an independent subprocess via
-``subprocess.run()``.
-
-Design rationale:
-
-  - **ProcessPoolExecutor over multiprocessing.Pool**: Cleaner API,
-    built-in Future semantics, better exception propagation, and
-    natural integration with ``as_completed()`` for progress reporting.
-
-  - **subprocess.run inside each worker** (not asyncio): LaTeX compilation
-    is CPU-bound and I/O-heavy (disk writes).  asyncio subprocess support
-    adds complexity without benefit because we are not multiplexing
-    thousands of connections -- we have at most ``cpu_count()`` concurrent
-    compilations.
-
-  - **Isolated working directories**: Each frame is compiled in its own
-    directory (provided by the content-addressable cache).  This is
-    mandatory because pdflatex writes .aux, .log, and .pdf files with
-    names derived from the input.  If two processes compile in the same
-    directory, they clobber each other's auxiliary files.
-
-Worker count
-------------
-Default: ``os.cpu_count() - 1`` (leave one core for the orchestrator and
-OS).  Minimum 1.  User can override via ``CompilationConfig.max_workers``.
-
-Progress reporting
-------------------
-Uses ``concurrent.futures.as_completed()`` to report results as they
-finish, driving a tqdm progress bar (or a simple fallback printer).
-
-Error handling
---------------
-- ABORT:  On first failure, cancel pending futures and raise.
-- SKIP:   Log the error, mark the frame as failed, continue.
-- RETRY:  On failure, resubmit once with doubled timeout.  If retry fails, skip.
+Compiles animation frames in parallel using ``ProcessPoolExecutor``.
+Each frame is compiled in an isolated cache directory to prevent
+auxiliary-file conflicts between concurrent workers.
 """
 
 from __future__ import annotations
@@ -49,14 +12,14 @@ import os
 import subprocess
 import sys
 import time
-from dataclasses import replace
 from concurrent.futures import (
     Future,
     ProcessPoolExecutor,
     as_completed,
 )
+from dataclasses import replace
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 from tikzgif.bbox import extract_bbox_from_pdf
 from tikzgif.cache import CompilationCache
@@ -84,10 +47,6 @@ from .engine import (
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Single-frame compilation (runs in worker process)
-# ---------------------------------------------------------------------------
-
 def _compile_single_frame(
     spec: FrameSpec,
     cache_root: Path,
@@ -96,19 +55,25 @@ def _compile_single_frame(
     extra_args: list[str],
     timeout_s: float,
 ) -> FrameResult:
-    """
-    Compile a single frame's .tex file to PDF.
+    """Compile a single frame's ``.tex`` source to PDF.
 
-    This function runs in a worker process.  It:
-      1. Writes the .tex source to an isolated cache directory.
-      2. Runs the LaTeX engine.
-      3. Extracts the bounding box from the resulting PDF.
-      4. Returns a FrameResult.
+    This function runs inside a worker process. It writes the ``.tex``
+    source to a content-hash-keyed directory, invokes the LaTeX engine,
+    and extracts the bounding box from the resulting PDF.
+
+    Args:
+        spec: Frame specification containing source and metadata.
+        cache_root: Root directory of the compilation cache.
+        engine: LaTeX engine to use.
+        shell_escape: Whether to enable ``--shell-escape``.
+        extra_args: Additional arguments forwarded to the engine.
+        timeout_s: Maximum seconds before the compilation is killed.
+
+    Returns:
+        A ``FrameResult`` indicating success or failure.
     """
     t0 = time.monotonic()
 
-    # Each frame gets its own directory keyed by content hash.
-    # This prevents .aux file conflicts between parallel workers.
     h = spec.content_hash
     frame_dir = cache_root / "frames" / h[:2] / h[2:]
     frame_dir.mkdir(parents=True, exist_ok=True)
@@ -117,10 +82,8 @@ def _compile_single_frame(
     pdf_path = frame_dir / "frame.pdf"
     log_path = frame_dir / "frame.log"
 
-    # Write .tex source.
     tex_path.write_text(spec.tex_content, encoding="utf-8")
 
-    # Build and run the compilation command.
     cmd = build_compile_command(
         engine=engine,
         tex_path=tex_path,
@@ -130,7 +93,7 @@ def _compile_single_frame(
     )
 
     try:
-        result = subprocess.run(
+        subprocess.run(
             cmd,
             capture_output=True,
             text=True,
@@ -143,7 +106,7 @@ def _compile_single_frame(
             index=spec.index,
             success=False,
             error_message=(
-                f"Frame {spec.index} timed out after {timeout_s:.0f}s.  "
+                f"Frame {spec.index} timed out after {timeout_s:.0f}s. "
                 f"Increase timeout_per_frame_s if your TikZ code is complex."
             ),
             compile_time_s=elapsed,
@@ -151,7 +114,6 @@ def _compile_single_frame(
 
     elapsed = time.monotonic() - t0
 
-    # Check for success.
     if not pdf_path.is_file():
         errors = parse_log(log_path)
         return FrameResult(
@@ -161,12 +123,11 @@ def _compile_single_frame(
             compile_time_s=elapsed,
         )
 
-    # Extract bounding box from the PDF.
     bbox: BoundingBox | None = None
     try:
         bbox = extract_bbox_from_pdf(pdf_path)
     except BoundingBoxError:
-        pass  # Non-fatal: bbox extraction is best-effort.
+        logger.debug("Bounding-box extraction failed for frame %d", spec.index)
 
     return FrameResult(
         index=spec.index,
@@ -177,16 +138,8 @@ def _compile_single_frame(
     )
 
 
-# ---------------------------------------------------------------------------
-# Progress reporting
-# ---------------------------------------------------------------------------
-
 class ProgressReporter:
-    """
-    Thin abstraction over progress reporting.
-
-    Uses tqdm if available; otherwise prints to stderr.
-    """
+    """Progress bar abstraction backed by ``tqdm`` with a stderr fallback."""
 
     def __init__(self, total: int, description: str = "Compiling") -> None:
         self.total = total
@@ -203,6 +156,7 @@ class ProgressReporter:
             pass
 
     def update(self, n: int = 1, suffix: str = "") -> None:
+        """Record *n* completed items and refresh the display."""
         self.completed += n
         if self._bar is not None:
             if suffix:
@@ -217,23 +171,20 @@ class ProgressReporter:
             )
 
     def close(self) -> None:
+        """Finalize and close the progress display."""
         if self._bar is not None:
             self._bar.close()
         else:
             if self.completed > 0:
-                print(file=sys.stderr)  # newline
+                print(file=sys.stderr)
 
-
-# Need Any for tqdm type
-from typing import Any  # noqa: E402
-
-
-# ---------------------------------------------------------------------------
-# Orchestrator: parallel compilation
-# ---------------------------------------------------------------------------
 
 def _determine_worker_count(config: CompilationConfig) -> int:
-    """Determine how many parallel workers to use."""
+    """Return the number of parallel workers to use.
+
+    Defaults to ``cpu_count() - 1`` (minimum 1) unless overridden by
+    ``config.max_workers``.
+    """
     if config.max_workers > 0:
         return config.max_workers
     cpu = os.cpu_count() or 2
@@ -247,31 +198,20 @@ def compile_frames(
     packages: set[str] | None = None,
     on_frame_done: Callable[[FrameResult], None] | None = None,
 ) -> list[FrameResult]:
-    """
-    Compile a list of frame specifications in parallel.
+    """Compile a list of frame specifications in parallel.
 
-    This is the core entry point for the compilation engine.
+    Args:
+        specs: Frame specifications (one per animation frame).
+        config: Compilation settings (engine, workers, timeouts, etc.).
+        cache: Content-addressable compilation cache.
+        packages: Detected LaTeX packages for engine auto-selection.
+        on_frame_done: Optional callback invoked after each frame completes.
 
-    Parameters
-    ----------
-    specs : list[FrameSpec]
-        Frame specifications (one per animation frame).
-    config : CompilationConfig
-        Compilation settings.
-    cache : CompilationCache
-        The compilation cache.
-    on_frame_done : callable, optional
-        Callback invoked after each frame completes.
+    Returns:
+        ``FrameResult`` list ordered by frame index.
 
-    Returns
-    -------
-    list[FrameResult]
-        Results in frame-index order.
-
-    Raises
-    ------
-    CompilationError
-        If error_policy is ABORT and any frame fails.
+    Raises:
+        CompilationError: If ``error_policy`` is ``ABORT`` and any frame fails.
     """
     workers = _determine_worker_count(config)
     engine = select_engine(preferred=config.engine, packages=packages)
@@ -280,18 +220,18 @@ def compile_frames(
     progress = ProgressReporter(len(specs), "Compiling frames")
     cached_count = 0
 
-    # -- Phase 1: Check cache ----------------------------------------------
     for spec in specs:
         cached_pdf = cache.get_pdf_path(spec.content_hash)
         if cached_pdf is not None:
             bbox = cache.get_bbox(spec.content_hash)
             if bbox is None:
-                # PDF cached but bbox missing — extract and persist it now.
                 try:
                     bbox = extract_bbox_from_pdf(cached_pdf)
                     cache.store_bbox(spec.content_hash, bbox)
                 except Exception:
-                    pass  # bbox stays None; will still count as cached
+                    logger.debug(
+                        "Bbox extraction failed for cached frame %d", spec.index,
+                    )
             results[spec.index] = FrameResult(
                 index=spec.index,
                 success=True,
@@ -315,7 +255,6 @@ def compile_frames(
         cached_count, len(specs), len(to_compile),
     )
 
-    # -- Phase 2: Parallel compilation -------------------------------------
     retry_queue: list[FrameSpec] = []
 
     with ProcessPoolExecutor(max_workers=workers) as pool:
@@ -355,12 +294,13 @@ def compile_frames(
                         pending_fut.cancel()
                     raise CompilationError(
                         f"Frame {spec.index} failed to compile:\n"
-                        f"{result.error_message}"
+                        f"{result.error_message}",
+                        frame_index=spec.index,
                     )
                 elif config.error_policy == ErrorPolicy.RETRY:
                     retry_queue.append(spec)
                     progress.update(suffix=f"frame {spec.index} queued for retry")
-                else:  # SKIP
+                else:
                     results[spec.index] = result
                     progress.update(suffix=f"frame {spec.index} SKIP")
                     logger.warning(
@@ -371,7 +311,6 @@ def compile_frames(
             if on_frame_done is not None:
                 on_frame_done(result)
 
-    # -- Phase 3: Retry failed frames --------------------------------------
     if retry_queue:
         logger.info("Retrying %d failed frames...", len(retry_queue))
         with ProcessPoolExecutor(max_workers=workers) as pool:
@@ -413,7 +352,6 @@ def compile_frames(
 
     progress.close()
 
-    # -- Assemble ordered results ------------------------------------------
     ordered: list[FrameResult] = []
     for spec in specs:
         if spec.index in results:
@@ -427,10 +365,6 @@ def compile_frames(
     return ordered
 
 
-# ---------------------------------------------------------------------------
-# Single-pass compilation
-# ---------------------------------------------------------------------------
-
 def compile_single_pass(
     source: str,
     param_values: list[float],
@@ -439,11 +373,21 @@ def compile_single_pass(
     extra_preamble: str = "",
     enforced_bbox: BoundingBox | None = None,
 ) -> list[FrameResult]:
-    """
-    Single-pass compilation without automatic bbox normalization.
+    """Compile all frames in a single pass without automatic bbox normalization.
 
-    Use this when the user has provided \\useasboundingbox in their
-    template, or when they have explicitly disabled normalization.
+    Parses the template, generates per-frame ``.tex`` sources, and
+    dispatches them to ``compile_frames()`` for parallel compilation.
+
+    Args:
+        source: Raw LaTeX template source.
+        param_values: Parameter sweep values (one per frame).
+        config: Compilation settings.
+        param_token: Token to substitute in the template body.
+        extra_preamble: Additional LaTeX preamble to inject.
+        enforced_bbox: Fixed bounding box to inject into each frame.
+
+    Returns:
+        ``FrameResult`` list ordered by frame index.
     """
     parsed = parse_template(source, param_token)
     config_for_job = config
