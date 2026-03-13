@@ -5,6 +5,7 @@
 % Render: tikzgif render 13d_signal_convolution.tex
 % Difficulty: advanced
 % Features demonstrated: pgfplots, filled regions, multiple synchronized plots
+
 \documentclass[tikz]{standalone}
 \usepackage{pgfplots}
 \usepackage{xcolor}
@@ -50,13 +51,11 @@
     \addplot[garnet, very thick] {
       (x >= 0) * exp(-x)
     };
-    \addlegendentry{$f(\tau) = e^{-\tau}u(\tau)$}
 
     % g(t - tau) = u(t - tau): step function, equals 1 when tau <= t
     \addplot[atlantic, very thick] {
       (x <= \tshift) * 1
     };
-    \addlegendentry{$g(t - \tau) = u(t - \tau)$}
 
     % Shade overlap region: where both f(tau) > 0 and g(t-tau) > 0
     % That is: tau >= 0 AND tau <= t, i.e., tau in [0, max(0, t)]
@@ -77,7 +76,7 @@
     samples=300,
     axis lines=middle,
     xlabel={$t$},
-    ylabel={$(f * g)(t)$},
+    ylabel={},
     ymin=-0.3, ymax=1.5,
     xmin=-3, xmax=7,
     grid=major,
@@ -111,8 +110,6 @@
     % Asymptote dashed line at y = 1
     \draw[dashed, warmgrey!40, thin] (axis cs:-3, 1) -- (axis cs:7, 1);
 
-    \node[anchor=south west, font=\small] at (axis cs:-2.8, 1.2)
-      {$t = \pgfmathprintnumber[fixed, precision=2]{\tshift}$};
   \end{axis}
 \end{tikzpicture}
 \end{document}
