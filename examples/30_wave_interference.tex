@@ -112,5 +112,9 @@
     \node[font=\tiny, warmgrey, anchor=north west] at (-3.9, -0.05) {$I(x)$ at $y\!=\!2$};
 \end{scope}
 
+% Fix bounding box for tikzgif (must come after all drawing)
+\pgfresetboundingbox
+\useasboundingbox (-4.5, -4.2) rectangle (4.8, 3.5);
+
 \end{tikzpicture}
 \end{document}
