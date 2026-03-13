@@ -112,8 +112,8 @@
 
 % ---- BLOCK DIAGRAM (bottom) ----
 \node[sumnode] (sum) at (2,-2.7) {};
-\node[below right=0.5mm] at (sum.center) {\tiny $+$};
-\node[above left=0.5mm and -1mm] at (sum.south) {\tiny $-$};
+\node[above left=0.5mm and -1mm] at (sum.east) {\tiny $+$};
+\node[right=0.5mm] at (sum.south) {\tiny $-$};
 
 \node[block, right=1.2cm of sum, fill=atlantic!\fillpct] (gain)
     {$K = \pgfmathprintnumber[fixed, precision=2]{\K}$};
@@ -124,7 +124,7 @@
 
 % Arrows
 \draw[->] ($(sum.west) + (-1.2, 0)$) -- node[above]{$R(s)$} (sum.west);
-\draw[->] (sum.east) -- node[above, font=\tiny]{$E$} (gain.west);
+\draw[->] (sum.east) -- (gain.west);
 \draw[->] (gain.east) -- (plant.west);
 \draw[->] (plant.east) -- node[above]{$Y(s)$} (output);
 \draw[-] ($(plant.east) + (1.0, 0)$) -- ++(0, -1.0);
