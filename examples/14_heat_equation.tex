@@ -3,8 +3,8 @@
 % BC: T(0,t) = sin(wt), T(inf,t) = 0
 % Solution: T(x,t) = exp(-x/d) * sin(wt - x/d), where d = sqrt(2*alpha/w)
 % Normalized: T(x',wt) = exp(-x') * sin(wt - x') with x' = x/d
-% Parameter: \PARAM (phase angle wt, 0 to 4*pi)
-% Range: 0 to 12.566, recommended 60 frames at 30fps
+% Parameter: \PARAM (0 to 1, mapped to phase angle wt = 0 to 4*pi)
+% Render: tikzgif render 14_heat_equation.tex
 % Difficulty: advanced
 % Features demonstrated: traveling damped wave, diverging colormap, penetration depth
 \documentclass[tikz]{standalone}
@@ -26,7 +26,7 @@
 \begin{document}
 \begin{tikzpicture}
   \useasboundingbox (-8bp, -16bp) rectangle (310bp, 200bp);
-  \pgfmathsetmacro{\wt}{\PARAM}  % phase angle wt
+  \pgfmathsetmacro{\wt}{\PARAM * 4 * 3.14159}
 
   % --- Top Panel: Temperature Profile T(x) ---
   \begin{axis}[

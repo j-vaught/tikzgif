@@ -1,7 +1,7 @@
 % Example 18: Feedback Block Diagram with Gain Sweep
 % Negative-feedback control loop with 2nd-order plant showing gain impact.
-% Parameter: \PARAM (proportional gain K, range 0.1..10.0)
-% Range: 0.1 to 10.0, recommended 30 frames
+% Parameter: \PARAM (0 to 1, mapped to proportional gain K = 0.1 to 10.0)
+% Render: tikzgif render 18_block_diagram_gain_sweep.tex
 % Difficulty: intermediate
 % Features demonstrated: block diagrams, feedback control, 2nd-order response,
 %   overshoot markers, settling band, error signal, color-coded gain
@@ -34,7 +34,7 @@
     every node/.style={font=\small}
 ]
 
-\pgfmathsetmacro{\K}{\PARAM}
+\pgfmathsetmacro{\K}{\PARAM * 9.9 + 0.1}
 
 % 2nd-order plant: G(s) = 1/(s(s+1)), closed-loop: K/(s^2+s+K)
 % wn = sqrt(K), zeta = 1/(2*sqrt(K))

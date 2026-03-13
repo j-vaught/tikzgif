@@ -1,8 +1,8 @@
 % Example 16: Dual Antenna Radiation Patterns vs Frequency
 % Side-by-side microstrip patch and dipole antennas with polar radiation
 % patterns that evolve as frequency sweeps from f/f0 = 1.0 to 3.0.
-% Parameter: \PARAM (frequency ratio f/f0, range 1.0..3.0)
-% Range: 1.0 to 3.0, recommended 60 frames at 15 fps
+% Parameter: \PARAM (0 to 1, mapped to frequency ratio f/f0 = 1.0 to 3.0)
+% Render: tikzgif render 16_antenna_radiation.tex
 % Difficulty: advanced
 % Features demonstrated: dual polar plots, antenna schematics, frequency sweep,
 %   narrowband vs broadband behavior, ghost reference patterns, dB-scale grid
@@ -33,7 +33,7 @@
 % ============================================================
 % PARAMETER SETUP
 % ============================================================
-\pgfmathsetmacro{\freqRatio}{\PARAM}
+\pgfmathsetmacro{\freqRatio}{\PARAM * 2 + 1}
 \pgfmathsetmacro{\Rmax}{2.8}
 \pgfmathsetmacro{\Qfactor}{10}
 
