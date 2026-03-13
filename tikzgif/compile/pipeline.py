@@ -92,16 +92,20 @@ def _compile_single_frame(
         extra_args=extra_args,
     )
 
+    effective_timeout = timeout_s if timeout_s > 0 else None
+
     try:
         subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            timeout=timeout_s,
+            timeout=effective_timeout,
             cwd=str(frame_dir),
         )
     except subprocess.TimeoutExpired:
         elapsed = time.monotonic() - t0
+        if pdf_path.is_file():
+            pdf_path.unlink()
         return FrameResult(
             index=spec.index,
             success=False,
