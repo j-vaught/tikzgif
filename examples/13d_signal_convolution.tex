@@ -1,8 +1,8 @@
 % Example 13d: Signal Convolution (Exponential * Step)
 % Sliding window convolution of a decaying exponential with a unit step.
 % Shows f(tau), g(t-tau), and the resulting convolution integral.
-% Parameter: \PARAM (time shift t, -2 to 6)
-% Range: -2 to 6, recommended 60 frames
+% Parameter: \PARAM (0 to 1, mapped to time shift t = -2 to 6)
+% Render: tikzgif render 13d_signal_convolution.tex
 % Difficulty: advanced
 % Features demonstrated: pgfplots, filled regions, multiple synchronized plots
 \documentclass[tikz]{standalone}
@@ -24,7 +24,7 @@
 \begin{document}
 \begin{tikzpicture}
   \useasboundingbox (-2bp, -2bp) rectangle (244bp, 234bp);
-  \pgfmathsetmacro{\tshift}{\PARAM}
+  \pgfmathsetmacro{\tshift}{\PARAM * 8 - 2}
 
   % --- Top plot: f(tau) and g(t - tau) ---
   \begin{axis}[

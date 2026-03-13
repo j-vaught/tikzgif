@@ -1,8 +1,8 @@
 % Example 13b: Signal Convolution (Rect * Rect)
 % Sliding window convolution of two rectangular pulses.
 % Shows f(tau), g(t-tau), and the resulting convolution integral.
-% Parameter: \PARAM (time shift t, -1.5 to 3.5)
-% Range: -1.5 to 3.5, recommended 60 frames
+% Parameter: \PARAM (0 to 1, mapped to time shift t = -1.5 to 3.5)
+% Render: tikzgif render 13b_signal_convolution.tex
 % Difficulty: advanced
 % Features demonstrated: pgfplots, filled regions, multiple synchronized plots
 \documentclass[tikz]{standalone}
@@ -24,7 +24,7 @@
 \begin{document}
 \begin{tikzpicture}
   \useasboundingbox (-2bp, -2bp) rectangle (258bp, 234bp);
-  \pgfmathsetmacro{\tshift}{\PARAM}
+  \pgfmathsetmacro{\tshift}{\PARAM * 5 - 1.5}
 
   % --- Top plot: f(tau) and g(t - tau) ---
   \begin{axis}[
