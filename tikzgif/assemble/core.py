@@ -252,6 +252,7 @@ class GifAssembler:
         first = quantized[0]
         rest = quantized[1:]
 
+        print(f"\rWriting {output.name}...", end="", flush=True, file=sys.stderr)
         try:
             first.save(
                 output,
@@ -268,6 +269,7 @@ class GifAssembler:
                 f"Failed to write GIF to {output}: {exc}",
                 output_format="gif",
             ) from exc
+        print(f"\rWriting {output.name}... done", file=sys.stderr)
 
         return output
 
@@ -338,7 +340,9 @@ class Mp4Assembler:
                 cmd += ["-metadata", f"comment={self.config.metadata.comment}"]
             cmd.append(str(output))
 
+            print(f"\rEncoding {output.name}...", end="", flush=True, file=sys.stderr)
             _run(cmd, timeout=600)
+            print(f"\rEncoding {output.name}... done", file=sys.stderr)
 
         return output
 
