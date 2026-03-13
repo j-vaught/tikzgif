@@ -233,13 +233,15 @@ class GifAssembler:
         images, delays = _load_images(frame_results, self.config)
         output = self.config.output_path
 
-        first = images[0].convert("P", palette=Image.Palette.ADAPTIVE, colors=256)
+        pal_ref = images[0].convert("P", palette=Image.Palette.ADAPTIVE, colors=256)
         pal_img = Image.new("P", (1, 1))
-        pal_img.putpalette(first.getpalette())
-        rest = [
+        pal_img.putpalette(pal_ref.getpalette())
+        quantized = [
             img.convert("RGB").quantize(palette=pal_img, dither=Image.Dither.FLOYDSTEINBERG)
-            for img in images[1:]
+            for img in images
         ]
+        first = quantized[0]
+        rest = quantized[1:]
 
         try:
             first.save(
