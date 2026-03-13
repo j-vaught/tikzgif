@@ -1,8 +1,8 @@
 % Example 08: Spring-Mass-Damper Step Response Comparison
 % Three SMD systems side by side: underdamped, critically damped, overdamped.
 % Each column has a physical diagram (top) and progressive response plot (bottom).
-% Parameter: \PARAM (time in seconds, 0 to 4)
-% Range: 0 to 4, recommended 60 frames at 30fps
+% Parameter: \PARAM sweeps 0 to 1 (default range), mapped to 0-4 seconds
+% Render: tikzgif render 08_step_response.tex
 % Difficulty: advanced
 % Features demonstrated: mechanical diagrams, decorations, pgfplots, step response
 \documentclass[tikz]{standalone}
@@ -28,7 +28,7 @@
 \useasboundingbox (-0.8, -3.6) rectangle (15.2, 4.2);
 
 % ── Global time parameter ──
-\pgfmathsetmacro{\tNow}{\PARAM}
+\pgfmathsetmacro{\tNow}{\PARAM * 4}
 \pgfmathsetmacro{\wn}{5}
 
 % Precompute clamped time for domain endpoint (min of tNow and 4, but at least 0.01)
