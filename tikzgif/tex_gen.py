@@ -4,7 +4,7 @@ Template parsing and frame generation.
 Supports two template syntaxes:
 
 1. **Raw token replacement** (default): The user puts a literal token like
-   ``\\PARAM`` in their .tex file.  The engine performs direct string
+   ``\PARAM`` in their .tex file.  The engine performs direct string
    substitution.  This is simple, fast, and avoids any delimiter conflicts
    with LaTeX's brace-heavy syntax.
 
