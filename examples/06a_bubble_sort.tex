@@ -2,10 +2,11 @@
 % Each swap animated individually — only one pair of bars moves at a time.
 % Pre-computed slot positions for each value across all 15 swap steps.
 % Initial array: [6, 2, 8, 4, 1, 7, 3, 5]
-% Parameter: \PARAM (0 to 15, maps across 15 individual swaps)
-% Range: 0 to 15, recommended 180 frames at 24fps
+% Parameter: \PARAM sweeps 0 to 1 (default range), mapped to 0-15 swaps
+% Render: tikzgif render 06a_bubble_sort.tex
 % Difficulty: intermediate
 % Features demonstrated: step-by-step algorithm visualization, interpolation
+
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
@@ -25,7 +26,7 @@
 \begin{tikzpicture}
   \useasboundingbox (-1,-2.5) rectangle (10,8);
 
-  \pgfmathsetmacro{\raw}{\PARAM}
+  \pgfmathsetmacro{\raw}{\PARAM * 15}
   \pgfmathtruncatemacro{\sLo}{min(15, max(0, floor(\raw)))}
   \pgfmathtruncatemacro{\sHi}{min(15, \sLo + 1)}
   \pgfmathsetmacro{\interp}{max(0, min(1, \raw - \sLo))}
@@ -41,9 +42,6 @@
   \pgfmathparse{array({1,3,4,5,6,7, 2,3,5,6, 2,4,5, 1,3}, \safeIdx)}
   \pgfmathtruncatemacro{\swpB}{\pgfmathresult}
 
-  % Pass number: transitions 0-5=Pass1, 6-9=Pass2, 10-12=Pass3, 13-14=Pass4
-  \pgfmathtruncatemacro{\passnum}{%
-    (\sLo<6) ? 1 : (\sLo<10) ? 2 : (\sLo<13) ? 3 : (\sLo<15) ? 4 : 5}
 
   % Position of each value (1-8) across 16 states (initial + 15 post-swap).
   % Bubble sort of [6,2,8,4,1,7,3,5]:
@@ -104,16 +102,6 @@
   % Title
   \node[font=\large\bfseries, garnet] at (4.5, 7.2) {Bubble Sort};
 
-  % Pass indicator
-  \ifnum\passnum<5
-    \node[font=\small] at (4.5, -1.0) {Pass \passnum\ of 4};
-  \else
-    \node[font=\small, horseshoe] at (4.5, -1.0) {Sorted!};
-  \fi
-
-  % Step counter
-  \pgfmathtruncatemacro{\stepdisp}{min(15, \sLo + 1)}
-  \node[font=\tiny, warmgrey] at (4.5, -1.7) {Step \stepdisp\ of 15};
 
 \end{tikzpicture}
 \end{document}

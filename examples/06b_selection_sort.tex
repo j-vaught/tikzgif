@@ -2,8 +2,8 @@
 % Each swap animated individually — only one pair of bars moves at a time.
 % Pre-computed slot positions for each value across all 5 swap steps.
 % Initial array: [6, 2, 8, 4, 1, 7, 3, 5]
-% Parameter: \PARAM (0 to 1, normalized progress across 5 swaps)
-% Range: 0 to 1, recommended 80 frames at 24fps
+% Parameter: \PARAM sweeps 0 to 1 (default range), mapped across 5 swaps
+% Render: tikzgif render 06b_selection_sort.tex
 % Difficulty: intermediate
 % Features demonstrated: step-by-step algorithm visualization, interpolation
 \documentclass[tikz]{standalone}
@@ -25,7 +25,8 @@
 \begin{tikzpicture}
   \useasboundingbox (-1,-2.5) rectangle (10,8);
 
-  \pgfmathsetmacro{\progress}{max(0, min(1, \PARAM))}
+  \pgfmathsetmacro{\tval}{\PARAM}
+  \pgfmathsetmacro{\progress}{max(0, min(1, \tval))}
   \pgfmathsetmacro{\raw}{5*\progress}
   \pgfmathtruncatemacro{\sLo}{min(5, max(0, floor(\raw)))}
   \pgfmathtruncatemacro{\sHi}{min(5, \sLo + 1)}
@@ -92,17 +93,6 @@
   % Title
   \node[font=\large\bfseries, garnet] at (4.5, 7.2) {Selection Sort};
 
-  % Pass indicator (original selection sort passes: 1,3,5,6,7)
-  \pgfmathtruncatemacro{\passnum}{array({1,3,5,6,7}, \safeIdx)}
-  \ifnum\sLo<5
-    \node[font=\small] at (4.5, -1.0) {Pass \passnum\ of 7};
-  \else
-    \node[font=\small, horseshoe] at (4.5, -1.0) {Sorted!};
-  \fi
-
-  % Step counter
-  \pgfmathtruncatemacro{\stepdisp}{min(5, \sLo + 1)}
-  \node[font=\tiny, warmgrey] at (4.5, -1.7) {Step \stepdisp\ of 5};
 
 \end{tikzpicture}
 \end{document}

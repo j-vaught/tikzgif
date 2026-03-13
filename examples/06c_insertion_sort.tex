@@ -2,8 +2,8 @@
 % Each swap animated individually — only one pair of bars moves at a time.
 % Pre-computed slot positions for each value across all 15 swap steps.
 % Initial array: [6, 2, 8, 4, 1, 7, 3, 5]
-% Parameter: \PARAM (0 to 15, maps across 15 individual swaps)
-% Range: 0 to 15, recommended 180 frames at 24fps
+% Parameter: \PARAM sweeps 0 to 1 (default range), mapped to 0-15 swaps
+% Render: tikzgif render 06c_insertion_sort.tex
 % Difficulty: intermediate
 % Features demonstrated: step-by-step algorithm visualization, interpolation
 %
@@ -24,6 +24,7 @@
 %   State 13: [1,2,3,4,6,7,5,8] swap(6,7) — insert 5
 %   State 14: [1,2,3,4,6,5,7,8] swap(5,6) — insert 5
 %   State 15: [1,2,3,4,5,6,7,8] swap(4,5) — insert 5
+
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
@@ -43,7 +44,7 @@
 \begin{tikzpicture}
   \useasboundingbox (-1,-2.5) rectangle (10,8);
 
-  \pgfmathsetmacro{\raw}{\PARAM}
+  \pgfmathsetmacro{\raw}{\PARAM * 15}
   \pgfmathtruncatemacro{\sLo}{min(15, max(0, floor(\raw)))}
   \pgfmathtruncatemacro{\sHi}{min(15, \sLo + 1)}
   \pgfmathsetmacro{\interp}{max(0, min(1, \raw - \sLo))}
@@ -61,9 +62,6 @@
   \pgfmathparse{array({1,3,2,4,3,2,1,5,6,5,4,3,7,6,5}, \safeIdx)}
   \pgfmathtruncatemacro{\swpB}{\pgfmathresult}
 
-  % Pass number: transitions 0=Pass1, 1-2=Pass2, 3-6=Pass3, 7=Pass4, 8-11=Pass5, 12-14=Pass6
-  \pgfmathtruncatemacro{\passnum}{%
-    (\sLo<1) ? 1 : (\sLo<3) ? 2 : (\sLo<7) ? 3 : (\sLo<8) ? 4 : (\sLo<12) ? 5 : (\sLo<15) ? 6 : 6}
 
   % Position of each value (1-8) across 16 states (initial + 15 post-swap).
   % Insertion sort of [6,2,8,4,1,7,3,5]:
@@ -124,22 +122,6 @@
   % Title
   \node[font=\large\bfseries, garnet] at (4.5, 7.2) {Insertion Sort};
 
-  % Inserting value for each transition
-  \pgfmathtruncatemacro{\insertVal}{array({2,4,4,1,1,1,1,7,3,3,3,3,5,5,5}, \safeIdx)}
-
-  % Pass number
-  \pgfmathtruncatemacro{\passIdx}{array({1,2,2,3,3,3,3,4,5,5,5,5,6,6,6}, \safeIdx)}
-
-  % Pass indicator
-  \ifnum\sLo<15
-    \node[font=\small] at (4.5, -1.0) {Inserting \insertVal\ (Pass \passIdx\ of 6)};
-  \else
-    \node[font=\small, horseshoe] at (4.5, -1.0) {Sorted!};
-  \fi
-
-  % Step counter
-  \pgfmathtruncatemacro{\stepdisp}{min(15, \sLo + 1)}
-  \node[font=\tiny, warmgrey] at (4.5, -1.7) {Step \stepdisp\ of 15};
 
 \end{tikzpicture}
 \end{document}
