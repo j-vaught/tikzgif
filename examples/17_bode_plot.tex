@@ -143,8 +143,6 @@
 \ifnum\pgfmathresult=1
   \draw[->, rose, thick] (-0.35, \baseY) -- (-0.35, {\baseY + 0.5*\arrowDir});
 \fi
-\node[font=\tiny, rose, anchor=west, align=center] at (0.0, {\baseEq - 0.85})
-  {$Y_0\!\sin(\omega t)$};
 
 % ── Mass motion arrow ──
 \pgfmathsetmacro{\arrowDirM}{(\yMass >= 0) ? 1 : -1}
