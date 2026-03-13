@@ -53,6 +53,8 @@ tikzgif render examples/02_bouncing_ball.tex \
 
 ## More GIF Examples
 
+See [EXAMPLES.md](EXAMPLES.md) for the full gallery.
+
 <table>
 <tr>
 <td align="center" width="25%">
