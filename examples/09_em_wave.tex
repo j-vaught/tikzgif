@@ -1,10 +1,11 @@
 % Example 09: Electromagnetic Wave Propagation
 % 3D electromagnetic wave with E-field (vertical) and B-field (horizontal)
 % oscillating perpendicular to propagation direction.
-% Parameter: \PARAM (phase offset in degrees, 0 to 360)
-% Range: 0 to 360, recommended 60 frames
+% Parameter: \PARAM (0 to 1, mapped to 0-360 degree phase offset)
+% Render: tikzgif render 09_em_wave.tex
 % Difficulty: advanced
 % Features demonstrated: 3D drawing, coordinate transforms, physics visualization
+
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
@@ -33,7 +34,7 @@
     \useasboundingbox (-3,-4.5) rectangle (13,5);
   \end{scope}
 
-  \pgfmathsetmacro{\phase}{\PARAM}
+  \pgfmathsetmacro{\phase}{\PARAM * 360}
   \pgfmathsetmacro{\wavelength}{3}
   \pgfmathsetmacro{\amplitude}{2}
   \pgfmathsetmacro{\npoints}{80}
