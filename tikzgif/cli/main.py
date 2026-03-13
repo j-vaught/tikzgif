@@ -179,10 +179,12 @@ def _handle_render(args: argparse.Namespace) -> int:
 
     if result.failed_frames:
         print(
-            f"Warning: {result.failed_frames}/{result.total_frames} frames failed, "
+            f"\nWarning: {result.failed_frames}/{result.total_frames} frames failed, "
             f"continuing with {result.successful_frames}.",
             file=sys.stderr,
         )
+        for frame_idx, reason in sorted(result.failure_details):
+            print(f"  Frame {frame_idx}: {reason}", file=sys.stderr)
 
     print(
         f"Done! {result.successful_frames} frames -> "

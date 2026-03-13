@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shutil
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .assemble import AnimationAssembler
@@ -31,6 +31,7 @@ class RenderResult:
     successful_frames: int
     failed_frames: int
     size_bytes: int
+    failure_details: list[tuple[int, str]] = field(default_factory=list)
 
 
 def render_job(job: RenderJobConfig) -> RenderResult:
@@ -92,14 +93,23 @@ def render_job(job: RenderJobConfig) -> RenderResult:
 
     with tempfile.TemporaryDirectory(prefix="tikzgif_render_") as tmpdir:
         tmp = Path(tmpdir)
-        for result in successful:
+        raster_failures: list[tuple[int, str]] = []
+        for result in successful[:]:
             if not result.pdf_path or not result.pdf_path.exists():
                 continue
 
             if pdf_dir is not None:
                 shutil.copy2(result.pdf_path, pdf_dir / f"frame_{result.index:06d}.pdf")
 
-            images = backend.convert(result.pdf_path, render_config)
+            try:
+                images = backend.convert(result.pdf_path, render_config)
+            except Exception as exc:
+                result.success = False
+                result.error_message = f"Rasterization failed: {exc}"
+                successful.remove(result)
+                failed.append(result)
+                raster_failures.append((result.index, result.error_message))
+                continue
             if images:
                 png_path = tmp / f"frame_{result.index:06d}.png"
                 images[0].save(str(png_path), format="PNG")
@@ -112,12 +122,16 @@ def render_job(job: RenderJobConfig) -> RenderResult:
         result_path = AnimationAssembler(output_config).assemble(frame_results)
 
     size_bytes = result_path.stat().st_size
+    failure_details = [
+        (r.index, r.error_message) for r in failed
+    ]
     return RenderResult(
         output_path=result_path,
         total_frames=job.frames,
         successful_frames=len(successful),
         failed_frames=len(failed),
         size_bytes=size_bytes,
+        failure_details=failure_details,
     )
 
 
