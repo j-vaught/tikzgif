@@ -33,6 +33,7 @@ class RenderResult:
     failed_frames: int
     size_bytes: int
     failure_details: list[tuple[int, str]] = field(default_factory=list)
+    test_outputs: list[Path] = field(default_factory=list)
 
 
 def render_job(job: RenderJobConfig) -> RenderResult:
@@ -62,6 +63,12 @@ def render_job(job: RenderJobConfig) -> RenderResult:
 
     source = tex_path.read_text(encoding="utf-8")
     param_values = job.param_values()
+
+    if job.test_mode:
+        if len(param_values) >= 2:
+            param_values = [param_values[0], param_values[-1]]
+        else:
+            param_values = [param_values[0]]
 
     frame_results = compile_single_pass(
         source,
@@ -125,6 +132,27 @@ def render_job(job: RenderJobConfig) -> RenderResult:
             )
         print(file=sys.stderr)
 
+        if job.test_mode:
+            stem = tex_path.stem
+            output_paths: list[Path] = []
+            for r in successful:
+                if r.png_path and r.png_path.exists():
+                    label = "first" if r.index == 0 else "last"
+                    dest = Path(f"{stem}_test_{label}.png")
+                    shutil.copy2(r.png_path, dest)
+                    output_paths.append(dest)
+            failure_details = [(r.index, r.error_message) for r in failed]
+            first_output = output_paths[0] if output_paths else Path(f"{stem}_test_first.png")
+            return RenderResult(
+                output_path=first_output,
+                total_frames=len(param_values),
+                successful_frames=len(successful),
+                failed_frames=len(failed),
+                size_bytes=sum(p.stat().st_size for p in output_paths if p.exists()),
+                failure_details=failure_details,
+                test_outputs=output_paths,
+            )
+
         default_output_path = Path(tex_path.stem + f".{job.output.format.value}")
         output_config = job.output.to_assembly_config(default_output_path)
         result_path = AnimationAssembler(output_config).assemble(frame_results)
@@ -182,6 +210,7 @@ def render(
     frame_delay_default_ms: int | None = None,
     pause_first_ms: int | None = None,
     pause_last_ms: int | None = None,
+    test_mode: bool = False,
 ) -> RenderResult:
     """Render a parameterized ``.tex`` file to GIF or MP4.
 
@@ -269,5 +298,6 @@ def render(
         frame_delay_default_ms=frame_delay_default_ms,
         pause_first_ms=pause_first_ms,
         pause_last_ms=pause_last_ms,
+        test_mode=test_mode,
     )
     return render_job(job)
