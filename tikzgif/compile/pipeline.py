@@ -49,6 +49,7 @@ import os
 import subprocess
 import sys
 import time
+from dataclasses import replace
 from concurrent.futures import (
     Future,
     ProcessPoolExecutor,
@@ -445,7 +446,11 @@ def compile_single_pass(
     template, or when they have explicitly disabled normalization.
     """
     parsed = parse_template(source, param_token)
-    cache = CompilationCache(root=config.cache_dir)
+    config_for_job = config
+    if parsed.needs_shell_escape and not config.shell_escape:
+        config_for_job = replace(config, shell_escape=True)
+
+    cache = CompilationCache(root=config_for_job.cache_dir)
 
     specs = generate_frame_specs(
         parsed, param_values,
@@ -453,5 +458,5 @@ def compile_single_pass(
         extra_preamble=extra_preamble,
     )
     return compile_frames(
-        specs, config, cache, packages=parsed.detected_packages
+        specs, config_for_job, cache, packages=parsed.detected_packages
     )

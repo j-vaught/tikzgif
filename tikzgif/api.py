@@ -7,10 +7,10 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from .assembly import AnimationAssembler
-from .backends import PdftoppmBackend
-from .compiler import compile_single_pass
+from .assemble import AnimationAssembler
+from .compile import compile_single_pass
 from .config import RenderJobConfig, legacy_args_to_job_config
+from .rasterize import get_backend_by_name
 
 
 @dataclass
@@ -47,15 +47,7 @@ def render_job(job: RenderJobConfig) -> RenderResult:
         details = "\n".join(f"Frame {r.index}: {r.error_message}" for r in failed[:5])
         raise RuntimeError(f"All frames failed to compile.\n{details}")
 
-    # PR1 keeps behavior unchanged by continuing to use pdftoppm only.
-    # Backend selection wiring is introduced in a later refactor phase.
-    if not PdftoppmBackend.is_available():
-        raise RuntimeError(
-            "pdftoppm not found. Install poppler-utils "
-            "(macOS: brew install poppler)."
-        )
-
-    backend = PdftoppmBackend()
+    backend = get_backend_by_name(job.raster.backend)
     render_config = job.raster.to_render_config()
 
     pdf_dir = job.output.raw_pdf_dir
