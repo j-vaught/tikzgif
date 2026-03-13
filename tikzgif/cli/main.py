@@ -83,6 +83,7 @@ def _build_parser() -> argparse.ArgumentParser:
     render_parser.add_argument("--latex-arg", action="append", default=[], help="Extra arg for LaTeX engine (repeatable)")
     render_parser.add_argument("--cache-dir", default=None, help="Custom cache directory")
     render_parser.add_argument("--no-cache", action="store_true", help="Ignore compilation cache, recompile all frames")
+    render_parser.add_argument("--test", action="store_true", help="Render only first and last frames as PNGs for preview")
 
     render_parser.add_argument("--backend", default="pdftoppm", help="Raster backend name")
     render_parser.add_argument("--color-space", choices=["rgb", "rgba", "grayscale"], default="rgba")
@@ -134,8 +135,9 @@ def _handle_render(args: argparse.Namespace) -> int:
 
         engine_label = args.engine or "auto"
         cache_label = "off" if args.no_cache else "on"
+        frame_label = "first+last" if args.test else f"{args.frames}"
         print(
-            f"Rendering {args.frames} frames ({args.start} -> {args.end}) | "
+            f"Rendering {frame_label} frames ({args.start} -> {args.end}) | "
             f"engine={engine_label} backend={args.backend} cache={cache_label}"
         )
         result = render(
@@ -176,6 +178,7 @@ def _handle_render(args: argparse.Namespace) -> int:
             frame_delay_default_ms=args.frame_delay_ms,
             pause_first_ms=args.pause_first_ms,
             pause_last_ms=args.pause_last_ms,
+            test_mode=args.test,
         )
     except TikzGifError as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -193,10 +196,15 @@ def _handle_render(args: argparse.Namespace) -> int:
         for frame_idx, reason in sorted(result.failure_details):
             print(f"  Frame {frame_idx}: {reason}", file=sys.stderr)
 
-    print(
-        f"Done! {result.successful_frames} frames -> "
-        f"{result.output_path} ({_print_size(result.size_bytes)})"
-    )
+    if result.test_outputs:
+        print("Test preview PNGs:")
+        for p in result.test_outputs:
+            print(f"  {p}")
+    else:
+        print(
+            f"Done! {result.successful_frames} frames -> "
+            f"{result.output_path} ({_print_size(result.size_bytes)})"
+        )
     return 0
 
 
