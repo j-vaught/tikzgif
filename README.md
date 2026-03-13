@@ -36,6 +36,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
+[if anything ain't working or you'd like a new feature/or additional example tex files, just shoot me an email at jvaught@sc.edu and i'll see what i can get working!]
 
 ## Basic Usage
 

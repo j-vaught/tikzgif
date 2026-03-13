@@ -94,7 +94,7 @@ class FrameResult:
 @dataclass
 class CompilationConfig:
     """Full configuration for a compilation job."""
-    engine: LatexEngine = LatexEngine.PDFLATEX
+    engine: LatexEngine | None = None
     error_policy: ErrorPolicy = ErrorPolicy.RETRY
     max_workers: int = 0          # 0 = auto-detect from CPU count
     shell_escape: bool = False

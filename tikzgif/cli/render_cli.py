@@ -9,6 +9,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -20,18 +21,14 @@ from ..assembly import (
     OutputFormat,
     QualityPreset,
 )
-from ..backends import RenderConfig
+from ..backends import PdftoppmBackend, RenderConfig
 from ..compiler import compile_with_bbox_normalization
-from ..detection import select_backend
 from ..types import CompilationConfig, ErrorPolicy, LatexEngine
 
 
 _FORMAT_MAP = {
     "gif": OutputFormat.GIF,
     "mp4": OutputFormat.MP4,
-    "webp": OutputFormat.WEBP,
-    "apng": OutputFormat.APNG,
-    "svg": OutputFormat.SVG,
 }
 
 _QUALITY_MAP = {
@@ -72,7 +69,7 @@ def cmd_render(args: argparse.Namespace) -> int:
         param_values = [start + i * (end - start) / (n - 1) for i in range(n)]
 
     # Build compilation config.
-    engine = _ENGINE_MAP[args.engine] if args.engine else LatexEngine.PDFLATEX
+    engine = _ENGINE_MAP[args.engine] if args.engine else None
     comp_config = CompilationConfig(
         engine=engine,
         error_policy=_POLICY_MAP[args.error_policy],
@@ -105,18 +102,39 @@ def cmd_render(args: argparse.Namespace) -> int:
 
     # Convert PDFs to PNGs.
     print("Converting PDFs to PNGs ...")
-    backend = select_backend()
+    if not PdftoppmBackend.is_available():
+        print(
+            "Error: pdftoppm not found. Install poppler-utils (macOS: brew install poppler).",
+            file=sys.stderr,
+        )
+        return 1
+    backend = PdftoppmBackend()
+    # Keep rasterization single-threaded for compatibility across pdftoppm builds.
+    # Parallelization is handled at LaTeX compilation stage via --workers.
     render_config = RenderConfig(dpi=args.dpi, antialias=False, threads=1)
+
+    raw_pdf_dir = Path(args.raw_pdf_dir) if args.raw_pdf_dir else None
+    raw_png_dir = Path(args.raw_png_dir) if args.raw_png_dir else None
+    if raw_pdf_dir:
+        raw_pdf_dir.mkdir(parents=True, exist_ok=True)
+    if raw_png_dir:
+        raw_png_dir.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="tikzgif_render_") as tmpdir:
         tmp = Path(tmpdir)
         for result in successful:
             if result.pdf_path and result.pdf_path.exists():
+                if raw_pdf_dir is not None:
+                    pdf_out = raw_pdf_dir / f"frame_{result.index:06d}.pdf"
+                    shutil.copy2(result.pdf_path, pdf_out)
                 images = backend.convert(result.pdf_path, render_config)
                 if images:
                     png_path = tmp / f"frame_{result.index:06d}.png"
                     images[0].save(str(png_path), format="PNG")
                     result.png_path = png_path
+                    if raw_png_dir is not None:
+                        png_out = raw_png_dir / f"frame_{result.index:06d}.png"
+                        shutil.copy2(png_path, png_out)
 
         # Determine output path.
         if args.output:
@@ -157,7 +175,7 @@ def build_render_parser(subparsers: argparse._SubParsersAction) -> None:
     p = subparsers.add_parser(
         "render",
         help="Render a .tex file into an animation",
-        description="Compile a parameterized TikZ .tex file into an animated GIF, MP4, WebP, or APNG.",
+        description="Compile a parameterized TikZ .tex file into an animated GIF or MP4.",
     )
     p.add_argument(
         "tex_file",
@@ -184,7 +202,7 @@ def build_render_parser(subparsers: argparse._SubParsersAction) -> None:
         help="Frames per second (default: 10)",
     )
     p.add_argument(
-        "--format", choices=["gif", "mp4", "webp", "apng", "svg"], default="gif",
+        "--format", choices=["gif", "mp4"], default="gif",
         help="Output format (default: gif)",
     )
     p.add_argument(
@@ -193,7 +211,7 @@ def build_render_parser(subparsers: argparse._SubParsersAction) -> None:
     )
     p.add_argument(
         "--engine", choices=["pdflatex", "xelatex", "lualatex"], default=None,
-        help="LaTeX engine (default: auto-detect)",
+        help="LaTeX engine (default: auto-select based on template/packages)",
     )
     p.add_argument(
         "--workers", type=int, default=0,
@@ -214,5 +232,13 @@ def build_render_parser(subparsers: argparse._SubParsersAction) -> None:
     p.add_argument(
         "-o", "--output", default=None,
         help="Output file path (default: <input_stem>.<format>)",
+    )
+    p.add_argument(
+        "--raw-pdf-dir", default=None,
+        help="Optional directory to copy per-frame compiled PDFs",
+    )
+    p.add_argument(
+        "--raw-png-dir", default=None,
+        help="Optional directory to copy per-frame rendered PNGs",
     )
     p.set_defaults(func=cmd_render)

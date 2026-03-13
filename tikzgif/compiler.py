@@ -248,6 +248,7 @@ def compile_frames(
     specs: list[FrameSpec],
     config: CompilationConfig,
     cache: CompilationCache,
+    packages: set[str] | None = None,
     on_frame_done: Callable[[FrameResult], None] | None = None,
 ) -> list[FrameResult]:
     """
@@ -277,7 +278,7 @@ def compile_frames(
         If error_policy is ABORT and any frame fails.
     """
     workers = _determine_worker_count(config)
-    engine = select_engine(preferred=config.engine, packages=None)
+    engine = select_engine(preferred=config.engine, packages=packages)
     results: dict[int, FrameResult] = {}
     to_compile: list[FrameSpec] = []
     progress = ProgressReporter(len(specs), "Compiling frames")
@@ -488,7 +489,9 @@ def compile_with_bbox_normalization(
             enforced_bbox=None,
             extra_preamble=extra_preamble,
         )
-        results = compile_frames(specs, config, cache)
+        results = compile_frames(
+            specs, config, cache, packages=parsed.detected_packages
+        )
 
         # Extract bbox from first successful frame for reporting.
         envelope = BoundingBox(0, 0, 100, 100)  # fallback
@@ -515,7 +518,9 @@ def compile_with_bbox_normalization(
     )
     probe_specs = [all_specs_no_bbox[i] for i in probe_indices]
 
-    probe_results = compile_frames(probe_specs, config, cache)
+    probe_results = compile_frames(
+        probe_specs, config, cache, packages=parsed.detected_packages
+    )
 
     # Collect bounding boxes.
     probe_bboxes: list[BoundingBox] = []
@@ -556,7 +561,9 @@ def compile_with_bbox_normalization(
     frame_map = {s.index: s.content_hash for s in final_specs}
     cache.store_template_meta(tmpl_hash, frame_map)
 
-    final_results = compile_frames(final_specs, config, cache)
+    final_results = compile_frames(
+        final_specs, config, cache, packages=parsed.detected_packages
+    )
     return final_results, envelope
 
 
@@ -586,4 +593,6 @@ def compile_single_pass(
         enforced_bbox=enforced_bbox,
         extra_preamble=extra_preamble,
     )
-    return compile_frames(specs, config, cache)
+    return compile_frames(
+        specs, config, cache, packages=parsed.detected_packages
+    )
