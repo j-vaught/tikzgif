@@ -149,4 +149,5 @@ class CompilationConfig:
     extra_args: list[str] = field(default_factory=list)
     cache_dir: Path | None = None
     timeout_per_frame_s: float = 30.0
+    no_cache: bool = False
     dpi: int = 300

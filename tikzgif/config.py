@@ -57,6 +57,7 @@ class CompileConfig:
     cache_dir: Path | None = None
     timeout_per_frame_s: float = 30.0
     dpi: int = 300
+    no_cache: bool = False
 
     def to_compilation_config(self) -> CompilationConfig:
         """Convert to the compile engine's internal ``CompilationConfig``."""
@@ -69,6 +70,7 @@ class CompileConfig:
             cache_dir=self.cache_dir,
             timeout_per_frame_s=self.timeout_per_frame_s,
             dpi=self.dpi,
+            no_cache=self.no_cache,
         )
 
 
@@ -265,6 +267,7 @@ def legacy_args_to_job_config(
     shell_escape: bool = False,
     latex_args: list[str] | tuple[str, ...] | None = None,
     cache_dir: str | Path | None = None,
+    no_cache: bool = False,
     backend: str = "pdftoppm",
     color_space: str = "rgba",
     background: str | None = "white",
@@ -385,6 +388,7 @@ def legacy_args_to_job_config(
             shell_escape=shell_escape,
             extra_args=tuple(latex_args or ()),
             cache_dir=Path(cache_dir) if cache_dir else None,
+            no_cache=no_cache,
             timeout_per_frame_s=timeout,
             dpi=dpi,
         ),

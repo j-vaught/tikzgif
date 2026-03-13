@@ -225,7 +225,7 @@ def compile_frames(
     cached_count = 0
 
     for spec in specs:
-        cached_pdf = cache.get_pdf_path(spec.content_hash)
+        cached_pdf = None if config.no_cache else cache.get_pdf_path(spec.content_hash)
         if cached_pdf is not None:
             bbox = cache.get_bbox(spec.content_hash)
             if bbox is None:

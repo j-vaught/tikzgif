@@ -82,6 +82,7 @@ def _build_parser() -> argparse.ArgumentParser:
     render_parser.add_argument("--shell-escape", action="store_true", help="Force --shell-escape for LaTeX")
     render_parser.add_argument("--latex-arg", action="append", default=[], help="Extra arg for LaTeX engine (repeatable)")
     render_parser.add_argument("--cache-dir", default=None, help="Custom cache directory")
+    render_parser.add_argument("--no-cache", action="store_true", help="Ignore compilation cache, recompile all frames")
 
     render_parser.add_argument("--backend", default="pdftoppm", help="Raster backend name")
     render_parser.add_argument("--color-space", choices=["rgb", "rgba", "grayscale"], default="rgba")
@@ -153,6 +154,7 @@ def _handle_render(args: argparse.Namespace) -> int:
             shell_escape=args.shell_escape,
             latex_args=args.latex_arg,
             cache_dir=args.cache_dir,
+            no_cache=args.no_cache,
             backend=args.backend,
             color_space=args.color_space,
             background=background,
