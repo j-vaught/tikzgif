@@ -157,8 +157,6 @@
 % ── Title above SMD ──
 \node[font=\bfseries\small, black] at (2.0, 4.3)
   {Base-Excited SMD};
-\node[font=\scriptsize, warmgrey] at (2.0, 3.85)
-  {$\zeta = 0.20$};
 
 % ════════════════════════════════════════════════════════════════
 %  RIGHT: Bode Magnitude Plot (top)
@@ -241,17 +239,6 @@
   \addplot[only marks, mark=*, mark size=3pt, atlantic]
     coordinates {(\rNow, \phaseNow)};
 \end{axis}
-
-% ════════════════════════════════════════════════════════════════
-%  INFO READOUT
-% ════════════════════════════════════════════════════════════════
-
-\node[font=\footnotesize, warmgrey, anchor=north] at (6.5, -5.0)
-  {$r = \omega/\omega_n = \pgfmathprintnumber[fixed, precision=2, fixed zerofill]{\rNow}$
-   \qquad
-   $\zeta = 0.20$
-   \qquad
-   $|T| = \pgfmathprintnumber[fixed, precision=1, fixed zerofill]{\TdBnow}$ dB};
 
 \end{tikzpicture}
 \end{document}
