@@ -1,7 +1,7 @@
 % Example 03: Sine Wave Phase Shift
 % A sine wave sliding horizontally across the screen.
-% Parameter: \PARAM (phase shift in degrees, 0 to 360)
-% Range: 0 to 360, recommended 60 frames (6-degree steps)
+% Parameter: \PARAM sweeps 0 to 1 (default range), mapped to 0-360 degrees
+% Render: tikzgif render 03_sine_wave_phase.tex
 % Difficulty: beginner
 % Features demonstrated: pgfplots integration, trigonometric functions
 \documentclass[tikz]{standalone}
@@ -22,6 +22,7 @@
 
 \begin{document}
 \begin{tikzpicture}
+  \pgfmathsetmacro{\phase}{\PARAM * 360}
   \begin{axis}[
     width=10cm, height=5cm,
     domain=0:720,
@@ -37,11 +38,11 @@
     ytick={-1,0,1},
     grid=major,
     grid style={warmgrey!30},
-    title={\small Phase shift $\phi = \PARAM^\circ$},
+    title={\small Phase shift $\phi = \pgfmathprintnumber[fixed, precision=0]{\phase}^\circ$},
     every axis title/.style={at={(0.5,1.05)}},
     tick label style={font=\tiny},
   ]
-    \addplot[garnet, thick, smooth] {sin(x + \PARAM)};
+    \addplot[garnet, thick, smooth] {sin(x + \phase)};
     \addplot[atlantic, thick, smooth, dashed, opacity=0.3] {sin(x)};
   \end{axis}
 \end{tikzpicture}
