@@ -1,1 +1,1 @@
-"""tikzgif CLI package."""
+"""CLI package for tikzgif."""
