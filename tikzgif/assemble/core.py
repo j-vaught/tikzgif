@@ -6,6 +6,7 @@ import enum
 import logging
 import shutil
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -233,13 +234,21 @@ class GifAssembler:
         images, delays = _load_images(frame_results, self.config)
         output = self.config.output_path
 
+        total = len(images)
         pal_ref = images[0].convert("P", palette=Image.Palette.ADAPTIVE, colors=256)
         pal_img = Image.new("P", (1, 1))
         pal_img.putpalette(pal_ref.getpalette())
-        quantized = [
-            img.convert("RGB").quantize(palette=pal_img, dither=Image.Dither.FLOYDSTEINBERG)
-            for img in images
-        ]
+        quantized = []
+        for i, img in enumerate(images):
+            quantized.append(
+                img.convert("RGB").quantize(palette=pal_img, dither=Image.Dither.FLOYDSTEINBERG)
+            )
+            pct = ((i + 1) / total) * 100
+            print(
+                f"\rAssembling: {i + 1}/{total} ({pct:.0f}%)",
+                end="", flush=True, file=sys.stderr,
+            )
+        print(file=sys.stderr)
         first = quantized[0]
         rest = quantized[1:]
 

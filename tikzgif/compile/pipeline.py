@@ -143,44 +143,26 @@ def _compile_single_frame(
 
 
 class ProgressReporter:
-    """Progress bar abstraction backed by ``tqdm`` with a stderr fallback."""
+    """Simple inline progress reporter writing to stderr."""
 
     def __init__(self, total: int, description: str = "Compiling") -> None:
         self.total = total
         self.completed = 0
         self.description = description
-        self._bar: Any = None
-        try:
-            from tqdm import tqdm
-            self._bar = tqdm(
-                total=total, desc=description, unit="frame",
-                file=sys.stderr, dynamic_ncols=True,
-            )
-        except ImportError:
-            pass
 
     def update(self, n: int = 1, suffix: str = "") -> None:
         """Record *n* completed items and refresh the display."""
         self.completed += n
-        if self._bar is not None:
-            if suffix:
-                self._bar.set_postfix_str(suffix)
-            self._bar.update(n)
-        else:
-            pct = (self.completed / self.total) * 100 if self.total else 100
-            print(
-                f"\r{self.description}: {self.completed}/{self.total} "
-                f"({pct:.0f}%) {suffix}",
-                end="", flush=True, file=sys.stderr,
-            )
+        pct = (self.completed / self.total) * 100 if self.total else 100
+        line = f"\r{self.description}: {self.completed}/{self.total} ({pct:.0f}%)"
+        if suffix:
+            line += f" {suffix}"
+        print(line, end="", flush=True, file=sys.stderr)
 
     def close(self) -> None:
-        """Finalize and close the progress display."""
-        if self._bar is not None:
-            self._bar.close()
-        else:
-            if self.completed > 0:
-                print(file=sys.stderr)
+        """Finalize the progress display with a newline."""
+        if self.completed > 0:
+            print(file=sys.stderr)
 
 
 def _determine_worker_count(config: CompilationConfig) -> int:

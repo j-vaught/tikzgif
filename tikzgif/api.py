@@ -125,11 +125,9 @@ def render_job(job: RenderJobConfig) -> RenderResult:
             )
         print(file=sys.stderr)
 
-        print("Assembling output ...", end="", flush=True, file=sys.stderr)
         default_output_path = Path(tex_path.stem + f".{job.output.format.value}")
         output_config = job.output.to_assembly_config(default_output_path)
         result_path = AnimationAssembler(output_config).assemble(frame_results)
-        print(" done", file=sys.stderr)
 
     size_bytes = result_path.stat().st_size
     failure_details = [
