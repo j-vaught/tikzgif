@@ -1,9 +1,10 @@
 % Example 05: Binary Counter
 % Eight boxes showing binary counting from 0 to 255.
-% Parameter: \PARAM (integer value, 0 to 255)
-% Range: 0 to 255, recommended 256 frames (every integer)
+% Parameter: \PARAM sweeps 0 to 1 (default range), mapped to 0-255
+% Render: tikzgif render 05_binary_counter.tex --frames 256
 % Difficulty: intermediate
 % Features demonstrated: integer arithmetic, conditional styling, loops
+
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
@@ -23,10 +24,10 @@
 \begin{tikzpicture}
   \useasboundingbox (-1,-2) rectangle (9,3);
 
-  \pgfmathtruncatemacro{\val}{\PARAM}
+  \pgfmathtruncatemacro{\val}{\PARAM * 255}
 
   % Title
-  \node[font=\large\bfseries] at (4, 2) {Binary: \val};
+  \node[font=\large\bfseries] at (4, 2) {Decimal: \val};
 
   % Compute each bit and draw boxes
   \pgfmathtruncatemacro{\remaining}{\val}
@@ -55,8 +56,5 @@
     % Bit position label
     \node[below, font=\tiny, black!50] at (\xpos, -0.55) {$2^{\bit}$};
   }
-
-  % Decimal value below
-  \node[font=\normalsize] at (4, -1.2) {Decimal: \val};
 \end{tikzpicture}
 \end{document}
