@@ -48,7 +48,7 @@
       \ifdim\parentvis pt>0.5pt
         \pgfmathsetmacro{\parentgrow}{min(1, \currentdepth - (\dep - 1))}%
         \pgfmathsetmacro{\finalopa}{\leafopa * \parentgrow}%
-        \fill[horseshoe!\leafclr!grass, opacity=\finalopa] (#1, #2) circle ({1.5*\leafsz});%
+        \fill[green!\leafclr!grass, opacity=\finalopa] (#1, #2) circle ({1.5*\leafsz});%
       \fi
     \else
       % Always consume 2 rand values for RNG consistency
