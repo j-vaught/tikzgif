@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -94,7 +95,8 @@ def render_job(job: RenderJobConfig) -> RenderResult:
     with tempfile.TemporaryDirectory(prefix="tikzgif_render_") as tmpdir:
         tmp = Path(tmpdir)
         raster_failures: list[tuple[int, str]] = []
-        for result in successful[:]:
+        raster_total = len(successful)
+        for i, result in enumerate(successful[:]):
             if not result.pdf_path or not result.pdf_path.exists():
                 continue
 
@@ -116,10 +118,18 @@ def render_job(job: RenderJobConfig) -> RenderResult:
                 result.png_path = png_path
                 if png_dir is not None:
                     shutil.copy2(png_path, png_dir / f"frame_{result.index:06d}.png")
+            pct = ((i + 1) / raster_total) * 100
+            print(
+                f"\rRasterizing: {i + 1}/{raster_total} ({pct:.0f}%)",
+                end="", flush=True, file=sys.stderr,
+            )
+        print(file=sys.stderr)
 
+        print("Assembling output ...", end="", flush=True, file=sys.stderr)
         default_output_path = Path(tex_path.stem + f".{job.output.format.value}")
         output_config = job.output.to_assembly_config(default_output_path)
         result_path = AnimationAssembler(output_config).assemble(frame_results)
+        print(" done", file=sys.stderr)
 
     size_bytes = result_path.stat().st_size
     failure_details = [
