@@ -4,6 +4,7 @@
 % Render: tikzgif render 15_fractal_tree.tex
 % Difficulty: advanced
 % Features demonstrated: recursive macros, conditional drawing, organic shapes
+
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
@@ -47,7 +48,7 @@
       \ifdim\parentvis pt>0.5pt
         \pgfmathsetmacro{\parentgrow}{min(1, \currentdepth - (\dep - 1))}%
         \pgfmathsetmacro{\finalopa}{\leafopa * \parentgrow}%
-        \fill[horseshoe!\leafclr!grass, opacity=\finalopa] (#1, #2) circle (\leafsz);%
+        \fill[horseshoe!\leafclr!grass, opacity=\finalopa] (#1, #2) circle ({1.5*\leafsz});%
       \fi
     \else
       % Always consume 2 rand values for RNG consistency
@@ -64,7 +65,7 @@
         \pgfmathsetmacro{\ix}{#1 + \growfactor * \adjlen * sin(#3 + \angleJitter)}%
         \pgfmathsetmacro{\iy}{#2 + \growfactor * \adjlen * cos(#3 + \angleJitter)}%
         \pgfmathtruncatemacro{\greenpct}{min(100, max(0, \dep * 15))}%
-        \draw[line width=#6 pt, line cap=round, horseshoe!\greenpct!warmgrey!80!black]
+        \draw[line width=#6 pt, line cap=round, horseshoe!\greenpct!warmgrey!60!black]
           (#1, #2) -- (\ix, \iy);%
       \fi
       %
@@ -89,8 +90,8 @@
   }
 
   % Ground
-  \fill[horseshoe!30!warmgrey!20] (-5, -0.3) rectangle (5, 0);
-  \draw[warmgrey, thick] (-5, 0) -- (5, 0);
+  \fill[horseshoe!40!warmgrey!20] (-5, -0.3) rectangle (5, 0);
+  \draw[horseshoe!50!warmgrey, thick] (-5, 0) -- (5, 0);
 
   % Trunk
   \pgfmathsetmacro{\trunktop}{1.1}
@@ -104,8 +105,5 @@
   % Right limb
   \branch{0}{\trunktop}{24}{1.2}{1}{2.8}
 
-  % Label
-  \node[below, font=\small] at (0, -0.8)
-    {Growth: $\pgfmathparse{\progress * 100}\pgfmathprintnumber[fixed, precision=0]{\pgfmathresult}\%$};
 \end{tikzpicture}
 \end{document}
