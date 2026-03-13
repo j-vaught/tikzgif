@@ -1,9 +1,10 @@
 % Example 11: Pendulum Motion
 % Simple pendulum swinging with a fading trail of past positions.
-% Parameter: \PARAM (time in seconds, 0 to 2.838 for one full period)
-% Range: 0 to 2.838, recommended 120 frames at 30 fps
+% Parameter: \PARAM (0 to 1, mapped to 0-2.838s for one full period)
+% Render: tikzgif render 11_pendulum.tex
 % Difficulty: intermediate
 % Features demonstrated: trigonometric motion, trail/ghost effect, physics
+
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
@@ -23,7 +24,7 @@
 \begin{tikzpicture}
   \useasboundingbox (-5.5,-6.5) rectangle (5.5,2);
 
-  \pgfmathsetmacro{\tval}{\PARAM}
+  \pgfmathsetmacro{\tval}{\PARAM * 2.838}
   \pgfmathsetmacro{\length}{4.5}     % pendulum length
   \pgfmathsetmacro{\thetamax}{40}    % max angle in degrees
   \pgfmathsetmacro{\omega}{2.214}    % angular frequency (sqrt(g/L) for L~2m)
@@ -59,8 +60,6 @@
   % Bob
   \fill[garnet] (\xbob, \ybob) circle (8pt);
 
-  % Label
-  \node[below, font=\small] at (0, -5.5)
-    {$t = \pgfmathprintnumber[fixed, precision=2]{\tval}$ s};
+
 \end{tikzpicture}
 \end{document}
