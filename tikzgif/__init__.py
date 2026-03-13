@@ -7,7 +7,14 @@ per-frame documents, compiling them in parallel, and assembling output.
 
 __version__ = "0.1.0"
 
-from tikzgif.api import RenderResult, render
+from tikzgif.api import RenderResult, render, render_job
+from tikzgif.config import (
+    CompileConfig,
+    OutputConfig,
+    RasterConfig,
+    RenderJobConfig,
+    TemplateConfig,
+)
 from tikzgif.types import (
     BoundingBox,
     CompilationConfig,
@@ -25,5 +32,11 @@ __all__ = [
     "FrameSpec",
     "LatexEngine",
     "RenderResult",
+    "TemplateConfig",
+    "CompileConfig",
+    "RasterConfig",
+    "OutputConfig",
+    "RenderJobConfig",
     "render",
+    "render_job",
 ]
