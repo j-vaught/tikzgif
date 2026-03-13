@@ -5,6 +5,7 @@
 % Render: tikzgif render 02_bouncing_ball.tex
 % Difficulty: beginner
 % Features demonstrated: mathematical expressions, shadows, trail effect
+
 \documentclass[tikz]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
@@ -22,21 +23,17 @@
 
 \begin{document}
 \begin{tikzpicture}
+  \pgfmathsetmacro{\tval}{\PARAM}
   \useasboundingbox (-1,-1.2) rectangle (11,6);
 
   % Ground
-  \fill[sandstorm] (-0.5,-0.8) rectangle (10.5,0);
+  \fill[rose!20] (-0.5,-0.8) rectangle (10.5,0);
   \draw[thick] (-0.5,0) -- (10.5,0);
-
-  % Helper macro: compute y height from global time t in [0,1]
-  % Two bounces: local_t = frac(2*t), y = 4*4*local_t*(1-local_t)
-  % x position is always linear: x = t * 10
 
   % Trail: draw past positions as fading circles
   \foreach \k in {1,2,...,15} {
-    \pgfmathsetmacro{\tpast}{max(\PARAM - \k * 0.012, 0)}
+    \pgfmathsetmacro{\tpast}{max(\tval - \k * 0.012, 0)}
     \pgfmathsetmacro{\xpast}{\tpast * 10}
-    % local time for bounce: frac(2*t)
     \pgfmathsetmacro{\tlocal}{2*\tpast - floor(2*\tpast)}
     \pgfmathsetmacro{\trem}{max(0, min(1, (\tlocal - 0.02) / 0.96))}
     \pgfmathsetmacro{\ypast}{4 * 4 * \trem * (1 - \trem) + 0.35}
@@ -46,10 +43,8 @@
   }
 
   % Current position
-  \pgfmathsetmacro{\xpos}{\PARAM * 10}
-  % Two bounces: local time wraps twice in [0,1]
-  \pgfmathsetmacro{\tlocal}{2*\PARAM - floor(2*\PARAM)}
-  % Dwell on ground: clamp first/last 5% of each bounce to ground level
+  \pgfmathsetmacro{\xpos}{\tval * 10}
+  \pgfmathsetmacro{\tlocal}{2*\tval - floor(2*\tval)}
   \pgfmathsetmacro{\trem}{max(0, min(1, (\tlocal - 0.02) / 0.96))}
   \pgfmathsetmacro{\ypos}{4 * 4 * \trem * (1 - \trem) + 0.35}
 
@@ -58,6 +53,6 @@
 
   % Label
   \node[below right, font=\small] at (0.2,5.2)
-    {$t = \pgfmathprintnumber[fixed, precision=2]{\PARAM}$};
+    {$t = \pgfmathprintnumber[fixed, precision=2]{\tval}$};
 \end{tikzpicture}
 \end{document}
