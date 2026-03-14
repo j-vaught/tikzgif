@@ -84,7 +84,7 @@
 \draw[dashed, warmgrey!40, thin] (\currX, \currY) -- (0, \currY);
 
 % Component strip: x(t) along top
-\begin{scope}[shift={(0, \amp+1.2)}]
+\begin{scope}[shift={(0, \amp+1.4)}]
     \draw[warmgrey!30, thin] (-\amp, -0.4) rectangle (\amp, 0.4);
     \draw[warmgrey!25, thin, samples=100, domain=0:\tmaxDeg, variable=\t, xshift=0]
         plot ({\amp * sin(\fa*\t + \phd*180/3.14159)}, {0.35 * sin(\fa*\t + \phd*180/3.14159)});
@@ -94,7 +94,7 @@
 \end{scope}
 
 % Component strip: y(t) along right
-\begin{scope}[shift={(\amp+1.2, 0)}]
+\begin{scope}[shift={(\amp+1.5, 0)}]
     \draw[warmgrey!30, thin] (-0.4, -\amp) rectangle (0.4, \amp);
     \draw[warmgrey!25, thin, samples=100, domain=0:\tmaxDeg, variable=\t]
         plot ({0.35 * sin(\fb*\t)}, {\amp * sin(\fb*\t)});
