@@ -61,7 +61,7 @@
     grid=major, grid style={warmgrey!20}, thick,
     tick label style={font=\small},
     label style={font=\footnotesize},
-    clip=false,
+    clip=true,
 ]
     % 2% settling band
     \addplot[domain=0:8, samples=2, name path=upper, draw=none] {1.02};
@@ -133,15 +133,6 @@
             at (axis cs:\tsC, 0.4) {$t_s$};
     \fi
 \end{axis}
-
-% Performance metrics box
-\node[anchor=north west, fill=white, fill opacity=0.9, text opacity=1,
-      draw=warmgrey!50, inner sep=4pt, font=\footnotesize, align=left]
-    at ([shift={(0.3cm,-0.3cm)}]response.north west)
-    {$\zeta = \pgfmathprintnumber[fixed,precision=2]{\zetaClamp}$\\[1pt]
-     $\omega_n = \pgfmathprintnumber[fixed,precision=1]{\wn}$ rad/s\\[1pt]
-     $\%\mathrm{OS} = \pgfmathprintnumber[fixed,precision=1]{\MpPct}\%$\\[1pt]
-     $t_s = \pgfmathprintnumber[fixed,precision=2]{\tsVal}$ s};
 
 \end{tikzpicture}
 \end{document}
