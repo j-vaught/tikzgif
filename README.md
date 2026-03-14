@@ -60,9 +60,9 @@ See [EXAMPLES.md](EXAMPLES.md) for the full gallery with all 31 examples.
 </p>
 
 <p align="center">
-  <img src="outputs/electromagnetic/02_electric_field_lines.gif" alt="Electric field lines" width="380"/>
+  <img src="outputs/signal_processing/01_fourier_series.gif" alt="Fourier series" width="380"/>
   &nbsp;&nbsp;&nbsp;
-  <img src="outputs/computers/02a_bubble_sort.gif" alt="Bubble sort" width="380"/>
+  <img src="outputs/mechanical/04_four_bar_linkage.gif" alt="Four-bar linkage" width="380"/>
 </p>
 
 ## Minimal TikZ Pattern
