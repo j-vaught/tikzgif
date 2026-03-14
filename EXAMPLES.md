@@ -1,6 +1,6 @@
 # Examples
 
-31 animated TikZ examples spanning geometry, mathematics, physics, engineering, and computer science. Each is a single `.tex` file rendered with one command.
+32 animated TikZ examples spanning geometry, mathematics, physics, engineering, and computer science. Each is a single `.tex` file rendered with one command.
 
 ---
 
