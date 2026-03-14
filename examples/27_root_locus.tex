@@ -177,10 +177,6 @@ end
     \draw[dashed, warmgrey!20, very thin] (0,0) ++(180:\wnR) arc (180:270:\wnR);
 }
 
-% Asymptotes (3 poles, 0 zeros: angles at 60, 180, 300 deg from centroid -2)
-\draw[dotted, warmgrey!35, thin] (-2, 0) -- ({-2 + 5*cos(60)}, {5*sin(60)});
-\draw[dotted, warmgrey!35, thin] (-2, 0) -- (-7, 0);
-\draw[dotted, warmgrey!35, thin] (-2, 0) -- ({-2 + 5*cos(-60)}, {5*sin(-60)});
 
 % Open-loop poles (crosses) at 0, -2, -4
 \foreach \px in {0, -2, -4} {
