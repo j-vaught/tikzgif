@@ -4,6 +4,8 @@ Convert a parameterized TikZ/LaTeX file into an animation from one command.
 
 `tikzgif` compiles frames in parallel and renders to GIF or MP4.
 
+IF YOU WANT ANY ADDITIONAL FEATURES OR LaTeX EXAMPLES, JUST EMAIL ME(jvaught@sc.edu). DO NOT MAKE A PULL REQUEST. THANKS.
+
 ## Quick Examples
 
 <p align="center">
