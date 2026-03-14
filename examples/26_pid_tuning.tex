@@ -63,23 +63,8 @@
     label style={font=\footnotesize},
     clip=true,
 ]
-    % 2% settling band
-    \addplot[domain=0:8, samples=2, name path=upper, draw=none] {1.02};
-    \addplot[domain=0:8, samples=2, name path=lower, draw=none] {0.98};
-    \addplot[fill=sandstorm, fill opacity=0.5] fill between[of=upper and lower];
-    \addplot[domain=0:8, samples=2, dashed, warmgrey!50, very thin] {1.02};
-    \addplot[domain=0:8, samples=2, dashed, warmgrey!50, very thin] {0.98};
-
     % Reference
     \addplot[domain=0:8, samples=2, dashed, black!40, thin] {1};
-
-    % Decay envelope (underdamped)
-    \ifnum\isunder>0
-        \addplot[domain=0.01:8, samples=100, garnet, thin, dashed]
-            {1 + exp(-\sigmaD * x) / sqrt(max(1-\zetaClamp*\zetaClamp, 0.001))};
-        \addplot[domain=0.01:8, samples=100, garnet, thin, dashed]
-            {1 - exp(-\sigmaD * x) / sqrt(max(1-\zetaClamp*\zetaClamp, 0.001))};
-    \fi
 
     % Main response
     \ifnum\isunder>0
@@ -106,32 +91,6 @@
             {1 - \cA * exp(\sA * x) - \cB * exp(\sB * x)};
     \fi
 
-    % Error signal overlay e(t) = 1 - y(t)
-    \ifnum\isunder>0
-        \pgfmathsetmacro{\phiDeg}{acos(min(\zetaClamp,0.999))}
-        \addplot[domain=0:8, samples=200, rose, thin]
-            {exp(-\sigmaD * x) / sqrt(max(1-\zetaClamp*\zetaClamp, 0.001))
-             * sin(\wdamp * x * 180/3.14159 + \phiDeg)};
-        \node[font=\tiny, rose, anchor=west]
-            at (axis cs:0.3, {1/sqrt(max(1-\zetaClamp*\zetaClamp,0.001))*0.7})
-            {$e(t)$};
-    \fi
-
-    % Time markers (underdamped)
-    \ifnum\isunder>0
-        % Peak time
-        \pgfmathsetmacro{\tpC}{min(\tpVal, 7.5)}
-        \addplot[dashed, garnet, thin] coordinates {(\tpC, 0) (\tpC, {1+\MpVal})};
-        \node[font=\tiny, garnet, anchor=south]
-            at (axis cs:\tpC, {1+\MpVal+0.02})
-            {$t_p$};
-
-        % Settling time
-        \pgfmathsetmacro{\tsC}{min(\tsVal, 7.5)}
-        \addplot[dashed, horseshoe, thin] coordinates {(\tsC, 0) (\tsC, 1.02)};
-        \node[font=\tiny, horseshoe, anchor=north, rotate=90]
-            at (axis cs:\tsC, 0.4) {$t_s$};
-    \fi
 \end{axis}
 
 \end{tikzpicture}
