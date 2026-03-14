@@ -83,36 +83,31 @@
   \fill[black!55]
     (\Obx, \Oby) -- ({\Obx - 0.32}, {\Oby - 0.32}) -- ({\Obx + 0.32}, {\Oby - 0.32}) -- cycle;
 
-  % ====== 5. Crank and rocker bars ======
-  % Rocker: O4 -> B
-  \draw[atlantic!45!black, line width=11pt, line cap=rect] (O4) -- (B);
-  \draw[atlantic!28, line width=7.5pt, line cap=rect] (O4) -- (B);
-
-  % Crank: O2 -> A
+  % ====== 5. Crank and rocker bars (vertical) ======
   \draw[garnet!45!black, line width=11pt, line cap=rect] (O2) -- (A);
   \draw[garnet!28, line width=7.5pt, line cap=rect] (O2) -- (A);
 
-  % ====== 6. Coupler bar (horizontal connecting rod) ======
-  \draw[congaree!45!black, line width=11pt, line cap=rect] (A) -- (B);
-  \draw[congaree!22, line width=7.5pt, line cap=rect] (A) -- (B);
+  \draw[atlantic!45!black, line width=11pt, line cap=rect] (O4) -- (B);
+  \draw[atlantic!28, line width=7.5pt, line cap=rect] (O4) -- (B);
 
-  % ====== 7. Joint pins (all four) ======
-  % O2 (fixed ground pivot)
+  % ====== 6. Ground pivot pins (where vertical bars meet triangles) ======
   \fill[white] (O2) circle (0.17);
   \draw[black!75, line width=1.6pt] (O2) circle (0.17);
   \fill[black!45] (O2) circle (0.055);
 
-  % O4 (fixed ground pivot)
   \fill[white] (O4) circle (0.17);
   \draw[black!75, line width=1.6pt] (O4) circle (0.17);
   \fill[black!45] (O4) circle (0.055);
 
-  % A (moving joint - crank/coupler)
+  % ====== 7. Coupler bar (horizontal connecting rod) ======
+  \draw[congaree!45!black, line width=11pt, line cap=rect] (A) -- (B);
+  \draw[congaree!22, line width=7.5pt, line cap=rect] (A) -- (B);
+
+  % ====== 8. Coupler pins (A and B) ======
   \fill[garnet!12] (A) circle (0.2);
   \draw[garnet!65!black, line width=1.6pt] (A) circle (0.2);
   \fill[garnet] (A) circle (0.065);
 
-  % B (moving joint - coupler/rocker)
   \fill[atlantic!12] (B) circle (0.2);
   \draw[atlantic!65!black, line width=1.6pt] (B) circle (0.2);
   \fill[atlantic] (B) circle (0.065);
