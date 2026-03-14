@@ -56,7 +56,7 @@ See [EXAMPLES.md](EXAMPLES.md) for the full gallery with all 31 examples.
 <p align="center">
   <img src="outputs/geometry/02_mandelbrot_zoom.gif" alt="Mandelbrot zoom" width="380"/>
   &nbsp;&nbsp;&nbsp;
-  <img src="outputs/math/05_lorenz_attractor.gif" alt="Lorenz attractor" width="380"/>
+  <img src="outputs/computers/02a_bubble_sort.gif" alt="Bubble sort" width="380"/>
 </p>
 
 <p align="center">
