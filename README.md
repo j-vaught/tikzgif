@@ -54,15 +54,15 @@ That's it. Put `\PARAM` in any TikZ file where you want the animated value, and 
 See [EXAMPLES.md](EXAMPLES.md) for the full gallery with all 31 examples.
 
 <p align="center">
-  <img src="outputs/geometry/01_rotating_square.gif" alt="Rotating square" width="380"/>
+  <img src="outputs/geometry/02_mandelbrot_zoom.gif" alt="Mandelbrot zoom" width="380"/>
   &nbsp;&nbsp;&nbsp;
-  <img src="outputs/controls/04_root_locus.gif" alt="Root locus" width="380"/>
+  <img src="outputs/math/05_lorenz_attractor.gif" alt="Lorenz attractor" width="380"/>
 </p>
 
 <p align="center">
-  <img src="outputs/signal_processing/01_fourier_series.gif" alt="Fourier series" width="380"/>
+  <img src="outputs/electromagnetic/02_electric_field_lines.gif" alt="Electric field lines" width="380"/>
   &nbsp;&nbsp;&nbsp;
-  <img src="outputs/mechanical/04_four_bar_linkage.gif" alt="Four-bar linkage" width="380"/>
+  <img src="outputs/computers/02a_bubble_sort.gif" alt="Bubble sort" width="380"/>
 </p>
 
 ## Minimal TikZ Pattern
