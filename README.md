@@ -7,12 +7,15 @@ Convert a parameterized TikZ/LaTeX file into an animation from one command.
 ## Quick Examples
 
 <p align="center">
-  <img src="outputs/mechanical/01_bouncing_ball.gif" alt="Bouncing ball" width="300"/>
-  <img src="outputs/mechanical/03_gear_train.gif" alt="Gear train" width="300"/>
+  <img src="outputs/mechanical/01_bouncing_ball.gif" alt="Bouncing ball" width="380"/>
+  &nbsp;&nbsp;&nbsp;
+  <img src="outputs/mechanical/03_gear_train.gif" alt="Gear train" width="380"/>
 </p>
+
 <p align="center">
-  <img src="outputs/electromagnetic/03_em_wave_3d.gif" alt="EM wave" width="300"/>
-  <img src="outputs/geometry/04_wave_interference.gif" alt="Wave interference" width="300"/>
+  <img src="outputs/electromagnetic/03_em_wave_3d.gif" alt="EM wave" width="380"/>
+  &nbsp;&nbsp;&nbsp;
+  <img src="outputs/geometry/04_wave_interference.gif" alt="Wave interference" width="380"/>
 </p>
 
 ## Why tikzgif?
@@ -46,66 +49,21 @@ tikzgif render examples/mechanical/01_bouncing_ball.tex --output ball.gif
 
 That's it. Put `\PARAM` in any TikZ file where you want the animated value, and tikzgif sweeps the range across frames.
 
-## More GIF Examples
+## Gallery Preview
 
-See [EXAMPLES.md](EXAMPLES.md) for the full gallery.
+See [EXAMPLES.md](EXAMPLES.md) for the full gallery with all 31 examples.
 
-<table>
-<tr>
-<td align="center" width="25%">
-<img src="outputs/geometry/01_rotating_square.gif" alt="Rotating square" width="220"/><br/>
-<b>Rotating Square</b>
-</td>
-<td align="center" width="25%">
-<img src="outputs/math/01_sine_wave_phase.gif" alt="Sine wave phase" width="220"/><br/>
-<b>Sine Wave Phase</b>
-</td>
-<td align="center" width="25%">
-<img src="outputs/computers/02a_bubble_sort.gif" alt="Bubble sort" width="220"/><br/>
-<b>Bubble Sort</b>
-</td>
-<td align="center" width="25%">
-<img src="outputs/geometry/02_mandelbrot_zoom.gif" alt="Mandelbrot zoom" width="220"/><br/>
-<b>Mandelbrot Zoom</b>
-</td>
-</tr>
-<tr>
-<td align="center" width="25%">
-<img src="outputs/controls/01_step_response.gif" alt="Step response" width="220"/><br/>
-<b>Step Response</b>
-</td>
-<td align="center" width="25%">
-<img src="outputs/electromagnetic/01_rc_circuit.gif" alt="RC circuit" width="220"/><br/>
-<b>RC Circuit</b>
-</td>
-<td align="center" width="25%">
-<img src="outputs/mechanical/02_pendulum.gif" alt="Pendulum" width="220"/><br/>
-<b>Pendulum</b>
-</td>
-<td align="center" width="25%">
-<img src="outputs/math/04_heat_equation.gif" alt="Heat equation" width="220"/><br/>
-<b>Heat Equation</b>
-</td>
-</tr>
-<tr>
-<td align="center" width="25%">
-<img src="outputs/controls/02_bode_plot.gif" alt="Bode plot" width="220"/><br/>
-<b>Bode Plot</b>
-</td>
-<td align="center" width="25%">
-<img src="outputs/signal_processing/01_fourier_series.gif" alt="Fourier series" width="220"/><br/>
-<b>Fourier Series</b>
-</td>
-<td align="center" width="25%">
-<img src="outputs/controls/04_root_locus.gif" alt="Root locus" width="220"/><br/>
-<b>Root Locus</b>
-</td>
-<td align="center" width="25%">
-<img src="outputs/mechanical/04_four_bar_linkage.gif" alt="Four-bar linkage" width="220"/><br/>
-<b>Four-Bar Linkage</b>
-</td>
-</tr>
-</table>
+<p align="center">
+  <img src="outputs/geometry/01_rotating_square.gif" alt="Rotating square" width="380"/>
+  &nbsp;&nbsp;&nbsp;
+  <img src="outputs/controls/04_root_locus.gif" alt="Root locus" width="380"/>
+</p>
+
+<p align="center">
+  <img src="outputs/signal_processing/01_fourier_series.gif" alt="Fourier series" width="380"/>
+  &nbsp;&nbsp;&nbsp;
+  <img src="outputs/mechanical/04_four_bar_linkage.gif" alt="Four-bar linkage" width="380"/>
+</p>
 
 ## Minimal TikZ Pattern
 
