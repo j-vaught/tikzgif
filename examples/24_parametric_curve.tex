@@ -93,19 +93,19 @@
     \node[font=\tiny, warmgrey, anchor=west] at (\amp+0.15, 0) {$x(t)$};
 \end{scope}
 
-% Component strip: y(t) along right
-\begin{scope}[shift={(\amp+1.2, 0)}]
-    \draw[warmgrey!30, thin] (-0.4, -\amp) rectangle (0.4, \amp);
+% Component strip: y(t) along bottom (rotated 90 CW: y mapped to horizontal)
+\begin{scope}[shift={(0, -\amp-1.2)}]
+    \draw[warmgrey!30, thin] (-\amp, -0.4) rectangle (\amp, 0.4);
     \draw[warmgrey!25, thin, samples=100, domain=0:\tmaxDeg, variable=\t]
-        plot ({0.35 * sin(\fb*\t)}, {\amp * sin(\fb*\t)});
-    \filldraw[garnet] ({0.35 * sin(\fb*\tmaxDeg)}, \currY) circle (2pt);
-    \draw[dashed, warmgrey!30, thin] (-0.4, \currY) -- ({-\amp-0.5 + \amp + 1.2}, \currY);
-    \node[font=\tiny, warmgrey, anchor=south, rotate=90] at (0, \amp+0.15) {$y(t)$};
+        plot ({\amp * sin(\fb*\t)}, {0.35 * sin(\fb*\t)});
+    \filldraw[garnet] (\currY, {0.35 * sin(\fb*\tmaxDeg)}) circle (2pt);
+    \draw[dashed, warmgrey!30, thin] (\currY, 0.4) -- (\currY, {-(-\amp-0.5) - \amp - 1.2});
+    \node[font=\tiny, warmgrey, anchor=west] at (\amp+0.15, 0) {$y(t)$};
 \end{scope}
 
 % Fix bounding box across all frames
 \pgfresetboundingbox
-\useasboundingbox (-\amp-0.8, -\amp-0.8) rectangle (\amp+2.0, \amp+2.0);
+\useasboundingbox (-\amp-0.8, -\amp-2.0) rectangle (\amp+2.0, \amp+2.0);
 
 \end{tikzpicture}
 \end{document}
