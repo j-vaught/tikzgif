@@ -103,7 +103,7 @@
         \pgfmathsetmacro{\cA}{\sB / (\sB - \sA)}
         \pgfmathsetmacro{\cB}{\sA / (\sA - \sB)}
         \addplot[domain=0:8, samples=400, horseshoe, very thick]
-            {1 + \cA * exp(\sA * x) + \cB * exp(\sB * x)};
+            {1 - \cA * exp(\sA * x) - \cB * exp(\sB * x)};
     \fi
 
     % Error signal overlay e(t) = 1 - y(t)
