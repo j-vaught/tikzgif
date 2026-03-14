@@ -1,0 +1,231 @@
+tikzgif TODO
+============
+
+Last updated: 2026-03-13
+
+
+================================================================================
+ROBUSTNESS
+================================================================================
+
+[ ] Test Suite
+    Write unit tests for template parsing, config validation, bounding box
+    extraction, cache store operations, and color quantization. Write integration
+    tests for the full render pipeline using small 3-frame examples. Write edge
+    case tests for bad .tex input, missing \PARAM token, single frame renders,
+    missing LaTeX engines, and unavailable rasterization backends. Target the 80%
+    coverage threshold already configured in pyproject.toml.
+    WHY: No tests exist. This is the single largest gap in the project. Without
+    tests, refactoring is dangerous, regressions go unnoticed, and no serious
+    user or contributor will trust the tool. JOSS submission also requires tests.
+
+[ ] CI/CD Pipeline
+    Set up GitHub Actions to run pytest, mypy (strict), and ruff on every push.
+    Test matrix should cover Python 3.10-3.13 on Ubuntu and macOS. Add status
+    badges to the README.
+    WHY: Automated testing catches breakage before it ships. Badges in the README
+    signal project health to potential users and contributors.
+
+[ ] Remove Unused Optional Dependencies
+    The cairosvg (pdf2svg group) and watchdog (watch group) optional dependencies
+    are declared in pyproject.toml but nothing in the codebase uses them. Either
+    implement the features they support or remove the declarations.
+    WHY: Dead dependency declarations confuse contributors and create false
+    expectations about what the tool can do.
+
+[ ] Actionable Error Messages
+    Ensure all error messages include enough context for the user (or an AI agent)
+    to fix the problem without reading source code. LaTeX compilation errors
+    should identify the missing package name and suggest the install command
+    (e.g., tlmgr install pgfplots). Rasterization errors should name the missing
+    backend and suggest platform-specific install commands. Include the failing
+    frame number, source line, and relevant file paths.
+    WHY: Vague error messages ("compilation failed") force users into manual
+    debugging. Specific messages enable self-service resolution and allow AI
+    agents to self-heal in automated workflows.
+
+[ ] Deterministic Output
+    Ensure identical input always produces byte-identical output when using the
+    same parameters. Audit GIF assembly for sources of nondeterminism (metadata
+    timestamps, dict ordering, floating point rounding in color quantization).
+    WHY: Determinism enables reproducible research figures, meaningful diffing of
+    outputs in version control, and predictable behavior for automated pipelines.
+
+[ ] Benchmark Suite
+    Create a small set of benchmark examples (e.g., 120-frame Lorenz attractor)
+    with a script that measures wall-clock time for sequential vs. parallel
+    compilation, cached vs. uncached runs, and different rasterization backends.
+    Record results in a reproducible format.
+    WHY: Quantitative performance claims (for the README, JOSS paper, and
+    marketing) need to be backed by reproducible measurements. Also useful for
+    catching performance regressions.
+
+
+================================================================================
+DEPLOYABILITY
+================================================================================
+
+[ ] PyPI Release
+    Publish to PyPI so that pip install tikzgif works. Test the install in a
+    clean virtual environment on macOS, Linux, and Windows. Verify the CLI entry
+    point works after install.
+    WHY: pip install is the minimum bar for Python tool adoption. Without it,
+    users must clone the repo and install manually, which most will not do.
+
+[ ] Tag v0.1.0
+    Create a git tag for v0.1.0.
+    WHY: A version tag enables pip install tikzgif==0.1.0 and signals intentional
+    release management.
+
+[ ] Visual README Rewrite
+    Move 10-15 of the best rendered GIFs from outputs/ directly into the README.
+    Lead with visuals, not feature bullets. The first screen of the README should
+    make someone think "I want to make that" before they read a single word of
+    documentation. Organize examples by domain (math, physics, engineering, CS).
+    WHY: GitHub users decide whether to star a repo in the first 3 seconds.
+    A wall of text loses them. Animated GIFs are the product demo.
+
+[ ] CHANGELOG.md
+    Create a changelog starting with v0.1.0. Document what the initial release
+    includes.
+    WHY: Signals intentional versioning. Users and contributors need to know what
+    changed between releases. Required for credible open source projects.
+
+[ ] CONTRIBUTING.md
+    Write contribution guidelines covering how to set up a dev environment, run
+    tests, submit PRs, and report issues.
+    WHY: Lowers the bar for external contributions. Signals project maturity.
+    Required for JOSS submission.
+
+[ ] Docker Image
+    Create a Dockerfile with LaTeX (texlive), all rasterization backends
+    (pdftoppm, Ghostscript, ImageMagick), ffmpeg, and tikzgif pre-installed.
+    Publish to Docker Hub or GitHub Container Registry. Users should be able to
+    run: docker run tikzgif render input.tex -o output.gif
+    WHY: LaTeX installation is the biggest friction point. A Docker image
+    provides a zero-setup path for users who do not have LaTeX installed and
+    for CI/CD environments.
+
+[ ] Homebrew Formula
+    Create a Homebrew formula so macOS users can install with brew install tikzgif.
+    WHY: Many macOS users in academia prefer Homebrew. Reduces friction for a
+    key demographic.
+
+[ ] GitHub Action
+    Create a reusable GitHub Action that renders tikzgif in CI. Users could add
+    it to their repos to automatically generate animated figures from .tex source
+    on every push or PR.
+    WHY: Opens the door to automated diagram generation in documentation repos,
+    course material repos, and research paper repos. Increases surface area for
+    discovery.
+
+[ ] Sphinx Documentation on ReadTheDocs
+    Build API reference documentation from the existing docstrings using Sphinx.
+    Host on ReadTheDocs. The sphinx and sphinx-rtd-theme dependencies are already
+    declared in pyproject.toml.
+    WHY: Formal hosted documentation signals project maturity and makes the
+    Python API discoverable for programmatic users. ReadTheDocs is the standard
+    for Python projects.
+
+[ ] JOSS Paper
+    Write and submit a paper to the Journal of Open Source Software. Requires
+    paper.md and paper.bib in the repository. Six required sections: Summary,
+    Statement of Need, State of the Field, Software Design, Research Impact
+    Statement, and AI Usage Disclosure. Must have 6 months of public development 
+    history before submission.
+    WHY: A JOSS publication provides a citable DOI, academic credibility, and
+    peer-reviewed validation. Drives adoption in research communities.
+
+[ ] GitHub Topics and PyPI Classifiers
+    Add GitHub repository topics: tikz, latex, gif, animation, visualization,
+    cli, scientific-visualization, python. Add PyPI classifiers: Framework ::
+    Jupyter, Topic :: Scientific/Engineering :: Visualization, Topic ::
+    Multimedia :: Graphics :: Graphics Conversion.
+    WHY: These are how search engines, package registry browsers, and AI agents
+    discover tools. Costs nothing, improves discoverability immediately.
+
+
+================================================================================
+MACHINE USABILITY
+================================================================================
+
+[ ] --json Flag on All Commands
+    Add a --json flag to render, inspect engines, inspect backends, and inspect
+    template. When set, suppress human-readable output (progress bars, emoji,
+    status messages) and print a single JSON object to stdout with structured
+    results. The render command should return: status, output_path, frames_compiled,
+    frames_cached, frames_failed, duration_seconds, output_size_bytes, and
+    output dimensions.
+    WHY: AI agents and automated pipelines cannot parse tqdm progress bars or
+    human-readable text. JSON output is the standard interface for machine
+    consumption. This is the single highest-impact change for agent adoption.
+
+[ ] Structured Exit Codes
+    Define and document specific exit codes beyond 0/1. Suggested mapping:
+      0 = success
+      1 = LaTeX compilation error (fixable input)
+      2 = missing system dependency (agent can install)
+      3 = bad input file or template error (agent can fix the .tex)
+      4 = output write failure (permissions, disk space)
+    WHY: Agents use exit codes to decide their next action. A single nonzero
+    exit code forces the agent to parse stderr to figure out what went wrong.
+    Structured codes enable immediate branching.
+
+[ ] Stderr/Stdout Separation
+    Route all progress bars, status messages, warnings, and logs to stderr.
+    Route only parseable output (JSON, file paths) to stdout. Add a --quiet
+    flag that suppresses stderr entirely. Add --output-path-only that prints
+    just the output file path to stdout.
+    WHY: Agents and scripts pipe stdout. If progress bars and output paths are
+    mixed on stdout, piping breaks. Clean separation enables:
+    tikzgif render input.tex --quiet --output-path-only | xargs open
+
+[ ] Stdin Support
+    Accept .tex source from stdin via a --stdin flag:
+      cat input.tex | tikzgif render --stdin --output out.gif
+    WHY: AI agents often generate .tex code in memory and prefer piping it
+    directly rather than writing a temp file first. Reduces friction in
+    automated workflows.
+
+[ ] MCP Server
+    Implement a Model Context Protocol server that exposes tikzgif_render,
+    tikzgif_inspect_engines, and tikzgif_inspect_backends as MCP tools. Each
+    tool should accept structured parameters and return structured results.
+    Package as a standalone entry point (tikzgif-mcp) or integrate into the
+    main CLI (tikzgif mcp serve).
+    WHY: MCP is how Claude Code, Cursor, Windsurf, and other AI coding tools
+    discover and call external tools natively. An MCP server lets any
+    MCP-compatible agent render TikZ animations without knowing CLI flags.
+    This is the highest-leverage integration point for AI agent adoption.
+
+[ ] --help-json Flag
+    Add a flag that outputs the full CLI schema (all commands, all flags, types,
+    defaults, descriptions) as a JSON object.
+    WHY: Agents that encounter tikzgif for the first time can call --help-json
+    once and immediately understand every available option without parsing
+    human-readable help text.
+
+[ ] Python API with Structured Returns
+    Ensure the public Python API (tikzgif.render, tikzgif.render_job) returns
+    structured result objects (not just writing files as a side effect). The
+    result should include output_path, frame_count, cached_count, failed_count,
+    duration, and output metadata. Document the API with clear type hints and
+    docstrings.
+    WHY: AI agents running in Python prefer importing a library over shelling
+    out to a subprocess. A clean programmatic API with typed return values is
+    the most ergonomic interface for Python-based agents.
+
+[ ] --watch Mode
+    Implement file watching using the watchdog dependency (already declared).
+    When a .tex file changes, automatically re-render the animation. Output
+    the path to the new file on each re-render.
+    WHY: Enables a live-preview workflow for iterative animation development.
+    Also useful for agents that modify .tex files and want to see results
+    without re-invoking the CLI.
+
+[ ] Jupyter Cell Magic (%%tikzgif)
+    Create an IPython cell magic that renders TikZ source inline in a Jupyter
+    notebook and displays the resulting GIF in the cell output.
+    WHY: Academics and data scientists live in Jupyter notebooks. A cell magic
+    makes tikzgif accessible to this large audience without leaving their
+    workflow. Also usable by AI agents operating in notebook environments.
