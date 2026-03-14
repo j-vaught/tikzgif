@@ -1,0 +1,275 @@
+% Example: 2D Convolution Kernel Operations
+% A 3x3 kernel slides across a 7x7 input image, producing three outputs
+% simultaneously: edge detection (Laplacian), horizontal edges (Sobel-y),
+% and vertical edges (Sobel-x).
+% Parameter: \PARAM (0 to 1, mapped to 25 kernel positions in raster order)
+% Render: tikzgif examples/signal_processing/03_convolution_2d.tex --engine lualatex --frames 50 -o outputs/convolution_2d.gif
+% Difficulty: intermediate
+% Features demonstrated: Lua computation, 2D convolution, multi-output display
+
+\documentclass[border=5pt]{standalone}
+\usepackage{tikz}
+\usepackage{luacode}
+\usepackage{xcolor}
+
+% Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
+\begin{luacode*}
+-- 7x7 input image: an "L" shape (1 = white, 0 = black)
+local img = {
+    {0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 1, 0, 0, 0, 0},
+    {0, 1, 0, 0, 0, 0, 0},
+    {0, 1, 0, 0, 0, 0, 0},
+    {0, 1, 0, 0, 0, 0, 0},
+    {0, 1, 1, 1, 1, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0},
+}
+
+-- Three 3x3 kernels
+local kernels = {
+    -- Edge detection (Laplacian)
+    {{ 0, -1,  0},
+     {-1,  4, -1},
+     { 0, -1,  0}},
+    -- Horizontal edges (Sobel-y)
+    {{-1, -2, -1},
+     { 0,  0,  0},
+     { 1,  2,  1}},
+    -- Vertical edges (Sobel-x)
+    {{-1,  0,  1},
+     {-2,  0,  2},
+     {-1,  0,  1}},
+}
+
+local kernel_names = {"Edge Detection", "Horizontal", "Vertical"}
+local kernel_colors = {"garnet", "atlantic", "horseshoe"}
+
+local OUT = 5
+local TOTAL = OUT * OUT
+
+-- Compute single convolution value
+local function convolve(kid, r, c)
+    local k = kernels[kid]
+    local sum = 0
+    for dr = -1, 1 do
+        for dc = -1, 1 do
+            sum = sum + k[dr + 2][dc + 2] * img[r + dr][c + dc]
+        end
+    end
+    return sum
+end
+
+-- Precompute all outputs and find max absolute value for normalization
+local outputs = {{}, {}, {}}
+local max_abs = 0.001
+for kid = 1, 3 do
+    for r = 1, OUT do
+        outputs[kid][r] = {}
+        for c = 1, OUT do
+            local v = convolve(kid, r + 1, c + 1)
+            outputs[kid][r][c] = v
+            if math.abs(v) > max_abs then
+                max_abs = math.abs(v)
+            end
+        end
+    end
+end
+
+-- Layout constants
+local CS  = 0.62   -- input cell size
+local OCS = 0.46   -- output cell size
+local KCS = 0.40   -- kernel display cell size
+
+function draw_frame(param)
+    local pos = math.min(TOTAL - 1, math.floor(param * (TOTAL - 1) + 0.5))
+    local cur_r = math.floor(pos / OUT) + 1
+    local cur_c = (pos % OUT) + 1
+
+    -- Kernel center in input coordinates (1-indexed)
+    local kr = cur_r + 1
+    local kc = cur_c + 1
+
+    -- Compute layout positions
+    local input_w = 7 * CS
+    local output_block_w = 3 * OUT * OCS + 2 * 1.1
+    local total_w = math.max(input_w, output_block_w)
+    local ix0 = (total_w - input_w) / 2
+    local iy0 = 0
+
+    -- === TITLE ===
+    tex.sprint(string.format(
+        "\\node[garnet, font=\\large\\bfseries, anchor=south] at (%.3f, 0.45) {2D Convolution};",
+        total_w / 2
+    ))
+    tex.sprint(string.format(
+        "\\node[black!60, font=\\scriptsize, anchor=south] at (%.3f, 0.05) {Input Image $(7 \\times 7)$};",
+        total_w / 2
+    ))
+
+    -- === INPUT GRID ===
+    for r = 1, 7 do
+        for c = 1, 7 do
+            local v = img[r][c]
+            local x = ix0 + (c - 1) * CS
+            local y = iy0 - (r - 1) * CS
+            local shade = math.floor((1 - v) * 90 + 0.5)
+            tex.sprint(string.format(
+                "\\fill[black!%d] (%.4f,%.4f) rectangle (%.4f,%.4f);",
+                shade, x, y, x + CS, y - CS
+            ))
+            tex.sprint(string.format(
+                "\\draw[black!25, line width=0.3pt] (%.4f,%.4f) rectangle (%.4f,%.4f);",
+                x, y, x + CS, y - CS
+            ))
+            -- Show pixel value
+            local tcol = v > 0.5 and "black!70" or "white!70"
+            tex.sprint(string.format(
+                "\\node[%s, font=\\tiny] at (%.4f,%.4f) {%d};",
+                tcol, x + CS/2, y - CS/2, v
+            ))
+        end
+    end
+
+    -- === KERNEL HIGHLIGHT on input ===
+    local hx = ix0 + (kc - 2) * CS
+    local hy = iy0 - (kr - 2) * CS
+    tex.sprint(string.format(
+        "\\draw[rose, line width=2.2pt] (%.4f,%.4f) rectangle (%.4f,%.4f);",
+        hx, hy, hx + 3 * CS, hy - 3 * CS
+    ))
+    -- Translucent overlay on kernel region
+    tex.sprint(string.format(
+        "\\fill[rose, opacity=0.08] (%.4f,%.4f) rectangle (%.4f,%.4f);",
+        hx, hy, hx + 3 * CS, hy - 3 * CS
+    ))
+
+    -- === KERNEL MATRICES + OUTPUT GRIDS (below input) ===
+    local gap_y = 1.6
+    local section_gap = 1.1
+    local base_y = iy0 - 7 * CS - gap_y
+
+    for kid = 1, 3 do
+        local ox0 = (kid - 1) * (OUT * OCS + section_gap)
+        local k = kernels[kid]
+        local color = kernel_colors[kid]
+
+        -- Kernel label
+        tex.sprint(string.format(
+            "\\node[%s, font=\\footnotesize\\bfseries, anchor=south west] at (%.4f, %.4f) {%s};",
+            color, ox0, base_y + 0.15, kernel_names[kid]
+        ))
+
+        -- Draw 3x3 kernel matrix
+        local km_y = base_y - 0.1
+        for dr = 1, 3 do
+            for dc = 1, 3 do
+                local kx = ox0 + (dc - 1) * KCS
+                local ky = km_y - (dr - 1) * KCS
+                local kv = k[dr][dc]
+                -- Cell background
+                local bg
+                if kv > 0 then
+                    bg = string.format("%s!%d!white", color, math.floor(kv / 4 * 60 + 15))
+                elseif kv < 0 then
+                    bg = string.format("black!%d!white", math.floor(math.abs(kv) / 2 * 25 + 5))
+                else
+                    bg = "white"
+                end
+                tex.sprint(string.format(
+                    "\\fill[%s] (%.4f,%.4f) rectangle (%.4f,%.4f);",
+                    bg, kx, ky, kx + KCS, ky - KCS
+                ))
+                tex.sprint(string.format(
+                    "\\draw[black!30, line width=0.3pt] (%.4f,%.4f) rectangle (%.4f,%.4f);",
+                    kx, ky, kx + KCS, ky - KCS
+                ))
+                -- Kernel value text
+                local fmt = (kv >= 0) and "%d" or "$%d$"
+                tex.sprint(string.format(
+                    "\\node[font=\\scriptsize, black!80] at (%.4f,%.4f) {%d};",
+                    kx + KCS/2, ky - KCS/2, kv
+                ))
+            end
+        end
+
+        -- Output label
+        local out_label_y = km_y - 3 * KCS - 0.35
+        tex.sprint(string.format(
+            "\\node[black!50, font=\\scriptsize, anchor=south west] at (%.4f, %.4f) {Output $(5 \\times 5)$};",
+            ox0, out_label_y + 0.12
+        ))
+
+        -- Draw 5x5 output grid
+        local ogy = out_label_y - 0.05
+        for r = 1, OUT do
+            for c = 1, OUT do
+                local opos = (r - 1) * OUT + (c - 1)
+                local x = ox0 + (c - 1) * OCS
+                local y = ogy - (r - 1) * OCS
+
+                if opos <= pos then
+                    local val = outputs[kid][r][c]
+                    local pct = math.min(100, math.floor(math.abs(val) / max_abs * 100 + 0.5))
+
+                    tex.sprint(string.format(
+                        "\\fill[%s!%d!white] (%.4f,%.4f) rectangle (%.4f,%.4f);",
+                        color, pct, x, y, x + OCS, y - OCS
+                    ))
+
+                    if opos == pos then
+                        -- Active cell: thick border
+                        tex.sprint(string.format(
+                            "\\draw[%s, line width=1.6pt] (%.4f,%.4f) rectangle (%.4f,%.4f);",
+                            color, x, y, x + OCS, y - OCS
+                        ))
+                        -- Show computed value
+                        local tcol = pct > 50 and "white" or "black!70"
+                        tex.sprint(string.format(
+                            "\\node[%s, font=\\tiny\\bfseries] at (%.4f,%.4f) {%d};",
+                            tcol, x + OCS/2, y - OCS/2, val
+                        ))
+                    else
+                        tex.sprint(string.format(
+                            "\\draw[black!15, line width=0.3pt] (%.4f,%.4f) rectangle (%.4f,%.4f);",
+                            x, y, x + OCS, y - OCS
+                        ))
+                    end
+                else
+                    -- Not yet computed
+                    tex.sprint(string.format(
+                        "\\fill[black!4] (%.4f,%.4f) rectangle (%.4f,%.4f);",
+                        x, y, x + OCS, y - OCS
+                    ))
+                    tex.sprint(string.format(
+                        "\\draw[black!12, line width=0.3pt] (%.4f,%.4f) rectangle (%.4f,%.4f);",
+                        x, y, x + OCS, y - OCS
+                    ))
+                end
+            end
+        end
+    end
+
+    -- Position counter
+    tex.sprint(string.format(
+        "\\node[warmgrey, font=\\scriptsize, anchor=north east] at (%.4f, %.4f) {Position %d\\,/\\,%d};",
+        total_w, base_y - 0.1 - 3 * KCS - 0.35 - 0.05 - OUT * OCS - 0.15, pos + 1, TOTAL
+    ))
+end
+\end{luacode*}
+
+\begin{document}
+\begin{tikzpicture}
+  \useasboundingbox (-0.3, -10.8) rectangle (8.5, 0.9);
+  \directlua{draw_frame(\PARAM)}
+\end{tikzpicture}
+\end{document}
