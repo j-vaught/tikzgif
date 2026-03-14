@@ -83,6 +83,12 @@
   \fill[black!55]
     (\Obx, \Oby) -- ({\Obx - 0.32}, {\Oby - 0.32}) -- ({\Obx + 0.32}, {\Oby - 0.32}) -- cycle;
 
+  % O2 and O4 labels (before bars so they appear underneath)
+  \node[font=\footnotesize\bfseries, black!60, anchor=north]
+    at (\Oax, {\Oay - 0.85}) {$O_2$};
+  \node[font=\footnotesize\bfseries, black!60, anchor=north]
+    at (\Obx, {\Oby - 0.85}) {$O_4$};
+
   % ====== 5. Crank and rocker bars (vertical) ======
   \draw[garnet!45!black, line width=11pt, line cap=rect] (O2) -- (A);
   \draw[garnet!28, line width=7.5pt, line cap=rect] (O2) -- (A);
@@ -147,17 +153,10 @@
   \fi
 
   % ====== 9. Labels ======
-  \node[font=\footnotesize\bfseries, black!60, anchor=north]
-    at (\Oax, {\Oay - 0.85}) {$O_2$};
-  \node[font=\footnotesize\bfseries, black!60, anchor=north]
-    at (\Obx, {\Oby - 0.85}) {$O_4$};
   \node[font=\footnotesize\bfseries, garnet!85!black, anchor=south west]
     at ([shift={(0.22cm, 0.18cm)}]A) {$A$};
   \node[font=\footnotesize\bfseries, atlantic!85!black, anchor=south west]
     at ([shift={(0.22cm, 0.18cm)}]B) {$B$};
-
-  % Title
-  \node[font=\large\bfseries, black!85] at (0, 3.8) {Four-Bar Linkage};
 
   % Dimensions
   \node[font=\tiny, warmgrey] at (0, -3.5)
@@ -165,10 +164,6 @@
      $b{=}\pgfmathprintnumber[fixed,precision=1]{\b}$\enspace
      $c{=}\pgfmathprintnumber[fixed,precision=1]{\cc}$\enspace
      $d{=}\pgfmathprintnumber[fixed,precision=1]{\d}$};
-
-  % Angle readout
-  \node[font=\small, black!75] at (0, -2.9)
-    {$\theta_2 = \pgfmathprintnumber[fixed, precision=0]{\crankAng}^\circ$};
 
 \end{tikzpicture}
 \end{document}
