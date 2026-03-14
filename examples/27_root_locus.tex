@@ -1,15 +1,17 @@
 % Example 27: Root Locus Animation
-% Animates poles of 1 + K*G(s) = 0 where G(s) = 1/((s+1)(s+3)).
-% Parameter: \PARAM (0 to 1, mapped to loop gain K = 0.0 to 20.0)
-% Render: tikzgif render 27_root_locus.tex
+% Animates poles of 1 + K*G(s) = 0 where G(s) = 1/(s(s+2)(s+4)).
+% Three-pole system with breakaway, complex branches, and asymptotes.
+% Parameter: \PARAM (0 to 1, mapped to loop gain K = 0 to 50)
+% Render: tikzgif render 27_root_locus.tex --engine lualatex
 % Difficulty: advanced
-% Features demonstrated: control systems, root locus, pole movement,
-%   damping lines, frequency circles, breakaway point, pole ghost trail
+% Features demonstrated: root locus, cubic root solving, pole migration,
+%   damping lines, asymptotes, breakaway point, ghost trail
 
 \documentclass[border=8pt,tikz]{standalone}
 \usepackage{tikz}
 \usepackage{amsmath}
-\usetikzlibrary{arrows.meta, calc}
+\usepackage{luacode}
+\usetikzlibrary{arrows.meta}
 
 % USC Brand Colors
 \definecolor{garnet}{HTML}{73000A}
@@ -22,144 +24,185 @@
 \definecolor{warmgrey}{HTML}{676156}
 \definecolor{sandstorm}{HTML}{FFF2E3}
 
+\begin{luacode*}
+-- Solve s^3 + 6s^2 + 8s + K = 0 for the three roots.
+-- Uses the cubic formula (Cardano) with depressed cubic substitution.
+-- Returns three roots as (re1, im1, re2, im2, re3, im3).
+
+function cubic_roots(K)
+    -- s^3 + as^2 + bs + c = 0 with a=6, b=8, c=K
+    local a, b, c = 6, 8, K
+    -- Depressed cubic: t^3 + pt + q = 0 via s = t - a/3
+    local p = b - a*a/3          -- 8 - 12 = -4
+    local q = 2*a*a*a/27 - a*b/3 + c  -- 16/1 - 16 + K = K + 16/27 ... let me compute
+    -- q = 2*216/27 - 6*8/3 + K = 16 - 16 + K = K
+    -- Actually: 2*6^3/27 - 6*8/3 + K = 2*216/27 - 48/3 + K = 16 - 16 + K = K
+    -- So p = -4, q = K
+
+    local disc = q*q/4 + p*p*p/27  -- K^2/4 - 64/27
+
+    local shift = -a/3  -- = -2
+
+    if disc > 1e-10 then
+        -- One real root, two complex conjugate roots
+        local sqd = math.sqrt(disc)
+        local u = -q/2 + sqd
+        local v = -q/2 - sqd
+        local cbrt_u = (u >= 0) and u^(1/3) or -((-u)^(1/3))
+        local cbrt_v = (v >= 0) and v^(1/3) or -((-v)^(1/3))
+        local t1 = cbrt_u + cbrt_v
+        local re_complex = -t1/2 + shift
+        local im_complex = math.abs(cbrt_u - cbrt_v) * math.sqrt(3)/2
+        return t1 + shift, 0, re_complex, im_complex, re_complex, -im_complex
+    elseif disc < -1e-10 then
+        -- Three distinct real roots (casus irreducibilis)
+        local r = math.sqrt(-p*p*p/27)
+        local theta = math.acos(math.max(-1, math.min(1, -q/(2*r))))
+        local cbrt_r = r^(1/3)
+        local t1 = 2*cbrt_r * math.cos(theta/3)
+        local t2 = 2*cbrt_r * math.cos((theta + 2*math.pi)/3)
+        local t3 = 2*cbrt_r * math.cos((theta + 4*math.pi)/3)
+        return t1 + shift, 0, t2 + shift, 0, t3 + shift, 0
+    else
+        -- Repeated root
+        local cbrt_q = (q >= 0) and (q/2)^(1/3) or -((-q/2)^(1/3))
+        local t1 = -2*cbrt_q
+        local t2 = cbrt_q
+        return t1 + shift, 0, t2 + shift, 0, t2 + shift, 0
+    end
+end
+
+-- Generate the root locus curve as coordinate pairs for plotting.
+-- Traces from K=0 to K=Kmax, returning one branch.
+function gen_locus_branch(branch, Kmax, steps)
+    local parts = {}
+    for i = 0, steps do
+        local K = Kmax * i / steps
+        local r1, i1, r2, i2, r3, i3 = cubic_roots(K)
+        -- Sort roots: branch 1 = rightmost real part, branch 2 = middle, branch 3 = leftmost
+        local roots = {{r1, i1}, {r2, i2}, {r3, i3}}
+        table.sort(roots, function(a, b) return a[1] > b[1] end)
+        local r = roots[branch]
+        parts[#parts + 1] = string.format("(%.5f, %.5f)", r[1], r[2])
+    end
+    tex.sprint(table.concat(parts, " "))
+end
+
+-- Emit TikZ commands to draw current pole positions
+function draw_poles(K)
+    local r1, i1, r2, i2, r3, i3 = cubic_roots(K)
+    local roots = {{r1, i1}, {r2, i2}, {r3, i3}}
+    for _, r in ipairs(roots) do
+        tex.sprint(string.format(
+            "\\filldraw[garnet] (%.5f, %.5f) circle (3.5pt);",
+            r[1], r[2]
+        ))
+    end
+end
+
+-- Ghost trail: emit filled circles at previous K values
+function draw_ghost_trail(Kval)
+    local ghost_Ks = {0.5, 1, 2, 4, 8, 12, 16, 20, 25, 30, 35, 40, 45}
+    for _, gK in ipairs(ghost_Ks) do
+        if gK <= Kval - 0.5 then
+            local r1, i1, r2, i2, r3, i3 = cubic_roots(gK)
+            local roots = {{r1, i1}, {r2, i2}, {r3, i3}}
+            for _, r in ipairs(roots) do
+                local op = 0.18
+                tex.sprint(string.format(
+                    "\\fill[warmgrey, opacity=%.2f] (%.4f, %.4f) circle (1.8pt);",
+                    op, r[1], r[2]
+                ))
+            end
+        end
+    end
+end
+\end{luacode*}
+
 \begin{document}
 \begin{tikzpicture}[>=Stealth, every node/.style={font=\small}]
 
-\pgfmathsetmacro{\Kval}{\PARAM * 20}
+\pgfmathsetmacro{\Kval}{\PARAM * 50}
 
 % Axes
-\draw[->, thick] (-5.5, 0) -- (1.5, 0) node[right] {$\mathrm{Re}$};
-\draw[->, thick] (0, -4.5) -- (0, 4.5) node[above] {$\mathrm{Im}$};
+\draw[->, thick] (-6.0, 0) -- (1.5, 0) node[right] {$\mathrm{Re}$};
+\draw[->, thick] (0, -5.0) -- (0, 5.0) node[above] {$\mathrm{Im}$};
 
-% Grid
+% Grid ticks
 \foreach \x in {-5,-4,-3,-2,-1,1} {
-    \draw[warmgrey!20] (\x, -4.2) -- (\x, 4.2);
-    \node[below, font=\tiny, warmgrey] at (\x, -4.3) {$\x$};
+    \draw[warmgrey!20] (\x, -4.7) -- (\x, 4.7);
+    \node[below, font=\tiny, warmgrey] at (\x, -4.8) {$\x$};
 }
 \foreach \y in {-4,-3,-2,-1,1,2,3,4} {
-    \draw[warmgrey!20] (-5.3, \y) -- (1.3, \y);
+    \draw[warmgrey!20] (-5.7, \y) -- (1.3, \y);
+    \node[left, font=\tiny, warmgrey] at (-5.8, \y) {$\y$};
 }
 
-% Constant damping ratio lines (zeta = 0.3, 0.5, 0.7)
+% Constant damping ratio lines
 \foreach \zetaL/\zetaLab in {0.3/0.3, 0.5/0.5, 0.7/0.7} {
     \pgfmathsetmacro{\thetaL}{acos(\zetaL)}
-    \pgfmathsetmacro{\endR}{5.0}
+    \pgfmathsetmacro{\endR}{5.5}
     \pgfmathsetmacro{\endX}{-\endR * cos(\thetaL)}
     \pgfmathsetmacro{\endYp}{\endR * sin(\thetaL)}
-    \pgfmathsetmacro{\endYn}{-\endR * sin(\thetaL)}
-    \draw[dashed, horseshoe!50, very thin] (0,0) -- (\endX, \endYp);
-    \draw[dashed, horseshoe!50, very thin] (0,0) -- (\endX, \endYn);
-    \node[font=\tiny, horseshoe!60, anchor=south west] at (\endX, \endYp)
+    \draw[dashed, horseshoe!40, very thin] (0,0) -- (\endX, \endYp);
+    \draw[dashed, horseshoe!40, very thin] (0,0) -- (\endX, {-\endYp});
+    \node[font=\tiny, horseshoe!50, anchor=south west] at (\endX, \endYp)
         {$\zeta\!=\!\zetaLab$};
 }
 
-% Natural frequency semicircles (wn = 1, 2, 3, 4)
+% Natural frequency semicircles
 \foreach \wnR in {1, 2, 3, 4} {
-    \draw[dashed, warmgrey!25, very thin] (0,0) ++(180:\wnR) arc (180:90:\wnR);
-    \draw[dashed, warmgrey!25, very thin] (0,0) ++(180:\wnR) arc (180:270:\wnR);
-    \node[font=\tiny, warmgrey!40, anchor=south] at (0, \wnR) {$\wnR$};
+    \draw[dashed, warmgrey!20, very thin] (0,0) ++(180:\wnR) arc (180:90:\wnR);
+    \draw[dashed, warmgrey!20, very thin] (0,0) ++(180:\wnR) arc (180:270:\wnR);
 }
 
-% Open-loop poles (crosses)
-\draw[thick] (-1, -0.15) -- (-1, 0.15);
-\draw[thick] (-1.15, 0) -- (-0.85, 0);
-\node[below=2mm, font=\footnotesize] at (-1, 0) {$-1$};
-\draw[thick] (-3, -0.15) -- (-3, 0.15);
-\draw[thick] (-3.15, 0) -- (-2.85, 0);
-\node[below=2mm, font=\footnotesize] at (-3, 0) {$-3$};
+% Asymptotes (3 poles, 0 zeros: angles at 60, 180, 300 deg from centroid -2)
+\draw[dotted, warmgrey!35, thin] (-2, 0) -- ({-2 + 5*cos(60)}, {5*sin(60)});
+\draw[dotted, warmgrey!35, thin] (-2, 0) -- (-7, 0);
+\draw[dotted, warmgrey!35, thin] (-2, 0) -- ({-2 + 5*cos(-60)}, {5*sin(-60)});
 
-% Breakaway point at s = -2 (K = 1)
-\node[mark size=3pt, font=\tiny] at (-2, 0) {};
-\filldraw[congaree] (-2, -0.08) -- (-1.92, 0.08) -- (-2.08, 0.08) -- cycle;
-\filldraw[congaree] (-2, 0.08) -- (-1.92, -0.08) -- (-2.08, -0.08) -- cycle;
-\node[font=\tiny, congaree, anchor=north west] at (-1.9, -0.15)
-    {Breakaway};
-
-% Characteristic equation: s^2 + 4s + 3 + K = 0
-% s = -2 +/- sqrt(1 - K)
-
-% Pole ghost trail: show faded circles at previous K values
-\foreach \gK/\gop in {0.2/8, 0.5/12, 1.0/16, 2.0/20, 4.0/24, 8.0/28, 12.0/32} {
-    \pgfmathparse{\gK <= \Kval ? 1 : 0}
-    \ifnum\pgfmathresult=1
-        \pgfmathparse{\gK <= 1.0 ? 1 : 0}
-        \ifnum\pgfmathresult=1
-            \pgfmathsetmacro{\gspread}{sqrt(max(1 - \gK, 0))}
-            \fill[warmgrey, opacity=0.\gop]
-                ({-2 + \gspread}, 0) circle (2pt);
-            \fill[warmgrey, opacity=0.\gop]
-                ({-2 - \gspread}, 0) circle (2pt);
-        \else
-            \pgfmathsetmacro{\gimag}{sqrt(\gK - 1)}
-            \fill[warmgrey, opacity=0.\gop]
-                (-2, \gimag) circle (2pt);
-            \fill[warmgrey, opacity=0.\gop]
-                (-2, -\gimag) circle (2pt);
-        \fi
-    \fi
+% Open-loop poles (crosses) at 0, -2, -4
+\foreach \px in {0, -2, -4} {
+    \draw[thick] (\px, -0.15) -- (\px, 0.15);
+    \draw[thick] ({\px-0.15}, 0) -- ({\px+0.15}, 0);
 }
 
-% Real-axis segment (K=0 to K=1)
-\pgfmathparse{\Kval > 0.01 ? 1 : 0}
-\ifnum\pgfmathresult=1
-    \pgfmathparse{min(\Kval, 1.0)}
-    \pgfmathsetmacro{\Kclamp}{\pgfmathresult}
-    \pgfmathsetmacro{\realSpread}{sqrt(max(1 - \Kclamp, 0))}
-    \draw[atlantic, thick] (-1, 0) -- ({-2 + \realSpread}, 0);
-    \draw[atlantic, thick] (-3, 0) -- ({-2 - \realSpread}, 0);
-\fi
+% Breakaway point marker (between 0 and -2, at s ≈ -0.845)
+\filldraw[congaree] (-0.845, 0) circle (2pt);
+\node[font=\tiny, congaree, anchor=north] at (-0.845, -0.2) {breakaway};
 
-% Imaginary branches (K > 1)
-\pgfmathparse{\Kval > 1.01 ? 1 : 0}
-\ifnum\pgfmathresult=1
-    \pgfmathsetmacro{\imMax}{sqrt(\Kval - 1)}
-    \draw[garnet, thick, samples=60, domain=0:\imMax, variable=\y]
-        plot ({-2}, {\y});
-    \draw[garnet, thick, samples=60, domain=0:\imMax, variable=\y]
-        plot ({-2}, {-\y});
-\fi
+% Ghost trail
+\directlua{draw_ghost_trail(\Kval)}
 
-% Current pole positions
-\pgfmathparse{\Kval <= 1.0 ? 1 : 0}
-\ifnum\pgfmathresult=1
-    \pgfmathsetmacro{\poleA}{-2 + sqrt(max(1 - \Kval, 0))}
-    \pgfmathsetmacro{\poleB}{-2 - sqrt(max(1 - \Kval, 0))}
-    \filldraw[garnet] (\poleA, 0) circle (3.5pt);
-    \filldraw[garnet] (\poleB, 0) circle (3.5pt);
-\fi
-\pgfmathparse{\Kval > 1.0 ? 1 : 0}
-\ifnum\pgfmathresult=1
-    \pgfmathsetmacro{\imPart}{sqrt(\Kval - 1)}
-    \filldraw[garnet] (-2, \imPart) circle (3.5pt);
-    \filldraw[garnet] (-2, -\imPart) circle (3.5pt);
+% Root locus curves (traced from K=0 to current K)
+\draw[atlantic, thick]
+    plot[smooth, tension=0.4] coordinates {%
+        \directlua{gen_locus_branch(1, \Kval, 120)}};
+\draw[atlantic, thick]
+    plot[smooth, tension=0.4] coordinates {%
+        \directlua{gen_locus_branch(2, \Kval, 120)}};
+\draw[atlantic, thick]
+    plot[smooth, tension=0.4] coordinates {%
+        \directlua{gen_locus_branch(3, \Kval, 120)}};
 
-    % Damping line from origin to upper pole
-    \draw[dashed, rose, thin] (0, 0) -- (-2, \imPart);
+% Current pole positions (filled dots)
+\directlua{draw_poles(\Kval)}
 
-    % Compute current zeta and wn
-    \pgfmathsetmacro{\curWn}{sqrt(4 + \imPart*\imPart)}
-    \pgfmathsetmacro{\curZeta}{2.0 / \curWn}
-    \node[font=\tiny, rose, anchor=south west]
-        at (-1.8, {\imPart*0.5})
-        {$\zeta\!=\!\pgfmathprintnumber[fixed,precision=2]{\curZeta}$};
-\fi
-
-% K label
+% K label (top left)
 \node[anchor=north west, font=\normalsize, fill=white, inner sep=3pt,
       draw=warmgrey!50]
-    at (-5.3, 4.3)
+    at (-5.7, 4.8)
     {$K = \pgfmathprintnumber[fixed, precision=1]{\Kval}$};
 
-% Transfer function label
-\node[anchor=south west, font=\footnotesize, text=warmgrey!70!black]
-    at (-5.3, -4.3)
-    {$G(s) = \dfrac{1}{(s+1)(s+3)}$};
+% Transfer function (top right, prominent)
+\node[anchor=north east, font=\normalsize, fill=white, fill opacity=0.95,
+      text opacity=1, inner sep=4pt, draw=warmgrey!40]
+    at (1.3, 4.8)
+    {$G(s) = \dfrac{1}{s(s\!+\!2)(s\!+\!4)}$};
 
-% Characteristic equation
-\node[anchor=south east, font=\tiny, text=warmgrey!60!black,
-      fill=white, fill opacity=0.8, text opacity=1, inner sep=2pt]
-    at (1.3, -4.3)
-    {$s^2 + 4s + 3 + K = 0$};
+% Fix bounding box
+\pgfresetboundingbox
+\useasboundingbox (-6.3, -5.3) rectangle (1.8, 5.3);
 
 \end{tikzpicture}
 \end{document}
