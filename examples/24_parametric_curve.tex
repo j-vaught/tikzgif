@@ -103,13 +103,9 @@
     \node[font=\tiny, warmgrey, anchor=south, rotate=90] at (0, \amp+0.15) {$y(t)$};
 \end{scope}
 
-% Info box with frequency ratio
-\node[anchor=south west, font=\footnotesize, fill=white, fill opacity=0.9,
-      text opacity=1, inner sep=3pt, draw=warmgrey!40, align=left]
-    at (-\amp-0.3, -\amp-0.3)
-    {$a\!:\!b = 3\!:\!2$,\; $\delta = \pi/2$\\[1pt]
-     $t = \pgfmathprintnumber[fixed, precision=2]{\tmax}$\;
-     $|\mathbf{v}| = \pgfmathprintnumber[fixed, precision=1]{\speed}$};
+% Fix bounding box across all frames
+\pgfresetboundingbox
+\useasboundingbox (-\amp-0.8, -\amp-0.8) rectangle (\amp+2.0, \amp+2.0);
 
 \end{tikzpicture}
 \end{document}
