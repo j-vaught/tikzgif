@@ -193,7 +193,7 @@ end
 \node[font=\tiny, congaree, anchor=north] at (-0.845, -0.2) {breakaway};
 
 % Root locus curves (traced from K=0 to current K, continuity-tracked)
-\directlua{draw_locus_branches(\Kval, 150)}
+\directlua{draw_locus_branches(\Kval, 500)}
 
 % Current pole positions (filled dots)
 \directlua{draw_poles(\Kval)}
