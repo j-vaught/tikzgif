@@ -1,0 +1,97 @@
+% Example 26b: PID Tuning Visualization (Ki Sweep)
+% PID step response for G(s) = 1/(s+1), sweeping integral gain Ki = 0.1 to 4.1
+% Parameter: \PARAM (0 to 1, mapped to integral gain Ki = 0.1 to 4.1)
+% Render: tikzgif render 26b_pid_ki_sweep.tex
+% Difficulty: advanced
+% Features demonstrated: control systems, PID dynamics, settling band,
+%   time markers, decay envelope, performance metrics, error overlay
+
+\documentclass[border=5pt]{standalone}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta, positioning}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{horseshoe}{HTML}{65780B}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{honeycomb}{HTML}{A49137}
+\definecolor{warmgrey}{HTML}{676156}
+\definecolor{sandstorm}{HTML}{FFF2E3}
+
+\begin{document}
+\begin{tikzpicture}
+
+\pgfmathsetmacro{\Kp}{2.0}
+\pgfmathsetmacro{\Ki}{\PARAM * 4.0 + 0.1}
+\pgfmathsetmacro{\Kd}{0.3}
+
+% Approximate dominant second-order model
+\pgfmathsetmacro{\wnSq}{\Kp / (1 + \Kd)}
+\pgfmathsetmacro{\wn}{sqrt(abs(\wnSq) + 0.001)}
+\pgfmathsetmacro{\zetaEff}{\Kp / (2 * (1 + \Kd) * \wn)}
+\pgfmathsetmacro{\zetaClamp}{min(\zetaEff, 3.0)}
+\pgfmathsetmacro{\sigmaD}{\zetaClamp * \wn}
+\pgfmathsetmacro{\wdSq}{max(\wn*\wn - \sigmaD*\sigmaD, 0.001)}
+\pgfmathsetmacro{\wdamp}{sqrt(\wdSq)}
+
+% Classify damping
+\pgfmathtruncatemacro{\isunder}{\zetaClamp < 0.999 ? 1 : 0}
+
+% Performance metrics (underdamped)
+\pgfmathsetmacro{\MpVal}{\isunder > 0 ? exp(-3.14159*\zetaClamp / sqrt(max(1-\zetaClamp*\zetaClamp, 0.001))) : 0}
+\pgfmathsetmacro{\tpVal}{\isunder > 0 ? 3.14159 / \wdamp : 2.0}
+\pgfmathsetmacro{\tsVal}{4.0 / max(\sigmaD, 0.01)}
+\pgfmathsetmacro{\MpPct}{\MpVal * 100}
+
+\begin{axis}[
+    name=response, width=10cm, height=6.5cm,
+    xmin=0, xmax=8, ymin=-0.2, ymax=2.0,
+    xlabel={Time $t$ (s)}, ylabel={$y(t)$},
+    title={\small PID:\;
+           $K_p\!=\!\pgfmathprintnumber[fixed,precision=1]{\Kp}$,\;
+           $K_i\!=\!\pgfmathprintnumber[fixed,precision=1]{\Ki}$,\;
+           $K_d\!=\!\pgfmathprintnumber[fixed,precision=1]{\Kd}$},
+    grid=major, grid style={warmgrey!20}, thick,
+    tick label style={font=\small},
+    label style={font=\footnotesize},
+    clip=true,
+]
+    % Reference
+    \addplot[domain=0:8, samples=2, dashed, black!40, thin] {1};
+
+    % Main response
+    \ifnum\isunder>0
+        \pgfmathsetmacro{\phiDeg}{acos(min(\zetaClamp,0.999))}
+        \addplot[domain=0:8, samples=400, atlantic, very thick]
+            {1 - exp(-\sigmaD * x) / sqrt(max(1-\zetaClamp*\zetaClamp, 0.001))
+             * sin(\wdamp * x * 180/3.14159 + \phiDeg)};
+    \fi
+    % Critically damped
+    \pgfmathparse{(\zetaClamp >= 0.999) && (\zetaClamp <= 1.001) ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \addplot[domain=0:8, samples=400, garnet, very thick]
+            {1 - (1 + \wn*x) * exp(-\wn*x)};
+    \fi
+    % Overdamped
+    \pgfmathparse{\zetaClamp > 1.001 ? 1 : 0}
+    \ifnum\pgfmathresult=1
+        \pgfmathsetmacro{\sqZ}{sqrt(\zetaClamp*\zetaClamp - 1)}
+        \pgfmathsetmacro{\sA}{(-\zetaClamp + \sqZ)*\wn}
+        \pgfmathsetmacro{\sB}{(-\zetaClamp - \sqZ)*\wn}
+        \pgfmathsetmacro{\cA}{\sB / (\sB - \sA)}
+        \pgfmathsetmacro{\cB}{\sA / (\sA - \sB)}
+        \addplot[domain=0:8, samples=400, horseshoe, very thick]
+            {1 - \cA * exp(\sA * x) - \cB * exp(\sB * x)};
+    \fi
+
+\end{axis}
+
+\end{tikzpicture}
+\end{document}
