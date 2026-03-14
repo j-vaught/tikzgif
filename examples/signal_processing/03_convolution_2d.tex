@@ -154,7 +154,7 @@ function draw_frame(param)
     ))
 
     -- === KERNEL MATRICES + OUTPUT GRIDS (below input) ===
-    local gap_y = 1.6
+    local gap_y = 0.9
     local section_gap = 1.1
     local base_y = iy0 - 7 * CS - gap_y
 
@@ -203,7 +203,7 @@ function draw_frame(param)
         end
 
         -- Output label
-        local out_label_y = km_y - 3 * KCS - 0.35
+        local out_label_y = km_y - 3 * KCS - 0.55
         tex.sprint(string.format(
             "\\node[black!50, font=\\scriptsize, anchor=south west] at (%.4f, %.4f) {Output $(5 \\times 5)$};",
             ox0, out_label_y + 0.12
@@ -269,7 +269,7 @@ end
 
 \begin{document}
 \begin{tikzpicture}
-  \useasboundingbox (-0.3, -10.8) rectangle (8.5, 0.9);
+  \useasboundingbox (-0.3, -10.0) rectangle (9.5, 0.9);
   \directlua{draw_frame(\PARAM)}
 \end{tikzpicture}
 \end{document}
