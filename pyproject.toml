@@ -49,12 +49,6 @@ dependencies = [
 
 # --- Optional dependency groups -----------------------------------------------
 [project.optional-dependencies]
-pdf2svg = [
-    "cairosvg>=2.7.0",
-]
-watch = [
-    "watchdog>=3.0.0",
-]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
@@ -69,7 +63,7 @@ docs = [
     "sphinx-click>=5.0.0",
 ]
 all = [
-    "tikzgif[pdf2svg,watch,dev,docs]",
+    "tikzgif[dev,docs]",
 ]
 
 # --- URLs ---------------------------------------------------------------------
@@ -142,7 +136,6 @@ packages = ["tikzgif"]
 
 [[tool.mypy.overrides]]
 module = [
-    "cairosvg.*",
     "PIL.*",
     "tqdm.*",
 ]
