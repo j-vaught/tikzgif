@@ -1,7 +1,16 @@
 tikzgif TODO
 ============
 
-Last updated: 2026-03-13
+Last updated: 2026-03-15
+
+
+vvv   NEED TO ADD ASAP!!!!   vvv
+
+parallelize the rasterization process
+Parallelize the color searching process. 
+Parallelize the pdf -> png process(I guess rasterization)
+NEED to add a more detailed and robust --help so AI agents dont get fucked up. 
+
 
 
 ================================================================================
