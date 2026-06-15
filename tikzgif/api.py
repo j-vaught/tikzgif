@@ -137,7 +137,7 @@ def _rasterize_frame(
     )
 
 
-def render_job(job: RenderJobConfig) -> RenderResult:
+def render_job(job: RenderJobConfig, *, show_progress: bool = True) -> RenderResult:
     """Render a job described by explicit stage-level config objects.
 
     Executes the full pipeline: template parsing, parallel LaTeX
@@ -145,6 +145,10 @@ def render_job(job: RenderJobConfig) -> RenderResult:
 
     Args:
         job: Fully specified render job configuration.
+        show_progress: Whether to print the per-frame rasterization
+            progress counter to stderr. Set ``False`` to silence it
+            (e.g. for machine-readable CLI output). Defaults to ``True``
+            so library behavior is unchanged.
 
     Returns:
         A ``RenderResult`` with output path and frame statistics.
@@ -246,13 +250,14 @@ def render_job(job: RenderJobConfig) -> RenderResult:
             for fut in as_completed(futures):
                 outcome = fut.result()
                 completed += 1
-                pct = (completed / raster_total) * 100 if raster_total else 100
-                print(
-                    f"\rRasterizing: {completed}/{raster_total} ({pct:.0f}%)",
-                    end="",
-                    flush=True,
-                    file=sys.stderr,
-                )
+                if show_progress:
+                    pct = (completed / raster_total) * 100 if raster_total else 100
+                    print(
+                        f"\rRasterizing: {completed}/{raster_total} ({pct:.0f}%)",
+                        end="",
+                        flush=True,
+                        file=sys.stderr,
+                    )
 
                 result = outcome.result
                 if outcome.error_message is not None:
@@ -270,7 +275,8 @@ def render_job(job: RenderJobConfig) -> RenderResult:
                     raster_failures.append((outcome.index, outcome.error_message))
                 else:
                     result.png_path = outcome.png_path
-        print(file=sys.stderr)
+        if show_progress:
+            print(file=sys.stderr)
 
         if job.test_mode:
             stem = tex_path.stem
@@ -359,6 +365,7 @@ def render(
     pause_first_ms: int | None = None,
     pause_last_ms: int | None = None,
     test_mode: bool = False,
+    show_progress: bool = True,
 ) -> RenderResult:
     """Render a parameterized ``.tex`` file to GIF or MP4.
 
@@ -405,6 +412,9 @@ def render(
         frame_delay_default_ms: Default inter-frame delay in ms.
         pause_first_ms: Pause duration on first frame in ms.
         pause_last_ms: Pause duration on last frame in ms.
+        test_mode: Render only the first and last frames as preview PNGs.
+        show_progress: Whether to print the per-frame rasterization
+            progress counter to stderr. Defaults to ``True``.
 
     Returns:
         A ``RenderResult`` with output path and frame statistics.
@@ -449,4 +459,4 @@ def render(
         pause_last_ms=pause_last_ms,
         test_mode=test_mode,
     )
-    return render_job(job)
+    return render_job(job, show_progress=show_progress)
