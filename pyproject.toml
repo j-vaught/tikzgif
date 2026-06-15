@@ -13,7 +13,7 @@ build-backend = "hatchling.build"
 # ---------------------------------------------------------------------------
 [project]
 name = "tikzgif"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Convert parameterized TikZ/LaTeX files into animated GIFs."
 readme = "README.md"
 license = { text = "MIT" }
@@ -79,6 +79,9 @@ tikzgif = "tikzgif.cli.main:cli_entry"
 # ---------------------------------------------------------------------------
 # Hatchling build configuration (src layout)
 # ---------------------------------------------------------------------------
+[tool.hatch.version]
+path = "tikzgif/__init__.py"
+
 [tool.hatch.build.targets.wheel]
 packages = ["tikzgif"]
 
