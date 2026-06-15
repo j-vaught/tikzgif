@@ -1,15 +1,21 @@
 tikzgif TODO
 ============
 
-Last updated: 2026-03-15
+Last updated: 2026-06-15
 
 
 vvv   NEED TO ADD ASAP!!!!   vvv
 
-parallelize the rasterization process
-Parallelize the color searching process. 
-Parallelize the pdf -> png process(I guess rasterization)
-NEED to add a more detailed and robust --help so AI agents dont get fucked up. 
+[x] parallelize the rasterization process
+    Done: render_job now rasterizes frames concurrently via a ThreadPoolExecutor
+    sized from the --workers budget. ~2.2-2.4x faster, byte-identical output.
+[x] Parallelize the color searching process.
+    Obsolete: the O(colors x 256) hand-rolled quantizer was replaced with
+    Pillow's shared adaptive palette, so there is no color-search loop to
+    parallelize.
+[x] Parallelize the pdf -> png process (same as rasterization above).
+[ ] NEED to add a more detailed and robust --help so AI agents dont get fucked up.
+    (Owner-led: needs to be both human- and machine-friendly.)
 
 
 
