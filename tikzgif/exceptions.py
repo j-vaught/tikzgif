@@ -79,6 +79,35 @@ class ConverterNotFoundError(TikzGifError):
         self.install_hint = install_hint
 
 
+class InputError(TikzGifError):
+    """Raised when a user-supplied argument or input value is invalid.
+
+    Covers bad option strings, out-of-range numeric arguments, missing
+    input files, and other caller-facing mistakes that are not a LaTeX,
+    template, or system-dependency problem.
+    """
+
+
+class DependencyError(TikzGifError):
+    """Raised when a required external tool is missing from ``$PATH``.
+
+    Attributes:
+        tool: Name of the missing executable (e.g. ``"ffmpeg"``).
+        install_hint: Platform-specific installation instructions.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        tool: str = "",
+        install_hint: str = "",
+    ) -> None:
+        super().__init__(message)
+        self.tool = tool
+        self.install_hint = install_hint
+
+
 class TemplateError(TikzGifError):
     """Raised when template parsing or parameter substitution fails."""
 

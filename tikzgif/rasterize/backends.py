@@ -22,7 +22,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from tikzgif.exceptions import ConverterError, ConverterNotFoundError
+from tikzgif.exceptions import ConverterError, ConverterNotFoundError, InputError
 
 logger = logging.getLogger(__name__)
 
@@ -659,12 +659,12 @@ def get_backend_by_name(name: str) -> ConversionBackend:
         An initialized ``ConversionBackend`` instance.
 
     Raises:
-        ValueError: If *name* is not a recognized backend.
+        InputError: If *name* is not a recognized backend.
         ConverterNotFoundError: If the backend is not available on this system.
     """
     cls = _BACKEND_BY_NAME.get(name)
     if cls is None:
-        raise ValueError(
+        raise InputError(
             f"Unknown backend '{name}'. Available: {list(_BACKEND_BY_NAME.keys())}"
         )
     if not cls.is_available():

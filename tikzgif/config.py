@@ -18,7 +18,7 @@ from .assemble.core import (
 from .assemble.core import (
     OutputConfig as AssemblyOutputConfig,
 )
-from .exceptions import TemplateError
+from .exceptions import InputError, TemplateError
 from .rasterize.backends import ColorSpace, RenderConfig
 from .types import BoundingBox, CompilationConfig, ErrorPolicy, LatexEngine
 
@@ -217,10 +217,10 @@ class RenderJobConfig:
             List of linearly spaced values from *start* to *end*.
 
         Raises:
-            ValueError: If *frames* is less than 1.
+            InputError: If *frames* is less than 1.
         """
         if self.frames <= 0:
-            raise ValueError("frames must be >= 1")
+            raise InputError("frames must be >= 1")
         if self.frames == 1:
             return [self.start]
         return [
@@ -236,7 +236,7 @@ def _parse_color_space(color_space: str) -> ColorSpace:
         color_space: One of ``"rgb"``, ``"rgba"``, ``"grayscale"``.
 
     Raises:
-        ValueError: If the string is not recognized.
+        InputError: If the string is not recognized.
     """
     lowered = color_space.strip().lower()
     if lowered == "rgb":
@@ -245,7 +245,7 @@ def _parse_color_space(color_space: str) -> ColorSpace:
         return ColorSpace.RGBA
     if lowered in {"gray", "grayscale", "greyscale"}:
         return ColorSpace.GRAYSCALE
-    raise ValueError(
+    raise InputError(
         f"Unsupported color_space '{color_space}'. Use one of: rgb, rgba, grayscale."
     )
 
@@ -363,7 +363,7 @@ def legacy_args_to_job_config(
         A fully constructed ``RenderJobConfig``.
 
     Raises:
-        ValueError: If any string argument is not a recognized option.
+        InputError: If any string argument is not a recognized option.
         TemplateError: If *param* is empty, blank, or not a valid LaTeX
             command name (ASCII letters only).
     """
@@ -390,13 +390,13 @@ def legacy_args_to_job_config(
     _validate_param(param)
 
     if format not in format_map:
-        raise ValueError(f"Unsupported format '{format}'. Use 'gif' or 'mp4'.")
+        raise InputError(f"Unsupported format '{format}'. Use 'gif' or 'mp4'.")
     if quality not in quality_map:
-        raise ValueError(
+        raise InputError(
             f"Unsupported quality '{quality}'. Use one of: {', '.join(quality_map)}."
         )
     if error_policy not in policy_map:
-        raise ValueError(
+        raise InputError(
             "Unsupported error_policy "
             f"'{error_policy}'. Use one of: {', '.join(policy_map)}."
         )

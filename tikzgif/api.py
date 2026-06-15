@@ -14,7 +14,7 @@ from .assemble import AnimationAssembler
 from .compile import compile_single_pass
 from .compile.pipeline import _determine_worker_count
 from .config import RenderJobConfig, legacy_args_to_job_config
-from .exceptions import RenderError
+from .exceptions import ConverterNotFoundError, InputError, RenderError
 from .rasterize import get_backend_by_name
 
 if TYPE_CHECKING:
@@ -52,12 +52,17 @@ class _RasterOutcome:
         result: The ``FrameResult`` that was rasterized.
         png_path: Path to the written PNG, or ``None`` if none was produced.
         error_message: Failure message, or ``None`` on success.
+        exception: The original exception object caught in the worker, or
+            ``None`` on success. Preserves typed attributes (e.g.
+            ``ConverterNotFoundError.install_hint``) that the stringified
+            ``error_message`` would otherwise lose.
     """
 
     index: int
     result: FrameResult
     png_path: Path | None
     error_message: str | None
+    exception: Exception | None = None
 
 
 def _rasterize_frame(
@@ -103,6 +108,7 @@ def _rasterize_frame(
             result=result,
             png_path=None,
             error_message=f"Rasterization failed: {exc}",
+            exception=exc,
         )
 
     png_path: Path | None = None
@@ -133,7 +139,7 @@ def render_job(job: RenderJobConfig) -> RenderResult:
         A ``RenderResult`` with output path and frame statistics.
 
     Raises:
-        FileNotFoundError: If the ``.tex`` file does not exist.
+        InputError: If the ``.tex`` file does not exist.
         RenderError: If all frames fail to compile.
         tikzgif.exceptions.CompilationError: If compilation fails
             under ``ABORT`` error policy.
@@ -143,7 +149,7 @@ def render_job(job: RenderJobConfig) -> RenderResult:
     """
     tex_path = Path(job.tex_file)
     if not tex_path.is_file():
-        raise FileNotFoundError(f"TeX file not found: {tex_path}")
+        raise InputError(f"TeX file not found: {tex_path}")
 
     source = tex_path.read_text(encoding="utf-8")
     param_values = job.param_values()
@@ -234,6 +240,13 @@ def render_job(job: RenderJobConfig) -> RenderResult:
 
                 result = outcome.result
                 if outcome.error_message is not None:
+                    # A missing converter is environmental: every frame would
+                    # fail identically. Re-raise from the main thread so the
+                    # typed error (with its install_hint) reaches the CLI and
+                    # maps to the missing-dependency exit code. The enclosing
+                    # ThreadPoolExecutor context manager shuts the pool down.
+                    if isinstance(outcome.exception, ConverterNotFoundError):
+                        raise outcome.exception
                     result.success = False
                     result.error_message = outcome.error_message
                     successful.remove(result)

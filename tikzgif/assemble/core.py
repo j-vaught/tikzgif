@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from PIL import Image
 
-from ..exceptions import AssemblyError
+from ..exceptions import AssemblyError, DependencyError
 
 if TYPE_CHECKING:
     from ..types import FrameResult
@@ -375,13 +375,18 @@ class Mp4Assembler:
             Path to the written MP4 file.
 
         Raises:
-            AssemblyError: If ``ffmpeg`` is missing, no frames are
-                available, or encoding fails.
+            DependencyError: If ``ffmpeg`` is missing from ``$PATH``.
+            AssemblyError: If no frames are available or encoding fails.
         """
         if shutil.which("ffmpeg") is None:
-            raise AssemblyError(
+            raise DependencyError(
                 "ffmpeg not found on PATH. Install ffmpeg to create MP4 output.",
-                output_format="mp4",
+                tool="ffmpeg",
+                install_hint=(
+                    "macOS: brew install ffmpeg | "
+                    "Debian/Ubuntu: sudo apt install ffmpeg | "
+                    "Windows: choco install ffmpeg"
+                ),
             )
 
         images, delays = _load_images(frame_results, self.config)
