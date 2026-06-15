@@ -1,8 +1,9 @@
 tikzgif TODO
 ============
 
-Last updated: 2026-06-15 (CLI overhaul: --help, --help-json, --json, exit codes,
-stdout/stderr separation)
+Last updated: 2026-06-15 (CLI usability: --validate pre-flight, inspect cache,
+short flags, missing-package install hints; earlier: --help, --help-json,
+--json, exit codes, stdout/stderr separation)
 
 
 vvv   NEED TO ADD ASAP!!!!   vvv
@@ -51,20 +52,41 @@ ROBUSTNESS
     WHY: Dead dependency declarations confuse contributors and create false
     expectations about what the tool can do.
 
-[ ] Actionable Error Messages
-    PARTIAL: errors now carry stable remediation lines (install:/engine:/frame:/
+[x] Actionable Error Messages
+    DONE: a missing LaTeX package or input file in the compile log is now
+    parsed into an install: line (and a JSON install_hint) naming the package
+    and the exact command, e.g. "tlmgr install pgfplots". This works for both
+    the abort-policy CompilationError and the all-frames-failed RenderError.
+    These join the earlier stable remediation lines (install:/engine:/frame:/
     log:), the compile log tail, the failing frame number, and file paths.
-    REMAINING: parse the missing LaTeX package name from the log and suggest the
-    exact install command (e.g., tlmgr install pgfplots).
-    Ensure all error messages include enough context for the user (or an AI agent)
-    to fix the problem without reading source code. LaTeX compilation errors
-    should identify the missing package name and suggest the install command
-    (e.g., tlmgr install pgfplots). Rasterization errors should name the missing
-    backend and suggest platform-specific install commands. Include the failing
-    frame number, source line, and relevant file paths.
+    Rasterization errors already name the missing backend and suggest
+    platform-specific install commands.
     WHY: Vague error messages ("compilation failed") force users into manual
     debugging. Specific messages enable self-service resolution and allow AI
     agents to self-heal in automated workflows.
+
+[x] Pre-flight Validation (--validate)
+    DONE: "tikzgif render FILE --validate" runs the cheap checks a real render
+    does first (numbers in range, input file readable, options valid, template
+    parses, a LaTeX engine is installed, the backend is available, the output
+    directory is writable) and prints one PASS/FAIL line per check, then exits
+    without rendering. --json emits a structured report; the exit code is the
+    documented code for the first failing check. Exposed in the library as
+    tikzgif.validate_render returning a ValidationReport.
+    WHY: Lets users (and agents) confirm the environment and inputs are correct
+    before paying for a full render.
+
+[x] Cache Inspection (inspect cache)
+    DONE: "tikzgif inspect cache" reports the cache location, frame count, and
+    size; --clear empties it; --json emits a machine-readable object. A pure
+    inspection never creates the cache directory.
+    WHY: Users need to see where the cache lives, how big it is, and clear it
+    without hunting for the platform cache path.
+
+[x] Short Flags for Common Render Options
+    DONE: -p/--param, -n/--frames, -e/--engine, -f/--format, -t/--test added
+    alongside the existing -o/--output and -q/--quiet.
+    WHY: Lowers typing friction for the options beginners reach for most.
 
 [ ] Deterministic Output
     Ensure identical input always produces byte-identical output when using the
