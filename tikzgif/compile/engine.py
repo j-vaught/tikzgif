@@ -248,6 +248,62 @@ def parse_log(log_path: Path) -> list[LatexError]:
     return errors
 
 
+_RE_REWRITTEN_MISSING_PKG = re.compile(
+    r"Missing package:\s*(?P<pkg>.+?)\.(?:\s|$)",
+)
+
+
+def missing_package_hint(log: str | None) -> str | None:
+    """Turn a LaTeX compile log into a one-line, copy-pasteable install hint.
+
+    Looks for the three signatures of a missing package or input file: the
+    rewritten ``Missing package: <name>.`` message produced by
+    :func:`parse_log`, the raw ``! LaTeX Error: File `<name>' not found``
+    line, and the ``! I can't find file `<name>'`` line.  When a name is
+    found it is turned into a plain-English instruction naming the package
+    and the exact command to install it.
+
+    Args:
+        log: Raw LaTeX log text, an already-parsed error message, or
+            ``None``.
+
+    Returns:
+        A short remediation string such as ``"The LaTeX package 'pgfplots'
+        is missing. Install it with: tlmgr install pgfplots ..."``, or
+        ``None`` when the log shows no missing-file signature (the failure
+        is something else and no install hint applies).
+    """
+    if not log:
+        return None
+
+    name: str | None = None
+    for pattern, group in (
+        (_RE_REWRITTEN_MISSING_PKG, "pkg"),
+        (_RE_MISSING_PKG, "pkg"),
+        (_RE_MISSING_FILE, "file"),
+    ):
+        match = pattern.search(log)
+        if match:
+            name = match.group(group).strip()
+            break
+
+    if not name:
+        return None
+
+    if name.endswith(".sty"):
+        package = name[: -len(".sty")]
+        return (
+            f"The LaTeX package '{package}' is missing. Install it with: "
+            f"tlmgr install {package}  (or add it through your TeX "
+            f"distribution's package manager)."
+        )
+    return (
+        f"The LaTeX file '{name}' is missing. Install the package that "
+        f"provides it with your TeX distribution's package manager "
+        f"(for example: tlmgr install <package-name>)."
+    )
+
+
 def format_errors(errors: list[LatexError], verbose: bool = False) -> str:
     """Format a list of ``LatexError`` objects into a readable string.
 
