@@ -5,13 +5,16 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Sequence
+from typing import TYPE_CHECKING
 
 from tikzgif.exceptions import TemplateError
 from tikzgif.types import BoundingBox, FrameSpec
 
-DEFAULT_PARAM_TOKEN = r"\\PARAM"
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
+
+DEFAULT_PARAM_TOKEN = r"\PARAM"
 
 _RE_DOCUMENTCLASS = re.compile(
     r"\\documentclass"
@@ -67,7 +70,9 @@ class ParsedTemplate:
     param_token: str
 
 
-def parse_template(source: str, param_token: str = DEFAULT_PARAM_TOKEN) -> ParsedTemplate:
+def parse_template(
+    source: str, param_token: str = DEFAULT_PARAM_TOKEN
+) -> ParsedTemplate:
     """Parse template source and validate required LaTeX structure.
 
     Args:
@@ -131,7 +136,9 @@ def parse_template(source: str, param_token: str = DEFAULT_PARAM_TOKEN) -> Parse
     )
 
 
-def parse_template_from_file(path: Path, param_token: str = DEFAULT_PARAM_TOKEN) -> ParsedTemplate:
+def parse_template_from_file(
+    path: Path, param_token: str = DEFAULT_PARAM_TOKEN
+) -> ParsedTemplate:
     """Read and parse a template from disk.
 
     Args:
@@ -163,7 +170,7 @@ def _build_standalone_preamble(parsed: ParsedTemplate, extra_preamble: str = "")
     """
     lines: list[str] = []
     user_opts = [opt for opt in parsed.class_options if opt not in ("tikz",)]
-    opts = ["tikz"] + user_opts
+    opts = ["tikz", *user_opts]
     if not any(opt.startswith("border") for opt in opts):
         opts.append("border=2pt")
     lines.append(f"\\documentclass[{', '.join(opts)}]{{standalone}}\n")
@@ -200,7 +207,9 @@ def _build_frame_body(
     body = body.replace(parsed.param_token, f"{param_value:g}")
 
     if enforced_bbox is not None and not parsed.has_bounding_box:
-        bbox_reset = "  \\pgfresetboundingbox\n" + "  " + enforced_bbox.to_tikz_clip() + "\n"
+        bbox_reset = (
+            "  \\pgfresetboundingbox\n" + "  " + enforced_bbox.to_tikz_clip() + "\n"
+        )
         end_tikz = re.compile(r"(\\end\s*\{tikzpicture\})")
         match = end_tikz.search(body)
         if match:
