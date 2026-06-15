@@ -7,7 +7,14 @@ per-frame documents, compiling them in parallel, and assembling output.
 
 __version__ = "0.1.0"
 
-from tikzgif.api import RenderResult, render, render_job
+from tikzgif.api import (
+    RenderResult,
+    ValidationCheck,
+    ValidationReport,
+    render,
+    render_job,
+    validate_render,
+)
 from tikzgif.config import (
     CompileConfig,
     OutputConfig,
@@ -59,6 +66,9 @@ __all__ = [
     "TemplateConfig",
     "TemplateError",
     "TikzGifError",
+    "ValidationCheck",
+    "ValidationReport",
     "render",
     "render_job",
+    "validate_render",
 ]
