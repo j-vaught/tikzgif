@@ -1,7 +1,8 @@
 """Pipeline configuration objects for tikzgif.
 
-Dataclasses providing explicit stage-level configuration with
-backward-compatible adapters for the legacy ``render()`` API.
+Dataclasses providing explicit stage-level configuration along with
+adapters that translate the high-level ``render()`` keyword arguments
+into stage configs.
 """
 
 from __future__ import annotations
@@ -9,13 +10,16 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .assembly import (
+from .assemble.core import (
     FrameDelay,
-    OutputConfig as AssemblyOutputConfig,
     OutputFormat,
     QualityPreset,
 )
-from .backends import ColorSpace, RenderConfig
+from .assemble.core import (
+    OutputConfig as AssemblyOutputConfig,
+)
+from .exceptions import TemplateError
+from .rasterize.backends import ColorSpace, RenderConfig
 from .types import BoundingBox, CompilationConfig, ErrorPolicy, LatexEngine
 
 
@@ -241,9 +245,35 @@ def _parse_color_space(color_space: str) -> ColorSpace:
     if lowered in {"gray", "grayscale", "greyscale"}:
         return ColorSpace.GRAYSCALE
     raise ValueError(
-        "Unsupported color_space "
-        f"'{color_space}'. Use one of: rgb, rgba, grayscale."
+        f"Unsupported color_space '{color_space}'. Use one of: rgb, rgba, grayscale."
     )
+
+
+def _validate_param(param: str) -> None:
+    """Validate a parameter token name before building its LaTeX command.
+
+    The name is turned into a substitution token by prefixing a backslash
+    (e.g. ``"PARAM"`` -> ``"\\PARAM"``). An empty, blank, or non-alphabetic
+    name produces a token that corrupts the LaTeX document during
+    substitution, so it is rejected here.
+
+    Args:
+        param: Parameter token name without its leading backslash.
+
+    Raises:
+        TemplateError: If *param* is empty, blank, or contains characters
+            other than ASCII letters.
+    """
+    if not param or not param.strip():
+        raise TemplateError(
+            f"Invalid param {param!r}: the parameter name must be a non-empty "
+            "LaTeX command name (ASCII letters only, e.g. 'PARAM')."
+        )
+    if not param.isascii() or not param.isalpha():
+        raise TemplateError(
+            f"Invalid param {param!r}: a LaTeX command name may contain only "
+            "ASCII letters (a-z, A-Z), e.g. 'PARAM'."
+        )
 
 
 def legacy_args_to_job_config(
@@ -332,6 +362,8 @@ def legacy_args_to_job_config(
 
     Raises:
         ValueError: If any string argument is not a recognized option.
+        TemplateError: If *param* is empty, blank, or not a valid LaTeX
+            command name (ASCII letters only).
     """
     format_map = {
         "gif": OutputFormat.GIF,
@@ -352,6 +384,8 @@ def legacy_args_to_job_config(
         "skip": ErrorPolicy.SKIP,
         "retry": ErrorPolicy.RETRY,
     }
+
+    _validate_param(param)
 
     if format not in format_map:
         raise ValueError(f"Unsupported format '{format}'. Use 'gif' or 'mp4'.")
