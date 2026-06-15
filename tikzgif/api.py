@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+import os
 import shutil
 import sys
 import tempfile
@@ -12,11 +14,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .assemble import AnimationAssembler
-from .compile import compile_single_pass
+from .compile import compile_single_pass, select_engine
 from .compile.pipeline import _determine_worker_count
 from .config import RenderJobConfig, legacy_args_to_job_config
-from .exceptions import ConverterNotFoundError, InputError, RenderError
+from .exceptions import ConverterNotFoundError, InputError, RenderError, TikzGifError
 from .rasterize import get_backend_by_name
+from .template import parse_template_from_file
 
 if TYPE_CHECKING:
     from .rasterize.backends import ConversionBackend, RenderConfig
@@ -52,6 +55,41 @@ class RenderResult:
     duration_seconds: float = 0.0
     engine: str = "auto"
     backend: str = "pdftoppm"
+
+
+@dataclass
+class ValidationCheck:
+    """Outcome of a single pre-flight check performed by :func:`validate_render`.
+
+    Attributes:
+        name: Short, human-friendly name of the thing being checked
+            (e.g. ``"input file"`` or ``"LaTeX engine"``).
+        passed: Whether the check succeeded.
+        detail: A one-line description of what was found.
+        hint: When the check failed, a plain-English suggestion for how to
+            fix it; empty when the check passed.
+    """
+
+    name: str
+    passed: bool
+    detail: str = ""
+    hint: str = ""
+
+
+@dataclass
+class ValidationReport:
+    """Aggregate result of a :func:`validate_render` pre-flight run.
+
+    Attributes:
+        ok: ``True`` only when every check passed.
+        checks: All checks performed, in the order they were run.
+        first_error: The exception behind the first failed check, used to
+            choose a process exit code; ``None`` when everything passed.
+    """
+
+    ok: bool
+    checks: list[ValidationCheck] = field(default_factory=list)
+    first_error: Exception | None = None
 
 
 @dataclass
@@ -460,3 +498,283 @@ def render(
         test_mode=test_mode,
     )
     return render_job(job, show_progress=show_progress)
+
+
+def validate_render(
+    tex_file: str | Path,
+    *,
+    param: str = "PARAM",
+    start: float = 0.0,
+    end: float = 1.0,
+    frames: int = 90,
+    fps: int = 30,
+    format: str = "gif",
+    quality: str = "presentation",
+    engine: str | None = None,
+    workers: int = 0,
+    timeout: float = 30.0,
+    dpi: int = 300,
+    error_policy: str = "retry",
+    output: str | Path | None = None,
+    bbox: tuple[float, float, float, float] | None = None,
+    shell_escape: bool = False,
+    latex_args: list[str] | tuple[str, ...] | None = None,
+    cache_dir: str | Path | None = None,
+    no_cache: bool = False,
+    backend: str = "pdftoppm",
+    color_space: str = "rgba",
+    background: str | None = "white",
+    antialias: bool = False,
+    antialias_factor: int = 2,
+    raster_threads: int = 1,
+) -> ValidationReport:
+    """Check that a render would succeed, without compiling anything.
+
+    Runs the cheap, fast pre-flight steps a real render would do first.
+    The numbers are in range, the input file exists and is readable, the
+    options are recognized, the template parses, a LaTeX engine is
+    installed, the rasterization backend is available, and the output
+    directory can be written to. Every check is attempted so the report
+    lists all problems at once rather than stopping at the first.
+
+    Args:
+        tex_file: Path to the ``.tex`` template file.
+        param: Parameter token name (without the leading backslash).
+        start: Starting parameter value.
+        end: Ending parameter value.
+        frames: Number of animation frames to generate.
+        fps: Frames per second in the output.
+        format: Output format (``"gif"`` or ``"mp4"``).
+        quality: Quality preset (``"web"``, ``"presentation"``, ``"print"``).
+        engine: LaTeX engine name, or ``None`` for auto-detection.
+        workers: Number of parallel workers (only carried into the job).
+        timeout: Timeout per frame in seconds.
+        dpi: Target DPI for rasterization.
+        error_policy: How to handle frame failures.
+        output: Explicit output file path, or ``None`` for auto.
+        bbox: Fixed bounding box ``(xmin, ymin, xmax, ymax)``, or ``None``.
+        shell_escape: Whether ``--shell-escape`` would be passed to LaTeX.
+        latex_args: Additional arguments forwarded to the LaTeX engine.
+        cache_dir: Custom cache directory path, or ``None`` for default.
+        no_cache: Whether the cache would be bypassed.
+        backend: Rasterization backend name.
+        color_space: Target color space.
+        background: Background color name, or ``None`` for transparency.
+        antialias: Whether anti-aliasing would be enabled.
+        antialias_factor: Supersampling multiplier.
+        raster_threads: Number of rasterization threads.
+
+    Returns:
+        A ``ValidationReport`` whose ``ok`` flag is ``True`` only when every
+        check passed. No files are written and no ``RenderResult`` is
+        produced.
+    """
+    checks: list[ValidationCheck] = []
+    first_error: Exception | None = None
+
+    def record(exc: Exception) -> None:
+        nonlocal first_error
+        if first_error is None:
+            first_error = exc
+
+    # 1. Numeric arguments are in range.
+    numeric_problems: list[str] = []
+    if frames < 1:
+        numeric_problems.append("frames must be >= 1")
+    if fps < 1:
+        numeric_problems.append("fps must be >= 1")
+    if dpi < 1:
+        numeric_problems.append("dpi must be >= 1")
+    if timeout <= 0:
+        numeric_problems.append("timeout must be greater than 0")
+    if not math.isfinite(start) or not math.isfinite(end):
+        numeric_problems.append("start and end must be finite numbers")
+    if numeric_problems:
+        joined = "; ".join(numeric_problems)
+        checks.append(
+            ValidationCheck(
+                "numbers", False, joined, "Pass values in the documented range."
+            )
+        )
+        record(InputError(joined))
+    else:
+        checks.append(
+            ValidationCheck(
+                "numbers",
+                True,
+                f"frames={frames}, fps={fps}, dpi={dpi}, timeout={timeout:g}s",
+            )
+        )
+
+    # 2. The input file exists and is readable.
+    tex_path = Path(tex_file)
+    readable = False
+    if not tex_path.is_file():
+        checks.append(
+            ValidationCheck(
+                "input file",
+                False,
+                f"not found: {tex_path}",
+                "Check the path and spelling of the .tex file.",
+            )
+        )
+        record(InputError(f"TeX file not found: {tex_path}"))
+    elif not os.access(tex_path, os.R_OK):
+        checks.append(
+            ValidationCheck(
+                "input file",
+                False,
+                f"not readable: {tex_path}",
+                "Fix the file permissions so the .tex file can be read.",
+            )
+        )
+        record(InputError(f"TeX file is not readable: {tex_path}"))
+    else:
+        readable = True
+        checks.append(ValidationCheck("input file", True, str(tex_path)))
+
+    # 3. Options translate into a valid job configuration.
+    job: RenderJobConfig | None = None
+    try:
+        job = legacy_args_to_job_config(
+            tex_file,
+            param=param,
+            start=start,
+            end=end,
+            frames=frames,
+            fps=fps,
+            format=format,
+            quality=quality,
+            engine=engine,
+            workers=workers,
+            timeout=timeout,
+            dpi=dpi,
+            error_policy=error_policy,
+            output=output,
+            bbox=bbox,
+            shell_escape=shell_escape,
+            latex_args=latex_args,
+            cache_dir=cache_dir,
+            no_cache=no_cache,
+            backend=backend,
+            color_space=color_space,
+            background=background,
+            antialias=antialias,
+            antialias_factor=antialias_factor,
+            raster_threads=raster_threads,
+        )
+        checks.append(
+            ValidationCheck(
+                "options",
+                True,
+                f"format={format}, quality={quality}, error-policy={error_policy}",
+            )
+        )
+    except TikzGifError as exc:
+        checks.append(
+            ValidationCheck(
+                "options",
+                False,
+                str(exc),
+                "Use a documented value for the flagged option.",
+            )
+        )
+        record(exc)
+
+    # 4. The template parses (only meaningful once the file is readable).
+    parsed = None
+    if readable:
+        try:
+            parsed = parse_template_from_file(tex_path, param_token="\\" + param)
+            checks.append(
+                ValidationCheck(
+                    "template",
+                    True,
+                    f"class={parsed.document_class}, "
+                    f"packages={len(parsed.detected_packages)}",
+                )
+            )
+        except TikzGifError as exc:
+            checks.append(
+                ValidationCheck(
+                    "template",
+                    False,
+                    str(exc),
+                    "Fix the .tex so it parses (see the message above).",
+                )
+            )
+            record(exc)
+    else:
+        checks.append(
+            ValidationCheck(
+                "template", False, "skipped: the input file must be readable first"
+            )
+        )
+
+    # 5. A LaTeX engine is installed for this template.
+    preferred = job.compile.engine if job is not None else None
+    packages = parsed.detected_packages if parsed is not None else set()
+    try:
+        selected = select_engine(preferred=preferred, packages=packages)
+        checks.append(ValidationCheck("LaTeX engine", True, selected.value))
+    except TikzGifError as exc:
+        checks.append(
+            ValidationCheck(
+                "LaTeX engine",
+                False,
+                str(exc),
+                "Install a LaTeX distribution (TeX Live or MiKTeX).",
+            )
+        )
+        record(exc)
+
+    # 6. The rasterization backend is available.
+    backend_name = job.raster.backend if job is not None else backend
+    try:
+        get_backend_by_name(backend_name)
+        checks.append(ValidationCheck("raster backend", True, backend_name))
+    except TikzGifError as exc:
+        hint = getattr(exc, "install_hint", "") or (
+            "Choose an available backend (see: tikzgif inspect backends)."
+        )
+        checks.append(ValidationCheck("raster backend", False, str(exc), hint))
+        record(exc)
+
+    # 7. The output directory exists and can be written to.
+    if job is not None:
+        out_path = job.output.output_path or Path(
+            tex_path.stem + f".{job.output.format.value}"
+        )
+    elif output is not None:
+        out_path = Path(output)
+    else:
+        out_path = Path(tex_path.stem + f".{format}")
+    parent = out_path.parent if str(out_path.parent) else Path(".")
+    if not parent.exists():
+        checks.append(
+            ValidationCheck(
+                "output location",
+                False,
+                f"directory does not exist: {parent}",
+                "Create the directory, or choose another --output path.",
+            )
+        )
+        record(InputError(f"Output directory does not exist: {parent}"))
+    elif not os.access(parent, os.W_OK):
+        checks.append(
+            ValidationCheck(
+                "output location",
+                False,
+                f"not writable: {parent}",
+                "Choose a writable --output location.",
+            )
+        )
+        record(InputError(f"Output directory is not writable: {parent}"))
+    else:
+        checks.append(ValidationCheck("output location", True, str(out_path)))
+
+    return ValidationReport(
+        ok=all(c.passed for c in checks),
+        checks=checks,
+        first_error=first_error,
+    )
