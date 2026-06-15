@@ -5,6 +5,7 @@ from __future__ import annotations
 import shutil
 import sys
 import tempfile
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -32,6 +33,12 @@ class RenderResult:
         successful_frames: Number of frames that compiled successfully.
         failed_frames: Number of frames that failed to compile.
         size_bytes: Size of the output file in bytes.
+        failure_details: ``(frame_index, reason)`` pairs for failed frames.
+        test_outputs: Preview PNG paths produced in test mode.
+        cached_frames: Number of frames served from the compilation cache.
+        duration_seconds: Wall-clock time for the whole render, in seconds.
+        engine: Requested LaTeX engine name, or ``"auto"`` for auto-detect.
+        backend: Rasterization backend name used.
     """
 
     output_path: Path
@@ -41,6 +48,10 @@ class RenderResult:
     size_bytes: int
     failure_details: list[tuple[int, str]] = field(default_factory=list)
     test_outputs: list[Path] = field(default_factory=list)
+    cached_frames: int = 0
+    duration_seconds: float = 0.0
+    engine: str = "auto"
+    backend: str = "pdftoppm"
 
 
 @dataclass
@@ -147,6 +158,10 @@ def render_job(job: RenderJobConfig) -> RenderResult:
             backend is unavailable.
         tikzgif.exceptions.AssemblyError: If output assembly fails.
     """
+    start_time = time.monotonic()
+    engine_label = job.compile.engine.value if job.compile.engine else "auto"
+    backend_label = job.raster.backend
+
     tex_path = Path(job.tex_file)
     if not tex_path.is_file():
         raise InputError(f"TeX file not found: {tex_path}")
@@ -171,6 +186,7 @@ def render_job(job: RenderJobConfig) -> RenderResult:
 
     successful = [r for r in frame_results if r.success]
     failed = [r for r in frame_results if not r.success]
+    cached_frames = sum(1 for r in frame_results if r.cached)
 
     if not successful:
         details = "\n".join(f"Frame {r.index}: {r.error_message}" for r in failed[:5])
@@ -277,6 +293,10 @@ def render_job(job: RenderJobConfig) -> RenderResult:
                 size_bytes=sum(p.stat().st_size for p in output_paths if p.exists()),
                 failure_details=failure_details,
                 test_outputs=output_paths,
+                cached_frames=cached_frames,
+                duration_seconds=time.monotonic() - start_time,
+                engine=engine_label,
+                backend=backend_label,
             )
 
         default_output_path = Path(tex_path.stem + f".{job.output.format.value}")
@@ -292,6 +312,10 @@ def render_job(job: RenderJobConfig) -> RenderResult:
         failed_frames=len(failed),
         size_bytes=size_bytes,
         failure_details=failure_details,
+        cached_frames=cached_frames,
+        duration_seconds=time.monotonic() - start_time,
+        engine=engine_label,
+        backend=backend_label,
     )
 
 
