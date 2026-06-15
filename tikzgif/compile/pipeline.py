@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -18,8 +19,7 @@ from concurrent.futures import (
     as_completed,
 )
 from dataclasses import replace
-from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING
 
 from tikzgif.bbox import extract_bbox_from_pdf
 from tikzgif.cache import CompilationCache
@@ -43,6 +43,10 @@ from .engine import (
     parse_log,
     select_engine,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -78,54 +82,75 @@ def _compile_single_frame(
     frame_dir = cache_root / "frames" / h[:2] / h[2:]
     frame_dir.mkdir(parents=True, exist_ok=True)
 
-    tex_path = frame_dir / "frame.tex"
     pdf_path = frame_dir / "frame.pdf"
-    log_path = frame_dir / "frame.log"
 
-    tex_path.write_text(spec.tex_content, encoding="utf-8")
+    # Compile in a per-process scratch directory inside frame_dir so the
+    # rename stays on one filesystem. A reader of frame_dir never observes
+    # the in-progress .pdf/.log; only the final os.replace publishes it.
+    work_dir = frame_dir / f".work.{os.getpid()}"
+    if work_dir.is_dir():
+        shutil.rmtree(work_dir, ignore_errors=True)
+    work_dir.mkdir(parents=True, exist_ok=True)
 
-    cmd = build_compile_command(
-        engine=engine,
-        tex_path=tex_path,
-        output_dir=frame_dir,
-        shell_escape=shell_escape,
-        extra_args=extra_args,
-    )
-
-    effective_timeout = timeout_s if timeout_s > 0 else None
+    work_tex = work_dir / "frame.tex"
+    work_pdf = work_dir / "frame.pdf"
+    work_log = work_dir / "frame.log"
 
     try:
-        subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=effective_timeout,
-            cwd=str(frame_dir),
+        work_tex.write_text(spec.tex_content, encoding="utf-8")
+
+        cmd = build_compile_command(
+            engine=engine,
+            tex_path=work_tex,
+            output_dir=work_dir,
+            shell_escape=shell_escape,
+            extra_args=extra_args,
         )
-    except subprocess.TimeoutExpired:
+
+        effective_timeout = timeout_s if timeout_s > 0 else None
+
+        try:
+            subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=effective_timeout,
+                cwd=str(work_dir),
+            )
+        except subprocess.TimeoutExpired:
+            elapsed = time.monotonic() - t0
+            return FrameResult(
+                index=spec.index,
+                success=False,
+                error_message=(
+                    f"Frame {spec.index} timed out after {timeout_s:.0f}s. "
+                    f"Increase timeout_per_frame_s if your TikZ code is complex."
+                ),
+                compile_time_s=elapsed,
+            )
+
         elapsed = time.monotonic() - t0
-        if pdf_path.is_file():
-            pdf_path.unlink()
-        return FrameResult(
-            index=spec.index,
-            success=False,
-            error_message=(
-                f"Frame {spec.index} timed out after {timeout_s:.0f}s. "
-                f"Increase timeout_per_frame_s if your TikZ code is complex."
-            ),
-            compile_time_s=elapsed,
-        )
 
-    elapsed = time.monotonic() - t0
+        if not work_pdf.is_file():
+            errors = parse_log(work_log)
+            return FrameResult(
+                index=spec.index,
+                success=False,
+                error_message=format_errors(errors),
+                compile_time_s=elapsed,
+            )
 
-    if not pdf_path.is_file():
-        errors = parse_log(log_path)
-        return FrameResult(
-            index=spec.index,
-            success=False,
-            error_message=format_errors(errors),
-            compile_time_s=elapsed,
-        )
+        # Publish the source and PDF atomically into the cache entry.
+        tex_tmp = frame_dir / f".frame.tex.{os.getpid()}.tmp"
+        try:
+            tex_tmp.write_text(spec.tex_content, encoding="utf-8")
+            os.replace(tex_tmp, frame_dir / "frame.tex")
+        finally:
+            if tex_tmp.exists():
+                tex_tmp.unlink()
+        os.replace(work_pdf, pdf_path)
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
 
     bbox: BoundingBox | None = None
     try:
@@ -216,7 +241,8 @@ def compile_frames(
                     cache.store_bbox(spec.content_hash, bbox)
                 except Exception:
                     logger.debug(
-                        "Bbox extraction failed for cached frame %d", spec.index,
+                        "Bbox extraction failed for cached frame %d",
+                        spec.index,
                     )
             results[spec.index] = FrameResult(
                 index=spec.index,
@@ -238,7 +264,9 @@ def compile_frames(
 
     logger.info(
         "%d/%d frames cached, compiling %d.",
-        cached_count, len(specs), len(to_compile),
+        cached_count,
+        len(specs),
+        len(to_compile),
     )
 
     retry_queue: list[FrameSpec] = []
@@ -276,8 +304,10 @@ def compile_frames(
             else:
                 if config.error_policy == ErrorPolicy.ABORT:
                     progress.close()
-                    for pending_fut in future_to_spec:
-                        pending_fut.cancel()
+                    # Drop queued work and stop waiting on in-flight frames
+                    # so the abort is prompt rather than blocking on the
+                    # with-block's implicit shutdown(wait=True).
+                    pool.shutdown(wait=False, cancel_futures=True)
                     raise CompilationError(
                         f"Frame {spec.index} failed to compile:\n"
                         f"{result.error_message}",
@@ -291,7 +321,8 @@ def compile_frames(
                     progress.update(suffix=f"frame {spec.index} SKIP")
                     logger.warning(
                         "Frame %d failed (skipped): %s",
-                        spec.index, result.error_message,
+                        spec.index,
+                        result.error_message,
                     )
 
             if on_frame_done is not None:
@@ -333,7 +364,8 @@ def compile_frames(
                     progress.update(suffix=f"frame {spec.index} FAILED")
                     logger.warning(
                         "Frame %d failed after retry: %s",
-                        spec.index, result.error_message,
+                        spec.index,
+                        result.error_message,
                     )
 
     progress.close()
@@ -343,11 +375,13 @@ def compile_frames(
         if spec.index in results:
             ordered.append(results[spec.index])
         else:
-            ordered.append(FrameResult(
-                index=spec.index,
-                success=False,
-                error_message="Frame was not compiled (internal error).",
-            ))
+            ordered.append(
+                FrameResult(
+                    index=spec.index,
+                    success=False,
+                    error_message="Frame was not compiled (internal error).",
+                )
+            )
     return ordered
 
 
@@ -383,7 +417,8 @@ def compile_single_pass(
     cache = CompilationCache(root=config_for_job.cache_dir)
 
     specs = generate_frame_specs(
-        parsed, param_values,
+        parsed,
+        param_values,
         enforced_bbox=enforced_bbox,
         extra_preamble=extra_preamble,
     )

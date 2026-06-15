@@ -30,10 +30,12 @@ def default_cache_dir() -> Path:
     if xdg:
         base = Path(xdg)
     elif os.name == "nt":
-        base = Path(os.environ.get(
-            "LOCALAPPDATA",
-            str(Path.home() / "AppData" / "Local"),
-        ))
+        base = Path(
+            os.environ.get(
+                "LOCALAPPDATA",
+                str(Path.home() / "AppData" / "Local"),
+            )
+        )
     else:
         base = Path.home() / ".cache"
     return base / "tikzgif"
@@ -52,6 +54,39 @@ def _key_dir(root: Path, content_hash: str) -> Path:
     single directory.
     """
     return root / "frames" / content_hash[:2] / content_hash[2:]
+
+
+def _atomic_write_text(dest: Path, text: str) -> None:
+    """Write *text* to *dest* atomically via a temp file in the same dir.
+
+    A concurrent reader observes either the previous contents or the
+    fully written file, never a partial write.
+    """
+    tmp = dest.with_name(f".{dest.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, dest)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+
+
+def _atomic_copy(src: Path, dest: Path) -> None:
+    """Copy *src* to *dest* atomically via a temp file in the same dir.
+
+    Skips the copy when *src* already resolves to *dest* to avoid
+    ``shutil.SameFileError``.  Readers observe either no file or the
+    complete file.
+    """
+    if src.resolve() == dest.resolve():
+        return
+    tmp = dest.with_name(f".{dest.name}.{os.getpid()}.tmp")
+    try:
+        shutil.copy2(src, tmp)
+        os.replace(tmp, dest)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
 
 
 class CompilationCache:
@@ -113,7 +148,7 @@ class CompilationCache:
         """
         d = self.frame_dir(spec.content_hash)
         tex_path = d / "frame.tex"
-        tex_path.write_text(spec.tex_content, encoding="utf-8")
+        _atomic_write_text(tex_path, spec.tex_content)
         return tex_path
 
     def store_pdf(self, spec: FrameSpec, pdf_path: Path) -> Path:
@@ -128,7 +163,7 @@ class CompilationCache:
         """
         d = self.frame_dir(spec.content_hash)
         dest = d / "frame.pdf"
-        shutil.copy2(pdf_path, dest)
+        _atomic_copy(pdf_path, dest)
         return dest
 
     def store_png(self, spec: FrameSpec, png_path: Path) -> Path:
@@ -143,7 +178,7 @@ class CompilationCache:
         """
         d = self.frame_dir(spec.content_hash)
         dest = d / "frame.png"
-        shutil.copy2(png_path, dest)
+        _atomic_copy(png_path, dest)
         return dest
 
     def store_bbox(self, content_hash: str, bbox: BoundingBox) -> None:
@@ -161,7 +196,7 @@ class CompilationCache:
             "x_max": bbox.x_max,
             "y_max": bbox.y_max,
         }
-        bbox_file.write_text(json.dumps(data), encoding="utf-8")
+        _atomic_write_text(bbox_file, json.dumps(data))
 
     def store_template_meta(
         self,
@@ -180,7 +215,7 @@ class CompilationCache:
             "timestamp": time.time(),
             "frames": {str(k): v for k, v in frame_map.items()},
         }
-        meta_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        _atomic_write_text(meta_path, json.dumps(data, indent=2))
 
     def load_template_meta(self, template_hash: str) -> dict[int, str] | None:
         """Load a previous frame map, or ``None`` if not found.
@@ -220,8 +255,11 @@ class CompilationCache:
             for entry in prefix_dir.iterdir():
                 if not entry.is_dir():
                     continue
-                tex_file = entry / "frame.tex"
-                if tex_file.is_file() and tex_file.stat().st_mtime < cutoff:
+                mtimes = [f.stat().st_mtime for f in entry.iterdir() if f.is_file()]
+                # Fall back to the directory's own mtime when it holds no
+                # files, so entries lacking frame.tex are still collectable.
+                newest = max(mtimes) if mtimes else entry.stat().st_mtime
+                if newest < cutoff:
                     shutil.rmtree(entry, ignore_errors=True)
                     removed += 1
         return removed
@@ -293,7 +331,7 @@ def store_pdf(cache_dir: Path, frame: FrameSpec, pdf_path: Path) -> Path:
     """Copy a compiled PDF into the cache and return the cached path."""
     key = _ensure_dir(_key_dir(cache_dir, frame.content_hash))
     dest = key / "frame.pdf"
-    shutil.copy2(pdf_path, dest)
+    _atomic_copy(pdf_path, dest)
     return dest
 
 
@@ -301,7 +339,7 @@ def store_png(cache_dir: Path, frame: FrameSpec, png_path: Path) -> Path:
     """Copy a rasterized PNG into the cache and return the cached path."""
     key = _ensure_dir(_key_dir(cache_dir, frame.content_hash))
     dest = key / "frame.png"
-    shutil.copy2(png_path, dest)
+    _atomic_copy(png_path, dest)
     return dest
 
 
