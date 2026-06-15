@@ -84,6 +84,9 @@ def render_job(job: RenderJobConfig) -> RenderResult:
 
     if not successful:
         details = "\n".join(f"Frame {r.index}: {r.error_message}" for r in failed[:5])
+        if len(failed) > 5:
+            remaining = len(failed) - 5
+            details += f"\n... and {remaining} more failure(s)"
         raise RenderError(
             f"All {len(failed)} frames failed to compile.\n{details}",
             stage="compile",
@@ -128,7 +131,9 @@ def render_job(job: RenderJobConfig) -> RenderResult:
             pct = ((i + 1) / raster_total) * 100
             print(
                 f"\rRasterizing: {i + 1}/{raster_total} ({pct:.0f}%)",
-                end="", flush=True, file=sys.stderr,
+                end="",
+                flush=True,
+                file=sys.stderr,
             )
         print(file=sys.stderr)
 
@@ -142,7 +147,9 @@ def render_job(job: RenderJobConfig) -> RenderResult:
                     shutil.copy2(r.png_path, dest)
                     output_paths.append(dest)
             failure_details = [(r.index, r.error_message) for r in failed]
-            first_output = output_paths[0] if output_paths else Path(f"{stem}_test_first.png")
+            first_output = (
+                output_paths[0] if output_paths else Path(f"{stem}_test_first.png")
+            )
             return RenderResult(
                 output_path=first_output,
                 total_frames=len(param_values),
@@ -158,9 +165,7 @@ def render_job(job: RenderJobConfig) -> RenderResult:
         result_path = AnimationAssembler(output_config).assemble(frame_results)
 
     size_bytes = result_path.stat().st_size
-    failure_details = [
-        (r.index, r.error_message) for r in failed
-    ]
+    failure_details = [(r.index, r.error_message) for r in failed]
     return RenderResult(
         output_path=result_path,
         total_frames=job.frames,
