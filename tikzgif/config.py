@@ -45,7 +45,8 @@ class CompileConfig:
     Attributes:
         engine: LaTeX engine, or ``None`` for auto-detection.
         error_policy: Strategy for handling frame failures.
-        max_workers: Number of parallel workers (0 = auto).
+        max_workers: Number of parallel workers for compilation and
+            rasterization (0 = auto).
         shell_escape: Whether to enable ``--shell-escape``.
         extra_args: Additional arguments forwarded to the engine.
         cache_dir: Custom cache root, or ``None`` for platform default.
@@ -329,7 +330,8 @@ def legacy_args_to_job_config(
         format: Output format (``"gif"`` or ``"mp4"``).
         quality: Quality preset name.
         engine: LaTeX engine name, or ``None`` for auto.
-        workers: Parallel worker count (0 = auto).
+        workers: Parallel worker count for compilation and rasterization
+            (0 = auto).
         timeout: Per-frame timeout in seconds.
         dpi: Target DPI.
         error_policy: Error handling strategy name.

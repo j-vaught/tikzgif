@@ -82,7 +82,15 @@ def _build_parser() -> argparse.ArgumentParser:
     render_parser.add_argument(
         "--engine", choices=["pdflatex", "xelatex", "lualatex"], default=None
     )
-    render_parser.add_argument("--workers", type=int, default=0)
+    render_parser.add_argument(
+        "--workers",
+        type=int,
+        default=0,
+        help=(
+            "Number of parallel workers for both frame compilation and "
+            "rasterization (0 = auto)"
+        ),
+    )
     render_parser.add_argument("--timeout", type=float, default=30.0)
     render_parser.add_argument("--dpi", type=int, default=300)
     render_parser.add_argument(

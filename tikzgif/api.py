@@ -5,14 +5,21 @@ from __future__ import annotations
 import shutil
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .assemble import AnimationAssembler
 from .compile import compile_single_pass
+from .compile.pipeline import _determine_worker_count
 from .config import RenderJobConfig, legacy_args_to_job_config
 from .exceptions import RenderError
 from .rasterize import get_backend_by_name
+
+if TYPE_CHECKING:
+    from .rasterize.backends import ConversionBackend, RenderConfig
+    from .types import FrameResult
 
 
 @dataclass
@@ -34,6 +41,83 @@ class RenderResult:
     size_bytes: int
     failure_details: list[tuple[int, str]] = field(default_factory=list)
     test_outputs: list[Path] = field(default_factory=list)
+
+
+@dataclass
+class _RasterOutcome:
+    """Result of rasterizing a single frame in a worker thread.
+
+    Attributes:
+        index: Frame index (unique, used for output filenames).
+        result: The ``FrameResult`` that was rasterized.
+        png_path: Path to the written PNG, or ``None`` if none was produced.
+        error_message: Failure message, or ``None`` on success.
+    """
+
+    index: int
+    result: FrameResult
+    png_path: Path | None
+    error_message: str | None
+
+
+def _rasterize_frame(
+    result: FrameResult,
+    backend: ConversionBackend,
+    render_config: RenderConfig,
+    tmp: Path,
+    pdf_dir: Path | None,
+    png_dir: Path | None,
+) -> _RasterOutcome:
+    """Rasterize one compiled frame's PDF into a PNG.
+
+    Pure worker: performs the optional PDF copy, the PDF-to-image
+    conversion, the PNG save, and the optional PNG copy, then returns an
+    outcome describing what happened. It never mutates shared state and
+    never prints progress; the caller merges the outcome on the main
+    thread. Writing to a per-index filename ``frame_{index:06d}.png`` is
+    collision-free because frame indices are unique.
+
+    Args:
+        result: Frame result whose ``pdf_path`` is rasterized.
+        backend: Rasterization backend (each ``convert`` call is
+            self-contained and thread-safe).
+        render_config: Backend render settings.
+        tmp: Temporary directory the PNG is written into.
+        pdf_dir: Directory to copy the raw PDF into, or ``None``.
+        png_dir: Directory to copy the PNG into, or ``None``.
+
+    Returns:
+        A ``_RasterOutcome`` carrying the index, the result object, the
+        written PNG path (or ``None``), and an error message (or ``None``).
+    """
+    assert result.pdf_path is not None
+
+    if pdf_dir is not None:
+        shutil.copy2(result.pdf_path, pdf_dir / f"frame_{result.index:06d}.pdf")
+
+    try:
+        images = backend.convert(result.pdf_path, render_config)
+    except Exception as exc:
+        return _RasterOutcome(
+            index=result.index,
+            result=result,
+            png_path=None,
+            error_message=f"Rasterization failed: {exc}",
+        )
+
+    png_path: Path | None = None
+    if images:
+        png_path = tmp / f"frame_{result.index:06d}.png"
+        images[0].save(str(png_path), format="PNG")
+        if png_dir is not None:
+            shutil.copy2(png_path, png_dir / f"frame_{result.index:06d}.png")
+
+    return _RasterOutcome(
+        index=result.index,
+        result=result,
+        png_path=png_path,
+        error_message=None,
+    )
 
 
 def render_job(job: RenderJobConfig) -> RenderResult:
@@ -105,36 +189,58 @@ def render_job(job: RenderJobConfig) -> RenderResult:
     with tempfile.TemporaryDirectory(prefix="tikzgif_render_") as tmpdir:
         tmp = Path(tmpdir)
         raster_failures: list[tuple[int, str]] = []
-        raster_total = len(successful)
-        for i, result in enumerate(successful[:]):
-            if not result.pdf_path or not result.pdf_path.exists():
-                continue
 
-            if pdf_dir is not None:
-                shutil.copy2(result.pdf_path, pdf_dir / f"frame_{result.index:06d}.pdf")
+        # Frames missing a compiled PDF are skipped (not rasterized) and
+        # left untouched in ``successful``, matching the old loop's
+        # ``continue``. The progress denominator counts only frames that
+        # are actually submitted for rasterization.
+        to_rasterize = [r for r in successful if r.pdf_path and r.pdf_path.exists()]
+        raster_total = len(to_rasterize)
 
-            try:
-                images = backend.convert(result.pdf_path, render_config)
-            except Exception as exc:
-                result.success = False
-                result.error_message = f"Rasterization failed: {exc}"
-                successful.remove(result)
-                failed.append(result)
-                raster_failures.append((result.index, result.error_message))
-                continue
-            if images:
-                png_path = tmp / f"frame_{result.index:06d}.png"
-                images[0].save(str(png_path), format="PNG")
-                result.png_path = png_path
-                if png_dir is not None:
-                    shutil.copy2(png_path, png_dir / f"frame_{result.index:06d}.png")
-            pct = ((i + 1) / raster_total) * 100
-            print(
-                f"\rRasterizing: {i + 1}/{raster_total} ({pct:.0f}%)",
-                end="",
-                flush=True,
-                file=sys.stderr,
-            )
+        # Reuse the compilation worker budget; "auto" (max_workers == 0)
+        # resolves the same way compilation does. Cap the pool at the
+        # number of frames actually being submitted.
+        workers = _determine_worker_count(job.compile.to_compilation_config())
+        max_workers = max(1, min(workers, raster_total)) if raster_total else 1
+
+        completed = 0
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            futures = [
+                ex.submit(
+                    _rasterize_frame,
+                    result,
+                    backend,
+                    render_config,
+                    tmp,
+                    pdf_dir,
+                    png_dir,
+                )
+                for result in to_rasterize
+            ]
+
+            # Merge every outcome on the main thread, so the shared
+            # ``successful`` / ``failed`` / ``raster_failures`` lists are
+            # mutated by a single thread and need no locking.
+            for fut in as_completed(futures):
+                outcome = fut.result()
+                completed += 1
+                pct = (completed / raster_total) * 100 if raster_total else 100
+                print(
+                    f"\rRasterizing: {completed}/{raster_total} ({pct:.0f}%)",
+                    end="",
+                    flush=True,
+                    file=sys.stderr,
+                )
+
+                result = outcome.result
+                if outcome.error_message is not None:
+                    result.success = False
+                    result.error_message = outcome.error_message
+                    successful.remove(result)
+                    failed.append(result)
+                    raster_failures.append((outcome.index, outcome.error_message))
+                else:
+                    result.png_path = outcome.png_path
         print(file=sys.stderr)
 
         if job.test_mode:
@@ -233,7 +339,8 @@ def render(
         format: Output format (``"gif"`` or ``"mp4"``).
         quality: Quality preset (``"web"``, ``"presentation"``, ``"print"``).
         engine: LaTeX engine name, or ``None`` for auto-detection.
-        workers: Number of parallel compilation workers (0 = auto).
+        workers: Number of parallel workers for frame compilation and
+            rasterization (0 = auto).
         timeout: Timeout per frame in seconds.
         dpi: Target DPI for rasterization.
         error_policy: How to handle frame failures
