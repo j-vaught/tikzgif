@@ -23,7 +23,8 @@ def _parse_bbox(raw: str | None) -> tuple[float, float, float, float] | None:
         Tuple of four floats, or ``None`` if *raw* is ``None``.
 
     Raises:
-        ValueError: If the string is malformed.
+        ValueError: If the string is malformed, or if the ordering constraint
+            ``xmax > xmin and ymax > ymin`` is violated.
     """
     if raw is None:
         return None
@@ -34,6 +35,11 @@ def _parse_bbox(raw: str | None) -> tuple[float, float, float, float] | None:
         xmin, ymin, xmax, ymax = (float(p) for p in pieces)
     except ValueError as exc:
         raise ValueError("--bbox values must be numeric") from exc
+    if xmax <= xmin or ymax <= ymin:
+        raise ValueError(
+            "--bbox must be 'xmin,ymin,xmax,ymax' with xmax>xmin and ymax>ymin "
+            f"(got xmin={xmin}, ymin={ymin}, xmax={xmax}, ymax={ymax})"
+        )
     return xmin, ymin, xmax, ymax
 
 
@@ -61,33 +67,68 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Render a .tex file into an animation",
         description="Compile a parameterized TikZ .tex file into GIF or MP4.",
     )
-    render_parser.add_argument("tex_file", help="Path to the .tex file containing \\PARAM tokens")
+    render_parser.add_argument(
+        "tex_file", help="Path to the .tex file containing \\PARAM tokens"
+    )
     render_parser.add_argument("--param", default="PARAM")
     render_parser.add_argument("--start", type=float, default=0.0)
     render_parser.add_argument("--end", type=float, default=1.0)
     render_parser.add_argument("--frames", type=int, default=90)
     render_parser.add_argument("--fps", type=int, default=30)
     render_parser.add_argument("--format", choices=["gif", "mp4"], default="gif")
-    render_parser.add_argument("--quality", choices=["web", "presentation", "print"], default="presentation")
-    render_parser.add_argument("--engine", choices=["pdflatex", "xelatex", "lualatex"], default=None)
+    render_parser.add_argument(
+        "--quality", choices=["web", "presentation", "print"], default="presentation"
+    )
+    render_parser.add_argument(
+        "--engine", choices=["pdflatex", "xelatex", "lualatex"], default=None
+    )
     render_parser.add_argument("--workers", type=int, default=0)
     render_parser.add_argument("--timeout", type=float, default=30.0)
     render_parser.add_argument("--dpi", type=int, default=300)
-    render_parser.add_argument("--error-policy", choices=["abort", "skip", "retry"], default="retry")
+    render_parser.add_argument(
+        "--error-policy", choices=["abort", "skip", "retry"], default="retry"
+    )
     render_parser.add_argument("-o", "--output", default=None)
     render_parser.add_argument("--raw-pdf-dir", default=None)
     render_parser.add_argument("--raw-png-dir", default=None)
 
-    render_parser.add_argument("--bbox", default=None, help="Fixed bbox xmin,ymin,xmax,ymax")
-    render_parser.add_argument("--shell-escape", action="store_true", help="Force --shell-escape for LaTeX")
-    render_parser.add_argument("--latex-arg", action="append", default=[], help="Extra arg for LaTeX engine (repeatable)")
-    render_parser.add_argument("--cache-dir", default=None, help="Custom cache directory")
-    render_parser.add_argument("--no-cache", action="store_true", help="Ignore compilation cache, recompile all frames")
-    render_parser.add_argument("--test", action="store_true", help="Render only first and last frames as PNGs for preview")
+    render_parser.add_argument(
+        "--bbox", default=None, help="Fixed bbox xmin,ymin,xmax,ymax"
+    )
+    render_parser.add_argument(
+        "--shell-escape", action="store_true", help="Force --shell-escape for LaTeX"
+    )
+    render_parser.add_argument(
+        "--latex-arg",
+        action="append",
+        default=[],
+        help="Extra arg for LaTeX engine (repeatable)",
+    )
+    render_parser.add_argument(
+        "--cache-dir", default=None, help="Custom cache directory"
+    )
+    render_parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Ignore compilation cache, recompile all frames",
+    )
+    render_parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Render only first and last frames as PNGs for preview",
+    )
 
-    render_parser.add_argument("--backend", default="pdftoppm", help="Raster backend name")
-    render_parser.add_argument("--color-space", choices=["rgb", "rgba", "grayscale"], default="rgba")
-    render_parser.add_argument("--background", default="white", help="Background color or 'none' for transparency")
+    render_parser.add_argument(
+        "--backend", default="pdftoppm", help="Raster backend name"
+    )
+    render_parser.add_argument(
+        "--color-space", choices=["rgb", "rgba", "grayscale"], default="rgba"
+    )
+    render_parser.add_argument(
+        "--background",
+        default="white",
+        help="Background color or 'none' for transparency",
+    )
     render_parser.add_argument("--antialias", action="store_true")
     render_parser.add_argument("--antialias-factor", type=int, default=2)
     render_parser.add_argument("--raster-threads", type=int, default=1)
@@ -111,7 +152,9 @@ def _build_parser() -> argparse.ArgumentParser:
     inspect_subparsers = inspect_parser.add_subparsers(dest="inspect_command")
 
     inspect_subparsers.add_parser("engines", help="List detected LaTeX engines")
-    inspect_subparsers.add_parser("backends", help="List raster backends and availability")
+    inspect_subparsers.add_parser(
+        "backends", help="List raster backends and availability"
+    )
 
     inspect_template = inspect_subparsers.add_parser(
         "template",
@@ -131,7 +174,11 @@ def _handle_render(args: argparse.Namespace) -> int:
     """
     try:
         bbox = _parse_bbox(args.bbox)
-        background = None if isinstance(args.background, str) and args.background.lower() == "none" else args.background
+        background = (
+            None
+            if isinstance(args.background, str) and args.background.lower() == "none"
+            else args.background
+        )
 
         engine_label = args.engine or "auto"
         cache_label = "off" if args.no_cache else "on"
@@ -232,20 +279,28 @@ def _handle_inspect(args: argparse.Namespace) -> int:
 
     if command == "template":
         try:
-            parsed = parse_template_from_file(Path(args.tex_file), param_token="\\" + args.param)
+            parsed = parse_template_from_file(
+                Path(args.tex_file), param_token="\\" + args.param
+            )
         except TikzGifError as exc:
             print(f"Error: {exc}", file=sys.stderr)
             return 1
 
         print(f"document_class: {parsed.document_class}")
-        print(f"class_options: {','.join(parsed.class_options) if parsed.class_options else '(none)'}")
+        print(
+            f"class_options: {','.join(parsed.class_options) if parsed.class_options else '(none)'}"
+        )
         print(f"has_bounding_box: {parsed.has_bounding_box}")
         print(f"needs_shell_escape: {parsed.needs_shell_escape}")
         print(f"param_token: {parsed.param_token}")
-        print(f"packages: {','.join(sorted(parsed.detected_packages)) if parsed.detected_packages else '(none)'}")
+        print(
+            f"packages: {','.join(sorted(parsed.detected_packages)) if parsed.detected_packages else '(none)'}"
+        )
         return 0
 
-    print("Error: inspect requires one of: engines, backends, template", file=sys.stderr)
+    print(
+        "Error: inspect requires one of: engines, backends, template", file=sys.stderr
+    )
     return 1
 
 
