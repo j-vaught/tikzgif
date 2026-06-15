@@ -289,7 +289,8 @@ class CompilationCache:
         """Return cache statistics.
 
         Returns:
-            Dict with ``entries`` count, ``size_mb``, and ``root`` path.
+            Dict with ``entries`` count, ``size_bytes``, ``size_mb``, and
+            ``root`` path.
         """
         total = 0
         size_bytes = 0
@@ -305,6 +306,7 @@ class CompilationCache:
                                 size_bytes += f.stat().st_size
         return {
             "entries": total,
+            "size_bytes": size_bytes,
             "size_mb": round(size_bytes / (1024 * 1024), 2),
             "root": str(self.root),
         }
