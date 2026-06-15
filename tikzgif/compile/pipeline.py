@@ -308,9 +308,14 @@ def compile_frames(
                     # so the abort is prompt rather than blocking on the
                     # with-block's implicit shutdown(wait=True).
                     pool.shutdown(wait=False, cancel_futures=True)
+                    # ``result.error_message`` holds the parsed/formatted LaTeX
+                    # errors for this frame (the raw .log lives in the worker's
+                    # scratch dir, already removed by the time we get here, so
+                    # the formatted text is the closest log content in scope).
                     raise CompilationError(
                         f"Frame {spec.index} failed to compile:\n"
                         f"{result.error_message}",
+                        log_content=result.error_message or "",
                         frame_index=spec.index,
                     )
                 elif config.error_policy == ErrorPolicy.RETRY:

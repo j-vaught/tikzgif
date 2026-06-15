@@ -71,13 +71,18 @@ class ParsedTemplate:
 
 
 def parse_template(
-    source: str, param_token: str = DEFAULT_PARAM_TOKEN
+    source: str,
+    param_token: str = DEFAULT_PARAM_TOKEN,
+    *,
+    source_path: Path | None = None,
 ) -> ParsedTemplate:
     """Parse template source and validate required LaTeX structure.
 
     Args:
         source: Raw LaTeX template text.
         param_token: Parameter token to look for in the document body.
+        source_path: Originating file path, used only to enrich error
+            messages when parsing fails.
 
     Returns:
         A ``ParsedTemplate`` with extracted metadata.
@@ -86,12 +91,13 @@ def parse_template(
         TemplateError: If required LaTeX structure is missing or the
             parameter token is not found in the document body.
     """
+    where = f" in '{source_path}'" if source_path is not None else ""
     m_begin = _RE_BEGIN_DOC.search(source)
     m_end = _RE_END_DOC.search(source)
     if m_begin is None:
-        raise TemplateError("Template is missing \\begin{document}.")
+        raise TemplateError(f"Template{where} is missing \\begin{{document}}.")
     if m_end is None:
-        raise TemplateError("Template is missing \\end{document}.")
+        raise TemplateError(f"Template{where} is missing \\end{{document}}.")
 
     preamble_str = source[: m_begin.start()]
     body_str = source[m_begin.end() : m_end.start()]
@@ -99,7 +105,7 @@ def parse_template(
 
     m_class = _RE_DOCUMENTCLASS.search(preamble_str)
     if m_class is None:
-        raise TemplateError("Template is missing \\documentclass.")
+        raise TemplateError(f"Template{where} is missing \\documentclass.")
 
     doc_class = m_class.group("class").strip()
     raw_opts = m_class.group("options") or ""
@@ -117,7 +123,7 @@ def parse_template(
 
     if param_token not in body_str:
         raise TemplateError(
-            f"Parameter token '{param_token}' not found between "
+            f"Parameter token '{param_token}' not found{where} between "
             f"\\begin{{document}} and \\end{{document}}. "
             f"Place {param_token} in your TikZ code where the animated value should be substituted."
         )
@@ -154,8 +160,8 @@ def parse_template_from_file(
     try:
         source = path.read_text(encoding="utf-8")
     except OSError as exc:
-        raise TemplateError(f"Cannot read template file: {exc}") from exc
-    return parse_template(source, param_token)
+        raise TemplateError(f"Cannot read template file '{path}': {exc}") from exc
+    return parse_template(source, param_token, source_path=path)
 
 
 def _build_standalone_preamble(parsed: ParsedTemplate, extra_preamble: str = "") -> str:
