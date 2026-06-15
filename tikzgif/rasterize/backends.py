@@ -64,8 +64,8 @@ class RenderConfig:
 
     def pixel_dimensions(self, width_pt: float, height_pt: float) -> tuple[int, int]:
         """Convert point dimensions to pixel dimensions at target DPI."""
-        px_w = int(round(width_pt * self.dpi / 72.0))
-        px_h = int(round(height_pt * self.dpi / 72.0))
+        px_w = round(width_pt * self.dpi / 72.0)
+        px_h = round(height_pt * self.dpi / 72.0)
         return (px_w, px_h)
 
 
@@ -108,13 +108,19 @@ class ConversionBackend(abc.ABC):
 
     @staticmethod
     def _ensure_rgba(img: Image.Image, background: str | None) -> Image.Image:
-        """Normalize any PIL image to RGBA, compositing onto *background*."""
+        """Normalize any PIL image to RGBA, compositing onto *background*.
+
+        The returned image is always detached from *img*'s source: an
+        ``Image`` opened from a file may keep that file handle open, which
+        breaks ``TemporaryDirectory`` cleanup on Windows. Returning a fresh
+        object guarantees no on-disk handle is retained.
+        """
         if img.mode == "RGBA":
             if background is not None:
                 bg = Image.new("RGBA", img.size, background)
                 bg.paste(img, mask=img)
                 return bg
-            return img
+            return img.copy()
         return img.convert("RGBA")
 
     @staticmethod
@@ -125,7 +131,7 @@ class ConversionBackend(abc.ABC):
         if render_dpi <= target_dpi:
             return img
         scale = target_dpi / render_dpi
-        new_size = (int(round(img.width * scale)), int(round(img.height * scale)))
+        new_size = (round(img.width * scale), round(img.height * scale))
         return img.resize(new_size, Image.LANCZOS)
 
 
@@ -163,9 +169,11 @@ class PdftoppmBackend(ConversionBackend):
             prefix = Path(tmpdir) / "frame"
             cmd: list[str] = ["pdftoppm", "-png"]
 
-            effective_dpi = config.render_dpi if (
-                config.antialias and config.antialias_factor > 1
-            ) else config.dpi
+            effective_dpi = (
+                config.render_dpi
+                if (config.antialias and config.antialias_factor > 1)
+                else config.dpi
+            )
             cmd += ["-r", str(effective_dpi)]
 
             if config.antialias:
@@ -213,8 +221,10 @@ class PdftoppmBackend(ConversionBackend):
                 page_idx = int(page_num_str) - 1
                 if requested_set is not None and page_idx not in requested_set:
                     continue
-                img = Image.open(png_file)
-                img.load()
+                # Materialize a detached copy so no Image retains an open
+                # handle to the temp-dir file (avoids Windows cleanup errors).
+                with Image.open(png_file) as src:
+                    img = src.copy()
                 img = self._ensure_rgba(img, config.background)
                 if config.antialias and config.antialias_factor > 1:
                     img = self._downscale_aa(img, config.dpi, effective_dpi)
@@ -233,6 +243,7 @@ class PyMuPDFBackend(ConversionBackend):
         """Return ``True`` if PyMuPDF is importable."""
         try:
             import fitz  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -291,6 +302,7 @@ class Pdf2ImageBackend(ConversionBackend):
         """Return ``True`` if ``pdf2image`` is importable and ``pdftoppm`` is on PATH."""
         try:
             import pdf2image  # noqa: F401
+
             return shutil.which("pdftoppm") is not None
         except ImportError:
             return False
@@ -316,9 +328,11 @@ class Pdf2ImageBackend(ConversionBackend):
         if not pdf_path.is_file():
             raise FileNotFoundError(f"PDF not found: {pdf_path}")
 
-        effective_dpi = config.render_dpi if (
-            config.antialias and config.antialias_factor > 1
-        ) else config.dpi
+        effective_dpi = (
+            config.render_dpi
+            if (config.antialias and config.antialias_factor > 1)
+            else config.dpi
+        )
 
         kwargs: dict = {
             "pdf_path": str(pdf_path),
@@ -401,9 +415,11 @@ class GhostscriptBackend(ConversionBackend):
         if not pdf_path.is_file():
             raise FileNotFoundError(f"PDF not found: {pdf_path}")
 
-        effective_dpi = config.render_dpi if (
-            config.antialias and config.antialias_factor > 1
-        ) else config.dpi
+        effective_dpi = (
+            config.render_dpi
+            if (config.antialias and config.antialias_factor > 1)
+            else config.dpi
+        )
 
         with tempfile.TemporaryDirectory(prefix="tikzgif_gs_") as tmpdir:
             out_pattern = str(Path(tmpdir) / "frame-%04d.png")
@@ -416,8 +432,13 @@ class GhostscriptBackend(ConversionBackend):
                 device = "png16m"
 
             cmd: list[str] = [
-                gs_bin, "-dBATCH", "-dNOPAUSE", "-dSAFER", "-dQUIET",
-                f"-sDEVICE={device}", f"-r{effective_dpi}",
+                gs_bin,
+                "-dBATCH",
+                "-dNOPAUSE",
+                "-dSAFER",
+                "-dQUIET",
+                f"-sDEVICE={device}",
+                f"-r{effective_dpi}",
                 f"-sOutputFile={out_pattern}",
             ]
 
@@ -427,7 +448,7 @@ class GhostscriptBackend(ConversionBackend):
                 cmd += ["-dTextAlphaBits=1", "-dGraphicsAlphaBits=1"]
 
             if pages is not None and len(pages) > 0:
-                cmd += [f"-dFirstPage={min(pages)+1}", f"-dLastPage={max(pages)+1}"]
+                cmd += [f"-dFirstPage={min(pages) + 1}", f"-dLastPage={max(pages) + 1}"]
 
             if config.threads > 1:
                 cmd += [f"-dNumRenderingThreads={config.threads}"]
@@ -466,8 +487,10 @@ class GhostscriptBackend(ConversionBackend):
                 page_idx = base_page + i
                 if requested_set is not None and page_idx not in requested_set:
                     continue
-                img = Image.open(png_file)
-                img.load()
+                # Materialize a detached copy so no Image retains an open
+                # handle to the temp-dir file (avoids Windows cleanup errors).
+                with Image.open(png_file) as src:
+                    img = src.copy()
                 img = self._ensure_rgba(img, config.background)
                 if config.antialias and config.antialias_factor > 1:
                     img = self._downscale_aa(img, config.dpi, effective_dpi)
@@ -498,7 +521,9 @@ class ImageMagickBackend(ConversionBackend):
             return False
         try:
             result = subprocess.run(
-                [exe, "-version"], capture_output=True, timeout=10,
+                [exe, "-version"],
+                capture_output=True,
+                timeout=10,
             )
             return b"ImageMagick" in result.stdout
         except (subprocess.TimeoutExpired, OSError):
@@ -536,9 +561,11 @@ class ImageMagickBackend(ConversionBackend):
         if not pdf_path.is_file():
             raise FileNotFoundError(f"PDF not found: {pdf_path}")
 
-        effective_dpi = config.render_dpi if (
-            config.antialias and config.antialias_factor > 1
-        ) else config.dpi
+        effective_dpi = (
+            config.render_dpi
+            if (config.antialias and config.antialias_factor > 1)
+            else config.dpi
+        )
 
         with tempfile.TemporaryDirectory(prefix="tikzgif_magick_") as tmpdir:
             out_pattern = str(Path(tmpdir) / "frame.png")
@@ -599,8 +626,10 @@ class ImageMagickBackend(ConversionBackend):
                 page_idx = base_page + i
                 if requested_set is not None and page_idx not in requested_set:
                     continue
-                img = Image.open(png_file)
-                img.load()
+                # Materialize a detached copy so no Image retains an open
+                # handle to the temp-dir file (avoids Windows cleanup errors).
+                with Image.open(png_file) as src:
+                    img = src.copy()
                 img = self._ensure_rgba(img, config.background)
                 if config.antialias and config.antialias_factor > 1:
                     img = self._downscale_aa(img, config.dpi, effective_dpi)
@@ -636,8 +665,7 @@ def get_backend_by_name(name: str) -> ConversionBackend:
     cls = _BACKEND_BY_NAME.get(name)
     if cls is None:
         raise ValueError(
-            f"Unknown backend '{name}'. "
-            f"Available: {list(_BACKEND_BY_NAME.keys())}"
+            f"Unknown backend '{name}'. Available: {list(_BACKEND_BY_NAME.keys())}"
         )
     if not cls.is_available():
         raise ConverterNotFoundError(
