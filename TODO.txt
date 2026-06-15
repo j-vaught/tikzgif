@@ -1,7 +1,8 @@
 tikzgif TODO
 ============
 
-Last updated: 2026-06-15
+Last updated: 2026-06-15 (CLI overhaul: --help, --help-json, --json, exit codes,
+stdout/stderr separation)
 
 
 vvv   NEED TO ADD ASAP!!!!   vvv
@@ -14,8 +15,10 @@ vvv   NEED TO ADD ASAP!!!!   vvv
     Pillow's shared adaptive palette, so there is no color-search loop to
     parallelize.
 [x] Parallelize the pdf -> png process (same as rasterization above).
-[ ] NEED to add a more detailed and robust --help so AI agents dont get fucked up.
+[x] NEED to add a more detailed and robust --help so AI agents dont get fucked up.
     (Owner-led: needs to be both human- and machine-friendly.)
+    DONE: per-flag defaults/choices/metavars, usage examples, exit-code table,
+    plus --help-json for a full machine-readable schema.
 
 
 
@@ -49,6 +52,10 @@ ROBUSTNESS
     expectations about what the tool can do.
 
 [ ] Actionable Error Messages
+    PARTIAL: errors now carry stable remediation lines (install:/engine:/frame:/
+    log:), the compile log tail, the failing frame number, and file paths.
+    REMAINING: parse the missing LaTeX package name from the log and suggest the
+    exact install command (e.g., tlmgr install pgfplots).
     Ensure all error messages include enough context for the user (or an AI agent)
     to fix the problem without reading source code. LaTeX compilation errors
     should identify the missing package name and suggest the install command
@@ -164,7 +171,10 @@ DEPLOYABILITY
 MACHINE USABILITY
 ================================================================================
 
-[ ] --json Flag on All Commands
+[x] --json Flag on All Commands
+    DONE: --json on render and all three inspect subcommands emits one JSON
+    object to stdout (ok, schema_version, paths, frame counts, cache, timing,
+    engine/backend, failure details); a bare inspect --json returns a JSON error.
     Add a --json flag to render, inspect engines, inspect backends, and inspect
     template. When set, suppress human-readable output (progress bars, emoji,
     status messages) and print a single JSON object to stdout with structured
@@ -175,7 +185,10 @@ MACHINE USABILITY
     human-readable text. JSON output is the standard interface for machine
     consumption. This is the single highest-impact change for agent adoption.
 
-[ ] Structured Exit Codes
+[x] Structured Exit Codes
+    DONE: 0 success, 1 compile, 2 dependency, 3 input, 4 output, plus 5 partial
+    success and 70 internal. Documented in --help epilog and --help-json;
+    argparse usage errors map to 3.
     Define and document specific exit codes beyond 0/1. Suggested mapping:
       0 = success
       1 = LaTeX compilation error (fixable input)
@@ -186,7 +199,10 @@ MACHINE USABILITY
     exit code forces the agent to parse stderr to figure out what went wrong.
     Structured codes enable immediate branching.
 
-[ ] Stderr/Stdout Separation
+[x] Stderr/Stdout Separation
+    DONE: status/progress go to stderr, parseable output (JSON, paths) to stdout.
+    --quiet silences status, --output-path-only prints just the resolved path(s),
+    and machine-output modes capture stray library stderr so the streams stay clean.
     Route all progress bars, status messages, warnings, and logs to stderr.
     Route only parseable output (JSON, file paths) to stdout. Add a --quiet
     flag that suppresses stderr entirely. Add --output-path-only that prints
@@ -213,7 +229,10 @@ MACHINE USABILITY
     MCP-compatible agent render TikZ animations without knowing CLI flags.
     This is the highest-leverage integration point for AI agent adoption.
 
-[ ] --help-json Flag
+[x] --help-json Flag
+    DONE: --help-json prints the full CLI schema (every command, flag, type,
+    default, choices, metavar, description), the exit-code table, and the --json
+    result schema as one JSON object.
     Add a flag that outputs the full CLI schema (all commands, all flags, types,
     defaults, descriptions) as a JSON object.
     WHY: Agents that encounter tikzgif for the first time can call --help-json
