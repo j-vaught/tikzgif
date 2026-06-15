@@ -56,9 +56,8 @@ def select_engine(
     lua_only = {"luacode", "luatexbase", "tikz-feynman"}
     needs_lua = bool(packages & lua_only)
 
-    if preferred is not None:
-        if available.get(preferred) is not None:
-            return preferred
+    if preferred is not None and available.get(preferred) is not None:
+        return preferred
 
     if needs_lua:
         if available.get(LatexEngine.LUALATEX):
@@ -182,11 +181,13 @@ def parse_log(log_path: Path) -> list[LatexError]:
         List of ``LatexError`` objects, possibly empty if no errors found.
     """
     if not log_path.is_file():
-        return [LatexError(
-            line_number=None,
-            message="Log file not found (compilation may have crashed).",
-            context="",
-        )]
+        return [
+            LatexError(
+                line_number=None,
+                message="Log file not found (compilation may have crashed).",
+                context="",
+            )
+        ]
 
     text = log_path.read_text(encoding="utf-8", errors="replace")
     errors: list[LatexError] = []
@@ -213,30 +214,36 @@ def parse_log(log_path: Path) -> list[LatexError]:
                 "dimension (~575cm). Check your parameter range.]"
             )
 
-        errors.append(LatexError(
-            line_number=lineno,
-            message=msg,
-            context=context,
-        ))
+        errors.append(
+            LatexError(
+                line_number=lineno,
+                message=msg,
+                context=context,
+            )
+        )
 
     for m in _RE_RUNAWAY_ARG.finditer(text):
         start = max(0, m.start() - 100)
         end = min(len(text), m.end() + 400)
-        errors.append(LatexError(
-            line_number=None,
-            message=(
-                "Runaway argument detected. This usually means mismatched "
-                "braces {} or brackets [] in the template."
-            ),
-            context=text[start:end],
-        ))
+        errors.append(
+            LatexError(
+                line_number=None,
+                message=(
+                    "Runaway argument detected. This usually means mismatched "
+                    "braces {} or brackets [] in the template."
+                ),
+                context=text[start:end],
+            )
+        )
 
     if not errors and "! " in text:
-        errors.append(LatexError(
-            line_number=None,
-            message="LaTeX compilation failed (unrecognized error format).",
-            context=text[-1500:],
-        ))
+        errors.append(
+            LatexError(
+                line_number=None,
+                message="LaTeX compilation failed (unrecognized error format).",
+                context=text[-1500:],
+            )
+        )
 
     return errors
 
@@ -263,9 +270,14 @@ def format_errors(errors: list[LatexError], verbose: bool = False) -> str:
     return "\n".join(parts)
 
 
-SHELL_ESCAPE_PACKAGES = frozenset({
-    "minted", "pythontex", "svg", "gnuplot-lua-tikz",
-})
+SHELL_ESCAPE_PACKAGES = frozenset(
+    {
+        "minted",
+        "pythontex",
+        "svg",
+        "gnuplot-lua-tikz",
+    }
+)
 
 _RE_USEPACKAGE = re.compile(
     r"\\usepackage"

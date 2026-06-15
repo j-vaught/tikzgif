@@ -17,6 +17,8 @@ from .pipeline import compile_frames, compile_single_pass
 __all__ = [
     "LatexError",
     "build_compile_command",
+    "compile_frames",
+    "compile_single_pass",
     "detect_available_engines",
     "detect_packages",
     "detect_tikz_libraries",
@@ -25,6 +27,4 @@ __all__ = [
     "parse_log",
     "select_engine",
     "uses_pgfplots",
-    "compile_frames",
-    "compile_single_pass",
 ]

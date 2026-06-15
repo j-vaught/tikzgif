@@ -10,10 +10,13 @@ from __future__ import annotations
 import logging
 import re
 import subprocess
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tikzgif.exceptions import BoundingBoxError
 from tikzgif.types import BoundingBox
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
