@@ -10,11 +10,14 @@ import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from PIL import Image
 
 from ..exceptions import AssemblyError
-from ..types import FrameResult
+
+if TYPE_CHECKING:
+    from ..types import FrameResult
 
 logger = logging.getLogger(__name__)
 
@@ -153,8 +156,7 @@ def _run(cmd: list[str], *, timeout: int = 300) -> None:
         )
     except subprocess.CalledProcessError as exc:
         raise AssemblyError(
-            f"Subprocess failed (rc={exc.returncode}): {' '.join(cmd)}\n"
-            f"{exc.stderr}",
+            f"Subprocess failed (rc={exc.returncode}): {' '.join(cmd)}\n{exc.stderr}",
             output_format="mp4",
         ) from exc
     except subprocess.TimeoutExpired as exc:
@@ -181,7 +183,11 @@ def _load_images(
         AssemblyError: If no successfully compiled frames are available.
     """
     successful = sorted(
-        [fr for fr in frame_results if fr.success and fr.png_path and fr.png_path.exists()],
+        [
+            fr
+            for fr in frame_results
+            if fr.success and fr.png_path and fr.png_path.exists()
+        ],
         key=lambda result: result.index,
     )
     if not successful:
@@ -209,6 +215,86 @@ def _load_images(
     return images, delays
 
 
+# GIF palettes hold 256 entries (indices 0-255). When the animation needs a
+# transparent background the highest index is reserved as the transparency
+# slot, leaving 255 colors for image content.
+_TRANSPARENT_INDEX = 255
+_OPAQUE_PALETTE_COLORS = 256
+_TRANSPARENT_PALETTE_COLORS = 255
+# Pixels at least this opaque are treated as solid; anything below becomes the
+# transparent index. GIF transparency is binary, so a single cutoff is used.
+_ALPHA_OPAQUE_THRESHOLD = 128
+
+
+def _has_transparency(images: list[Image.Image]) -> bool:
+    """Return whether any frame contains non-opaque pixels.
+
+    The upstream pipeline composites onto a solid background when one is
+    requested, so genuinely transparent pixels only survive when the caller
+    asked for a transparent background (``background is None``).
+    """
+    for image in images:
+        # ``getchannel`` yields a single-band image, so ``getextrema`` returns a
+        # ``(min, max)`` pair for that band.
+        extrema = cast("tuple[int, int]", image.getchannel("A").getextrema())
+        if extrema[0] < 255:
+            return True
+    return False
+
+
+def _build_master_palette(
+    images: list[Image.Image],
+    *,
+    colors: int,
+) -> Image.Image:
+    """Build one adaptive palette shared by every frame.
+
+    All frames are stacked into a single image that is quantized once, so the
+    resulting palette represents colors from the whole animation and does not
+    flicker between frames. Returns a palette-mode image whose palette is
+    reused to quantize each frame.
+    """
+    rgb_frames = [image.convert("RGB") for image in images]
+    if len(rgb_frames) == 1:
+        montage = rgb_frames[0]
+    else:
+        width = max(frame.width for frame in rgb_frames)
+        total_height = sum(frame.height for frame in rgb_frames)
+        montage = Image.new("RGB", (width, total_height))
+        offset = 0
+        for frame in rgb_frames:
+            montage.paste(frame, (0, offset))
+            offset += frame.height
+    return montage.quantize(colors=colors, method=Image.Quantize.MEDIANCUT)
+
+
+def _quantize_frames(
+    images: list[Image.Image],
+    *,
+    transparent: bool,
+) -> list[Image.Image]:
+    """Quantize every frame to one shared palette using Pillow built-ins.
+
+    No per-pixel or per-color Python loops are used. When *transparent* is set,
+    the reserved transparency index is written wherever the source alpha falls
+    below the opacity threshold.
+    """
+    colors = _TRANSPARENT_PALETTE_COLORS if transparent else _OPAQUE_PALETTE_COLORS
+    master = _build_master_palette(images, colors=colors)
+
+    quantized: list[Image.Image] = []
+    for image in images:
+        frame = image.convert("RGB").quantize(palette=master, dither=Image.Dither.NONE)
+        if transparent:
+            # Map sub-threshold alpha onto the reserved transparency index.
+            mask = image.getchannel("A").point(
+                lambda a: 255 if a < _ALPHA_OPAQUE_THRESHOLD else 0
+            )
+            frame.paste(_TRANSPARENT_INDEX, (0, 0), mask)
+        quantized.append(frame)
+    return quantized
+
+
 class GifAssembler:
     """Assemble PNG frames into an animated GIF.
 
@@ -234,97 +320,31 @@ class GifAssembler:
         images, delays = _load_images(frame_results, self.config)
         output = self.config.output_path
 
-        total = len(images)
-
-        # Step 1: Scan color frequencies across all frames
-        from collections import Counter
-        color_counts: Counter[tuple[int, int, int]] = Counter()
-        for i, img in enumerate(images):
-            rgb = img.convert("RGB")
-            color_counts.update(rgb.getdata())
-            pct = ((i + 1) / total) * 100
-            print(
-                f"\rScanning colors: {i + 1}/{total} ({pct:.0f}%) — {len(color_counts)} unique",
-                end="", flush=True, file=sys.stderr,
-            )
-        print(file=sys.stderr)
-
-        n_unique = len(color_counts)
-        total_pixels = sum(color_counts.values())
-
-        # Step 2: Build palette from top 256 most frequent colors
-        if n_unique <= 256:
-            palette_colors = sorted(color_counts.keys())
-            remapped = 0
-            print(
-                f"Building palette: {n_unique} unique colors — exact fit, no quantization needed",
-                file=sys.stderr,
-            )
-        else:
-            palette_colors = [c for c, _ in color_counts.most_common(256)]
-            top256_pixels = sum(color_counts[c] for c in palette_colors)
-            coverage = (top256_pixels / total_pixels) * 100
-            remapped = n_unique - 256
-            print(
-                f"Building palette: {n_unique} unique colors -> top 256 by frequency "
-                f"({coverage:.2f}% pixel coverage, {remapped} rare colors remapped)",
-                file=sys.stderr,
-            )
-
-        # Build lookup: palette index for each color
-        color_to_idx = {c: i for i, c in enumerate(palette_colors)}
-
-        # For colors not in the palette, find nearest neighbor
-        if n_unique > 256:
-            palette_arr = palette_colors  # list for distance calc
-            for color in color_counts:
-                if color not in color_to_idx:
-                    # Find nearest palette color by squared Euclidean distance
-                    best_idx = 0
-                    best_dist = float("inf")
-                    r0, g0, b0 = color
-                    for idx, (r1, g1, b1) in enumerate(palette_arr):
-                        d = (r0 - r1) ** 2 + (g0 - g1) ** 2 + (b0 - b1) ** 2
-                        if d < best_dist:
-                            best_dist = d
-                            best_idx = idx
-                    color_to_idx[color] = best_idx
-
-        flat_palette: list[int] = []
-        for r, g, b in palette_colors:
-            flat_palette.extend((r, g, b))
-        flat_palette.extend([0] * (768 - len(flat_palette)))
-
-        # Step 3: Quantize frames using the palette
-        quantized = []
-        for i, img in enumerate(images):
-            rgb = img.convert("RGB")
-            p_img = Image.new("P", rgb.size)
-            p_img.putpalette(flat_palette)
-            p_img.putdata([color_to_idx[px] for px in rgb.getdata()])
-            quantized.append(p_img)
-            pct = ((i + 1) / total) * 100
-            print(
-                f"\rQuantizing: {i + 1}/{total} ({pct:.0f}%)",
-                end="", flush=True, file=sys.stderr,
-            )
-
-        print(file=sys.stderr)
+        transparent = _has_transparency(images)
+        quantized = _quantize_frames(images, transparent=transparent)
         first = quantized[0]
         rest = quantized[1:]
 
+        save_kwargs: dict[str, Any] = {
+            "format": "GIF",
+            "save_all": True,
+            "append_images": rest,
+            "duration": delays,
+            "loop": self.config.gif.loop_count,
+            "optimize": not transparent,
+            "comment": self.config.metadata.comment.encode("utf-8"),
+        }
+        if transparent:
+            # Reserve the final palette slot as the GIF transparency index so
+            # the requested transparent background is preserved rather than
+            # composited away. ``disposal=2`` clears each frame before the next
+            # so transparent regions do not accumulate stale pixels.
+            save_kwargs["transparency"] = _TRANSPARENT_INDEX
+            save_kwargs["disposal"] = 2
+
         print(f"\rWriting {output.name}...", end="", flush=True, file=sys.stderr)
         try:
-            first.save(
-                output,
-                format="GIF",
-                save_all=True,
-                append_images=rest,
-                duration=delays,
-                loop=self.config.gif.loop_count,
-                optimize=True,
-                comment=self.config.metadata.comment.encode("utf-8"),
-            )
+            first.save(output, **save_kwargs)
         except OSError as exc:
             raise AssemblyError(
                 f"Failed to write GIF to {output}: {exc}",
@@ -364,21 +384,41 @@ class Mp4Assembler:
                 output_format="mp4",
             )
 
-        images, _delays = _load_images(frame_results, self.config)
+        images, delays = _load_images(frame_results, self.config)
         output = self.config.output_path
 
         with tempfile.TemporaryDirectory(prefix="tikzgif_mp4_") as tmpdir:
             tmp = Path(tmpdir)
+            frame_paths: list[Path] = []
             for idx, image in enumerate(images):
-                image.save(tmp / f"frame_{idx:06d}.png", format="PNG")
+                frame_path = tmp / f"frame_{idx:06d}.png"
+                image.save(frame_path, format="PNG")
+                frame_paths.append(frame_path)
+
+            # Honor per-frame delays via the concat demuxer. Each entry pairs a
+            # frame with its duration in seconds. The demuxer ignores the final
+            # entry's duration, so the last frame is listed twice to preserve
+            # its intended hold time.
+            concat_path = tmp / "frames.txt"
+            lines: list[str] = []
+            for frame_path, delay_ms in zip(frame_paths, delays, strict=True):
+                duration_s = max(delay_ms, 1) / 1000.0
+                lines.append(f"file '{frame_path.name}'")
+                lines.append(f"duration {duration_s:.6f}")
+            # Repeat the last frame (without a duration) so its hold time is not
+            # silently dropped by the concat demuxer's final-entry quirk.
+            lines.append(f"file '{frame_paths[-1].name}'")
+            concat_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
             cmd = [
                 "ffmpeg",
                 "-y",
-                "-framerate",
-                str(self.config.mp4.fps),
+                "-f",
+                "concat",
+                "-safe",
+                "0",
                 "-i",
-                str(tmp / "frame_%06d.png"),
+                str(concat_path),
                 "-an",
                 "-c:v",
                 "libx264",
@@ -390,6 +430,8 @@ class Mp4Assembler:
                 self.config.mp4.pixel_format,
                 "-vf",
                 "pad=ceil(iw/2)*2:ceil(ih/2)*2",
+                "-fps_mode",
+                "vfr",
                 "-movflags",
                 "+faststart",
             ]
@@ -415,7 +457,9 @@ class AnimationAssembler:
         config: Output configuration specifying the target format.
     """
 
-    _ASSEMBLERS: dict[OutputFormat, type[GifAssembler] | type[Mp4Assembler]] = {
+    _ASSEMBLERS: ClassVar[
+        dict[OutputFormat, type[GifAssembler] | type[Mp4Assembler]]
+    ] = {
         OutputFormat.GIF: GifAssembler,
         OutputFormat.MP4: Mp4Assembler,
     }
