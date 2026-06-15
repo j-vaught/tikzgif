@@ -12,8 +12,9 @@ from importlib.metadata import version as _pkg_version
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, NoReturn, cast
 
-from ..api import render
-from ..compile import detect_available_engines
+from ..api import ValidationCheck, ValidationReport, render, validate_render
+from ..cache import CompilationCache, default_cache_dir
+from ..compile import detect_available_engines, missing_package_hint
 from ..exceptions import (
     AssemblyError,
     BoundingBoxError,
@@ -76,6 +77,9 @@ _RENDER_EXAMPLES = (
     "\n"
     "  # Fast sanity check: only the first and last frame as PNGs\n"
     "  tikzgif render demo.tex --test\n"
+    "\n"
+    "  # Check everything is in place without rendering\n"
+    "  tikzgif render demo.tex --validate\n"
     "\n"
     "  # Inspect the template before rendering\n"
     "  tikzgif inspect template demo.tex --param t"
@@ -208,11 +212,18 @@ def _print_remediation(exc: TikzGifError) -> None:
     if isinstance(exc, CompilationError):
         if exc.frame_index is not None:
             print(f"  frame: {exc.frame_index}", file=sys.stderr)
+        install = missing_package_hint(exc.log_content)
+        if install:
+            print(f"  install: {install}", file=sys.stderr)
         if exc.log_content:
             tail = exc.log_content.splitlines()[-15:]
             print(
                 f"  log: {' / '.join(line.strip() for line in tail)}", file=sys.stderr
             )
+    if isinstance(exc, RenderError) and (getattr(exc, "stage", "") or "") == "compile":
+        install = missing_package_hint(str(exc))
+        if install:
+            print(f"  install: {install}", file=sys.stderr)
 
 
 def _parse_bbox(raw: str | None) -> tuple[float, float, float, float] | None:
@@ -296,10 +307,17 @@ def _error_object(exc: Exception) -> dict[str, Any]:
             error["frame_index"] = exc.frame_index
         if exc.log_content:
             error["log_content"] = exc.log_content
+        install = missing_package_hint(exc.log_content)
+        if install:
+            error["install_hint"] = install
     if isinstance(exc, AssemblyError) and exc.output_format:
         error["output_format"] = exc.output_format
     if isinstance(exc, RenderError) and exc.stage:
         error["stage"] = exc.stage
+        if exc.stage == "compile":
+            install = missing_package_hint(str(exc))
+            if install:
+                error["install_hint"] = install
     return {
         "ok": False,
         "schema_version": SCHEMA_VERSION,
@@ -350,6 +368,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Path to the .tex file containing \\PARAM tokens",
     )
     render_parser.add_argument(
+        "-p",
         "--param",
         metavar="NAME",
         default="PARAM",
@@ -370,6 +389,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Last value of the swept parameter",
     )
     render_parser.add_argument(
+        "-n",
         "--frames",
         metavar="N",
         type=int,
@@ -384,6 +404,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Frames per second in the output",
     )
     render_parser.add_argument(
+        "-f",
         "--format",
         choices=["gif", "mp4"],
         default="gif",
@@ -396,6 +417,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Quality preset controlling output width/detail",
     )
     render_parser.add_argument(
+        "-e",
         "--engine",
         choices=["pdflatex", "xelatex", "lualatex"],
         default=None,
@@ -478,9 +500,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Ignore the cache and recompile every frame",
     )
     render_parser.add_argument(
+        "-t",
         "--test",
         action="store_true",
         help="Render only the first and last frames as preview PNGs",
+    )
+    render_parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="Check inputs, engine, and backend without rendering, then exit",
     )
 
     render_parser.add_argument(
@@ -615,7 +643,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     inspect_subparsers = inspect_parser.add_subparsers(
         dest="inspect_command",
-        metavar="{engines,backends,template}",
+        metavar="{engines,backends,template,cache}",
     )
 
     inspect_engines = inspect_subparsers.add_parser(
@@ -662,6 +690,28 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Emit one JSON object instead of human-readable text",
     )
 
+    inspect_cache = inspect_subparsers.add_parser(
+        "cache",
+        help="Show the compilation cache location and size",
+        formatter_class=_HelpFormatter,
+    )
+    inspect_cache.add_argument(
+        "--cache-dir",
+        metavar="DIR",
+        default=None,
+        help="Cache directory to inspect (default: platform cache)",
+    )
+    inspect_cache.add_argument(
+        "--clear",
+        action="store_true",
+        help="Delete every cached frame before reporting",
+    )
+    inspect_cache.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit one JSON object instead of human-readable text",
+    )
+
     return parser
 
 
@@ -688,6 +738,118 @@ def _render_success_json(result: Any) -> dict[str, Any]:
     }
 
 
+def _emit_validation(report: ValidationReport, as_json: bool) -> int:
+    """Print a validation report and return the matching exit code.
+
+    Human output is one line per check, marked ``[PASS]`` or ``[FAIL]``,
+    with an indented suggestion under each failure. ``--json`` emits one
+    object with the full check list. Either way the exit code is ``0`` when
+    every check passed, otherwise the documented code for the first failure.
+    """
+    if as_json:
+        _emit_json(
+            {
+                "ok": report.ok,
+                "schema_version": SCHEMA_VERSION,
+                "checks": [
+                    {
+                        "name": c.name,
+                        "passed": c.passed,
+                        "detail": c.detail,
+                        "hint": c.hint,
+                    }
+                    for c in report.checks
+                ],
+            }
+        )
+    else:
+        for check in report.checks:
+            status = "PASS" if check.passed else "FAIL"
+            line = f"[{status}] {check.name}"
+            if check.detail:
+                line += f": {check.detail}"
+            print(line)
+            if not check.passed and check.hint:
+                print(f"       {check.hint}")
+        if report.ok:
+            print("All checks passed. Ready to render.")
+        else:
+            print(
+                "Some checks failed. Fix the items above, then try again.",
+                file=sys.stderr,
+            )
+
+    if report.ok:
+        return EXIT_SUCCESS
+    if report.first_error is not None:
+        return _exit_code_for(report.first_error)
+    return EXIT_INPUT
+
+
+def _handle_validate(args: argparse.Namespace) -> int:
+    """Run pre-flight checks for a render and report them, without rendering.
+
+    Honors ``--json`` for a machine-readable report. A malformed ``--bbox``
+    is surfaced as a single failed check rather than crashing, so the user
+    always gets a readable report.
+
+    Returns:
+        Exit code: ``0`` if every check passed, otherwise the documented
+        code for the first failing check.
+    """
+    as_json = args.json
+    try:
+        bbox = _parse_bbox(args.bbox)
+    except InputError as exc:
+        report = ValidationReport(
+            ok=False,
+            checks=[
+                ValidationCheck(
+                    "bbox",
+                    False,
+                    str(exc),
+                    "Use --bbox xmin,ymin,xmax,ymax with xmax>xmin and ymax>ymin.",
+                )
+            ],
+            first_error=exc,
+        )
+        return _emit_validation(report, as_json)
+
+    background = (
+        None
+        if isinstance(args.background, str) and args.background.lower() == "none"
+        else args.background
+    )
+    report = validate_render(
+        args.tex_file,
+        param=args.param,
+        start=args.start,
+        end=args.end,
+        frames=args.frames,
+        fps=args.fps,
+        format=args.format,
+        quality=args.quality,
+        engine=args.engine,
+        workers=args.workers,
+        timeout=args.timeout,
+        dpi=args.dpi,
+        error_policy=args.error_policy,
+        output=args.output,
+        bbox=bbox,
+        shell_escape=args.shell_escape,
+        latex_args=args.latex_arg,
+        cache_dir=args.cache_dir,
+        no_cache=args.no_cache,
+        backend=args.backend,
+        color_space=args.color_space,
+        background=background,
+        antialias=args.antialias,
+        antialias_factor=args.antialias_factor,
+        raster_threads=args.raster_threads,
+    )
+    return _emit_validation(report, as_json)
+
+
 def _handle_render(args: argparse.Namespace) -> int:
     """Execute the ``render`` subcommand.
 
@@ -701,6 +863,9 @@ def _handle_render(args: argparse.Namespace) -> int:
         Exit code per the documented exit-code table (0 success,
         5 partial success, or an error code).
     """
+    if args.validate:
+        return _handle_validate(args)
+
     as_json = args.json
     path_only = args.output_path_only
     quiet = args.quiet
@@ -859,7 +1024,7 @@ def _handle_inspect(
     )
 
     if command is None:
-        message = "inspect requires a subcommand: engines, backends, or template"
+        message = "inspect requires a subcommand: engines, backends, template, or cache"
         if as_json:
             return _emit_error_json(InputError(message))
         inspect_parser.print_usage(sys.stderr)
@@ -939,6 +1104,51 @@ def _handle_inspect(
                 f"packages: {','.join(sorted(parsed.detected_packages)) if parsed.detected_packages else '(none)'}"
             )
             return EXIT_SUCCESS
+
+        if command == "cache":
+            root = Path(args.cache_dir) if args.cache_dir else default_cache_dir()
+            # Only clear when asked, and never create the cache just to look at
+            # it: a never-used cache reports "0 frames" instead of springing
+            # an empty directory into existence on disk.
+            cleared: int | None = None
+            if args.clear:
+                cleared = CompilationCache(root).clear() if root.exists() else 0
+            exists = root.exists()
+            if exists:
+                stats = CompilationCache(root).stats()
+                entries = int(stats["entries"])
+                size_bytes = int(stats["size_bytes"])
+                size_mb = float(stats["size_mb"])
+            else:
+                entries, size_bytes, size_mb = 0, 0, 0.0
+            if as_json:
+                cache_obj: dict[str, Any] = {
+                    "root": str(root),
+                    "exists": exists,
+                    "entries": entries,
+                    "size_bytes": size_bytes,
+                    "size_mb": size_mb,
+                }
+                if cleared is not None:
+                    cache_obj["cleared_entries"] = cleared
+                _emit_json(
+                    {
+                        "ok": True,
+                        "schema_version": SCHEMA_VERSION,
+                        "cache": cache_obj,
+                    }
+                )
+                return EXIT_SUCCESS
+            print(f"location: {root}")
+            if cleared is not None:
+                print(f"cleared: {cleared} frame(s)")
+            if not exists:
+                print("frames: 0 (no cache created yet)")
+                print("size: 0 B")
+            else:
+                print(f"frames: {entries}")
+                print(f"size: {_print_size(size_bytes)}")
+            return EXIT_SUCCESS
     except TikzGifError as exc:
         if as_json:
             return _emit_error_json(exc)
@@ -957,7 +1167,8 @@ def _handle_inspect(
         return EXIT_INTERNAL
 
     print(
-        "Error: inspect requires one of: engines, backends, template", file=sys.stderr
+        "Error: inspect requires one of: engines, backends, template, cache",
+        file=sys.stderr,
     )
     return EXIT_INPUT
 
