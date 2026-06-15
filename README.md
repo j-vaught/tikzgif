@@ -43,15 +43,39 @@ pip install -e .
 
 ## Quickstart
 
-One command from `.tex` to `.gif`:
+After `pip install tikzgif`, create a minimal template and render it. Copy and
+paste the whole block; it writes a self-contained `demo.tex` to the current
+directory and turns it into `demo.gif`:
 
 ```bash
-tikzgif render examples/mechanical/01_bouncing_ball.tex --output ball.gif
+cat > demo.tex <<'EOF'
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\begin{document}
+\begin{tikzpicture}
+  % \PARAM is replaced by the swept value on each frame.
+  \useasboundingbox (-2,-2) rectangle (2,2);
+  \draw[thick] (0,0) circle ({0.5 + 1.2*\PARAM});
+\end{tikzpicture}
+\end{document}
+EOF
+
+tikzgif render demo.tex --output demo.gif
 ```
 
-That's it. Put `\PARAM` in any TikZ file where you want the animated value, and tikzgif sweeps the range across frames.
+That's it. Put `\PARAM` anywhere you want the animated value, and tikzgif
+sweeps the range across frames.
 
 ## Gallery Preview
+
+The 31 ready-to-render examples live in the `examples/` directory of the
+[GitHub repository](https://github.com/j-vaught/tikzgif); they are not shipped
+with the pip wheel. Clone the repo to get them:
+
+```bash
+git clone https://github.com/j-vaught/tikzgif.git
+tikzgif render tikzgif/examples/mechanical/01_bouncing_ball.tex --output ball.gif
+```
 
 See [EXAMPLES.md](EXAMPLES.md) for the full gallery with all 31 examples.
 
