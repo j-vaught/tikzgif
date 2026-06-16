@@ -1,0 +1,63 @@
+% Example 32. Epicycle tracer.
+% A smaller rotating vector rides on a larger orbit and traces a rosette.
+% Parameter. \PARAM runs from 0 to 1 and maps to one full revolution.
+% Render. tikzgif render examples/geometry/05_epicycle_tracer.tex --format mp4 --output outputs/geometry/05_epicycle_tracer.mp4
+
+\documentclass[border=5pt,tikz]{standalone}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usetikzlibrary{arrows.meta}
+
+% USC Brand Colors
+\definecolor{garnet}{HTML}{73000A}
+\definecolor{rose}{HTML}{CC2E40}
+\definecolor{atlantic}{HTML}{466A9F}
+\definecolor{congaree}{HTML}{1F414D}
+\definecolor{grass}{HTML}{CED318}
+\definecolor{warmgrey}{HTML}{676156}
+
+\begin{document}
+\begin{tikzpicture}[>=Stealth,line cap=butt,line join=miter]
+  \useasboundingbox (-4.8,-4.0) rectangle (4.8,4.0);
+  \fill[black] (-4.8,-4.0) rectangle (4.8,4.0);
+
+  \pgfmathsetmacro{\phase}{\PARAM * 360.0}
+  \pgfmathsetmacro{\bigR}{1.75}
+  \pgfmathsetmacro{\smallR}{1.15}
+  \pgfmathsetmacro{\spin}{-4.0}
+  \pgfmathsetmacro{\cx}{\bigR * cos(\phase)}
+  \pgfmathsetmacro{\cy}{\bigR * sin(\phase)}
+  \pgfmathsetmacro{\px}{\cx + \smallR * cos(\spin * \phase)}
+  \pgfmathsetmacro{\py}{\cy + \smallR * sin(\spin * \phase)}
+
+  % Reference frame and full path.
+  \draw[white!18, line width=0.5pt] (0,0) circle (\bigR);
+  \draw[white!10, line width=0.35pt, samples=420, domain=0:360, variable=\a]
+    plot ({\bigR * cos(\a) + \smallR * cos(\spin * \a)},
+          {\bigR * sin(\a) + \smallR * sin(\spin * \a)});
+
+  % Elapsed path.
+  \draw[rose, line width=1.15pt, samples=260, domain=0:\phase, variable=\a]
+    plot ({\bigR * cos(\a) + \smallR * cos(\spin * \a)},
+          {\bigR * sin(\a) + \smallR * sin(\spin * \a)});
+
+  % Instantaneous construction vectors.
+  \draw[garnet, line width=1.4pt] (0,0) -- (\cx,\cy);
+  \draw[grass, line width=1.2pt] (\cx,\cy) -- (\px,\py);
+  \draw[white!20, line width=0.35pt] (\cx,\cy) circle (\smallR);
+
+  \fill[white] (0,0) rectangle +(0.10,0.10);
+  \fill[garnet] (\cx,\cy) rectangle +(0.13,0.13);
+  \fill[grass] (\px,\py) rectangle +(0.15,0.15);
+
+  % Phase marks.
+  \foreach \a in {0,45,...,315} {
+    \draw[white!14, line width=0.25pt] ({\a}:\bigR) -- ({\a}:{\bigR + 0.16});
+  }
+
+  \node[anchor=north west, text=white, font=\footnotesize] at (-4.45,3.62)
+    {$4{:}1$ epicycle tracer};
+  \node[anchor=south east, text=white!65, font=\scriptsize] at (4.42,-3.62)
+    {$\theta=\pgfmathprintnumber[fixed,precision=0]{\phase}^{\circ}$};
+\end{tikzpicture}
+\end{document}

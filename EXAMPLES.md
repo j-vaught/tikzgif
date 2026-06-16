@@ -30,6 +30,12 @@ Visual patterns built from transforms, recursion, and iteration.
   <img src="outputs/geometry/04_wave_interference.gif" alt="Wave interference" width="380"/>
 </p>
 
+**Epicycle Tracer** - a 4:1 epicycle draws a rosette while the construction vectors rotate.
+
+<p align="center">
+  <a href="outputs/geometry/05_epicycle_tracer.mp4">Open epicycle tracer MP4</a>
+</p>
+
 ---
 
 ## Math

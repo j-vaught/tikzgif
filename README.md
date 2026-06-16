@@ -68,7 +68,7 @@ sweeps the range across frames.
 
 ## Gallery Preview
 
-The 31 ready-to-render examples live in the `examples/` directory of the
+The 32 ready-to-render examples live in the `examples/` directory of the
 [GitHub repository](https://github.com/j-vaught/tikzgif); they are not shipped
 with the pip wheel. Clone the repo to get them:
 
@@ -77,7 +77,7 @@ git clone https://github.com/j-vaught/tikzgif.git
 tikzgif render tikzgif/examples/mechanical/01_bouncing_ball.tex --output ball.gif
 ```
 
-See [EXAMPLES.md](EXAMPLES.md) for the full gallery with all 31 examples.
+See [EXAMPLES.md](EXAMPLES.md) for the full gallery with all 32 examples.
 
 <p align="center">
   <img src="outputs/geometry/02_mandelbrot_zoom.gif" alt="Mandelbrot zoom" width="380"/>
