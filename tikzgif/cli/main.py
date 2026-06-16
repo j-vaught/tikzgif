@@ -738,13 +738,18 @@ def _render_success_json(result: Any) -> dict[str, Any]:
     }
 
 
-def _emit_validation(report: ValidationReport, as_json: bool) -> int:
+def _emit_validation(
+    report: ValidationReport, *, as_json: bool, silent: bool = False
+) -> int:
     """Print a validation report and return the matching exit code.
 
     Human output is one line per check, marked ``[PASS]`` or ``[FAIL]``,
     with an indented suggestion under each failure. ``--json`` emits one
-    object with the full check list. Either way the exit code is ``0`` when
-    every check passed, otherwise the documented code for the first failure.
+    object with the full check list. ``--quiet`` and ``--output-path-only``
+    suppress the human report entirely (``silent``); the exit code still
+    reflects the result so scripts can branch on it. The exit code is ``0``
+    when every check passed, otherwise the documented code for the first
+    failure.
     """
     if as_json:
         _emit_json(
@@ -762,7 +767,7 @@ def _emit_validation(report: ValidationReport, as_json: bool) -> int:
                 ],
             }
         )
-    else:
+    elif not silent:
         for check in report.checks:
             status = "PASS" if check.passed else "FAIL"
             line = f"[{status}] {check.name}"
@@ -789,15 +794,18 @@ def _emit_validation(report: ValidationReport, as_json: bool) -> int:
 def _handle_validate(args: argparse.Namespace) -> int:
     """Run pre-flight checks for a render and report them, without rendering.
 
-    Honors ``--json`` for a machine-readable report. A malformed ``--bbox``
-    is surfaced as a single failed check rather than crashing, so the user
-    always gets a readable report.
+    Honors ``--json`` for a machine-readable report, and ``--quiet`` /
+    ``--output-path-only`` to suppress the human report while still
+    returning the exit code. A malformed ``--bbox`` is surfaced as a single
+    failed check rather than crashing, so the user always gets a readable
+    report.
 
     Returns:
         Exit code: ``0`` if every check passed, otherwise the documented
         code for the first failing check.
     """
     as_json = args.json
+    silent = bool(args.quiet) or bool(args.output_path_only)
     try:
         bbox = _parse_bbox(args.bbox)
     except InputError as exc:
@@ -813,41 +821,60 @@ def _handle_validate(args: argparse.Namespace) -> int:
             ],
             first_error=exc,
         )
-        return _emit_validation(report, as_json)
+        return _emit_validation(report, as_json=as_json, silent=silent)
 
     background = (
         None
         if isinstance(args.background, str) and args.background.lower() == "none"
         else args.background
     )
-    report = validate_render(
-        args.tex_file,
-        param=args.param,
-        start=args.start,
-        end=args.end,
-        frames=args.frames,
-        fps=args.fps,
-        format=args.format,
-        quality=args.quality,
-        engine=args.engine,
-        workers=args.workers,
-        timeout=args.timeout,
-        dpi=args.dpi,
-        error_policy=args.error_policy,
-        output=args.output,
-        bbox=bbox,
-        shell_escape=args.shell_escape,
-        latex_args=args.latex_arg,
-        cache_dir=args.cache_dir,
-        no_cache=args.no_cache,
-        backend=args.backend,
-        color_space=args.color_space,
-        background=background,
-        antialias=args.antialias,
-        antialias_factor=args.antialias_factor,
-        raster_threads=args.raster_threads,
-    )
-    return _emit_validation(report, as_json)
+    try:
+        report = validate_render(
+            args.tex_file,
+            param=args.param,
+            start=args.start,
+            end=args.end,
+            frames=args.frames,
+            fps=args.fps,
+            format=args.format,
+            quality=args.quality,
+            engine=args.engine,
+            workers=args.workers,
+            timeout=args.timeout,
+            dpi=args.dpi,
+            error_policy=args.error_policy,
+            output=args.output,
+            bbox=bbox,
+            shell_escape=args.shell_escape,
+            latex_args=args.latex_arg,
+            cache_dir=args.cache_dir,
+            no_cache=args.no_cache,
+            backend=args.backend,
+            color_space=args.color_space,
+            background=background,
+            antialias=args.antialias,
+            antialias_factor=args.antialias_factor,
+            raster_threads=args.raster_threads,
+        )
+    except TikzGifError as exc:
+        if as_json:
+            return _emit_error_json(exc)
+        if not silent:
+            print(f"Error: {exc}", file=sys.stderr)
+            _print_remediation(exc)
+        return _exit_code_for(exc)
+    except Exception as exc:
+        if as_json:
+            return _emit_error_json(exc)
+        if not silent:
+            print(f"Unexpected error: {exc}", file=sys.stderr)
+            print(
+                "  hint: this is likely a bug; please report it at "
+                "https://github.com/j-vaught/tikzgif/issues",
+                file=sys.stderr,
+            )
+        return EXIT_INTERNAL
+    return _emit_validation(report, as_json=as_json, silent=silent)
 
 
 def _handle_render(args: argparse.Namespace) -> int:
@@ -1107,13 +1134,19 @@ def _handle_inspect(
 
         if command == "cache":
             root = Path(args.cache_dir) if args.cache_dir else default_cache_dir()
+            if root.exists() and not root.is_dir():
+                raise InputError(
+                    f"--cache-dir is not a directory: {root}. "
+                    "Point it at a folder, or omit it to use the default cache."
+                )
+            existed = root.is_dir()
             # Only clear when asked, and never create the cache just to look at
             # it: a never-used cache reports "0 frames" instead of springing
             # an empty directory into existence on disk.
             cleared: int | None = None
             if args.clear:
-                cleared = CompilationCache(root).clear() if root.exists() else 0
-            exists = root.exists()
+                cleared = CompilationCache(root).clear() if existed else 0
+            exists = root.is_dir()
             if exists:
                 stats = CompilationCache(root).stats()
                 entries = int(stats["entries"])
@@ -1140,7 +1173,7 @@ def _handle_inspect(
                 )
                 return EXIT_SUCCESS
             print(f"location: {root}")
-            if cleared is not None:
+            if existed and cleared is not None:
                 print(f"cleared: {cleared} frame(s)")
             if not exists:
                 print("frames: 0 (no cache created yet)")
