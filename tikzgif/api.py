@@ -707,7 +707,10 @@ def validate_render(
     else:
         checks.append(
             ValidationCheck(
-                "template", False, "skipped: the input file must be readable first"
+                "template",
+                False,
+                "not checked yet -- the input file must be readable first",
+                "Fix the input file above, then run --validate again.",
             )
         )
 
