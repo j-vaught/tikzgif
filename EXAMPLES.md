@@ -33,7 +33,7 @@ Visual patterns built from transforms, recursion, and iteration.
 **Epicycle Tracer** - a 4:1 epicycle draws a rosette while the construction vectors rotate.
 
 <p align="center">
-  <a href="outputs/geometry/05_epicycle_tracer.mp4">Open epicycle tracer MP4</a>
+  <img src="outputs/geometry/05_epicycle_tracer.gif" alt="Epicycle tracer" width="400"/>
 </p>
 
 ---

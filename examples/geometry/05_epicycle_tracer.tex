@@ -1,7 +1,10 @@
 % Example 32. Epicycle tracer.
 % A smaller rotating vector rides on a larger orbit and traces a rosette.
 % Parameter. \PARAM runs from 0 to 1 and maps to one full revolution.
-% Render. tikzgif render examples/geometry/05_epicycle_tracer.tex --format mp4 --output outputs/geometry/05_epicycle_tracer.mp4
+% Render. High-quality master, then downscale to a repo-friendly width.
+%   tikzgif render examples/geometry/05_epicycle_tracer.tex --frames 120 --quality print --dpi 600 --antialias --antialias-factor 3 --output /tmp/epicycle_hq.gif
+%   ffmpeg -i /tmp/epicycle_hq.gif -vf "scale=1200:-1:flags=lanczos,palettegen=stats_mode=full" -y /tmp/pal.png
+%   ffmpeg -i /tmp/epicycle_hq.gif -i /tmp/pal.png -lavfi "scale=1200:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=none:diff_mode=rectangle" -y outputs/geometry/05_epicycle_tracer.gif
 
 \documentclass[border=5pt,tikz]{standalone}
 \usepackage{tikz}
